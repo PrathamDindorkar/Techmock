@@ -46,21 +46,21 @@ const Hello = ({ darkMode }) => {
         setError(null);
         try {
           // Fetch user profile (includes purchasedTests)
-          const userResponse = await axios.get('http://localhost:5000/api/user/profile', {
+          const userResponse = await axios.get(`${backendUrl}/api/user/profile`, {
             headers: { Authorization: token },
           });
           setUserData(userResponse.data);
           setPurchasedTests(Array.isArray(userResponse.data.purchasedTests) ? userResponse.data.purchasedTests : []);
 
           // Fetch all mock tests
-          const mockResponse = await axios.get('http://localhost:5000/api/admin/mock-tests', {
+          const mockResponse = await axios.get(`${backendUrl}/api/admin/mock-tests`, {
             headers: { Authorization: token },
           });
           console.log('Fetched mock tests:', mockResponse.data);
           setMockTests(Array.isArray(mockResponse.data) ? mockResponse.data : []);
 
           if (decodedToken.role !== 'admin') {
-            const submissionResponse = await axios.get('http://localhost:5000/api/submissions', {
+            const submissionResponse = await axios.get(`${backendUrl}/api/submissions`, {
               headers: { Authorization: token },
             });
             setSubmissions(submissionResponse.data);
@@ -90,10 +90,12 @@ const Hello = ({ darkMode }) => {
     navigate(`/mock-test/${mockId}/review`);
   };
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   const handleReAttemptMock = async (mockId) => {
   try {
     const response = await axios.post(
-      `http://localhost:5000/api/mock-test/${mockId}/submit`,
+      `${backendUrl}/api/mock-test/${mockId}/submit`,
       { answers: {} }, // Initial empty answers, to be filled during re-attempt
       { headers: { Authorization: token } }
     );

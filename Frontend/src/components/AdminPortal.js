@@ -118,10 +118,11 @@ const AdminPortal = () => {
     }
   }, [role, activeTab]);
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
   const fetchAdminDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/user/profile', {
+      const response = await axios.get(`${backendUrl}/api/user/profile`, {
         headers: { Authorization: token },
       });
       setAdminDetails(response.data);
@@ -135,7 +136,7 @@ const AdminPortal = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/admin/mock-tests', {
+      const response = await axios.get(`${backendUrl}/api/admin/mock-tests`, {
         headers: { Authorization: token },
       });
       setMockTests(response.data);
@@ -156,7 +157,7 @@ const AdminPortal = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/admin/users', {
+      const response = await axios.get(`${backendUrl}/api/admin/users`, {
         headers: { Authorization: token },
       });
       setUsers(response.data);
@@ -300,7 +301,7 @@ const AdminPortal = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:5000/api/admin/add-mock-test',
+        `${backendUrl}/api/admin/add-mock-test`,
         { 
           title, 
           description, 
@@ -343,7 +344,7 @@ const AdminPortal = () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.delete(`http://localhost:5000/api/admin/mock-tests/${testId}`, {
+        const response = await axios.delete(`${backendUrl}/api/admin/mock-tests/${testId}`, {
           headers: { Authorization: token }
         });
         showSnackbar(response.data.message || 'Mock test deleted successfully!', 'success');
@@ -374,7 +375,7 @@ const AdminPortal = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/admin/users/${selectedUser._id}`, selectedUser, {
+      await axios.put(`${backendUrl}/api/admin/users/${selectedUser._id}`, selectedUser, {
         headers: { Authorization: token }
       });
       showSnackbar('User updated successfully!', 'success');
@@ -392,7 +393,7 @@ const AdminPortal = () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('token');
-        await axios.delete(`http://localhost:5000/api/admin/users/${userId}`, {
+        await axios.delete(`${backendUrl}/api/admin/users/${userId}`, {
           headers: { Authorization: token }
         });
         showSnackbar('User deleted successfully!', 'success');

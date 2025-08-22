@@ -39,6 +39,8 @@ const Profile = ({ darkMode }) => {
   const textSecondary = darkMode ? '#aaaaaa' : 'text.secondary';
   const borderColor = darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   useEffect(() => {
     if (!token) {
       navigate('/login');
@@ -49,7 +51,7 @@ const Profile = ({ darkMode }) => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get('http://localhost:5000/api/user/profile', {
+        const response = await axios.get(`${backendUrl}/api/user/profile`, {
           headers: { Authorization: token },
         });
         const { name, email, purchasedTests } = response.data;
@@ -112,7 +114,7 @@ const Profile = ({ darkMode }) => {
   const handleSaveProfile = async () => {
     try {
       await axios.put(
-        'http://localhost:5000/api/user/profile',
+        `${backendUrl}/api/user/profile`,
         {
           name: userData.fullName,
           email: userData.email,
@@ -143,7 +145,7 @@ const Profile = ({ darkMode }) => {
 
     try {
       await axios.put(
-        'http://localhost:5000/api/user/change-password',
+        `${backendUrl}/api/user/change-password`,
         {
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword,
@@ -164,7 +166,7 @@ const Profile = ({ darkMode }) => {
     try {
       // Example API call (implement backend endpoint /api/user/payment)
       await axios.put(
-        'http://localhost:5000/api/user/payment',
+        `${backendUrl}/api/user/payment`,
         {
           cardNumber: paymentData.cardNumber,
           expiryDate: paymentData.expiryDate,

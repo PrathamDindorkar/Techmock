@@ -25,6 +25,8 @@ const ChangePassword = ({ darkMode }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -43,7 +45,7 @@ const ChangePassword = ({ darkMode }) => {
     setLoading(true);
     try {
       await axios.put(
-        'http://localhost:5000/api/user/change-password',
+        `${backendUrl}/api/user/change-password`,
         {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,

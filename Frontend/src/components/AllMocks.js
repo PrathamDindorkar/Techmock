@@ -70,7 +70,7 @@ const AllMocks = () => {
       ? 'linear-gradient(135deg, #2c466b 0%, #315a7c 100%)' 
       : 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
   });
-
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const categoryColors = getCategoryColors();
   const defaultCategoryColor = isDarkMode 
     ? 'linear-gradient(135deg, #333740 0%, #252932 100%)' 
@@ -80,7 +80,7 @@ const AllMocks = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const mockResponse = await axios.get('http://localhost:5000/api/admin/get-all-mocks');
+      const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
       setMockTests(mockResponse.data);
       
       if (Object.keys(mockResponse.data).length > 0) {
@@ -90,10 +90,10 @@ const AllMocks = () => {
       const token = localStorage.getItem('token');
       if (token) {
         const [cartResponse, profileResponse] = await Promise.all([
-          axios.get('http://localhost:5000/api/user/cart', {
+          axios.get(`${backendUrl}/api/user/cart`, {
             headers: { Authorization: token }
           }),
-          axios.get('http://localhost:5000/api/user/profile', {
+          axios.get(`${backendUrl}/api/user/profile`, {
             headers: { Authorization: token }
           })
         ]);
@@ -205,7 +205,7 @@ const AllMocks = () => {
     setCartLoading(true);
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/user/cart/add',
+        `${backendUrl}/api/user/cart/add`,
         { mockTestId: mockId },
         { headers: { Authorization: token } }
       );

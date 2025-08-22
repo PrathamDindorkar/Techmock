@@ -59,6 +59,8 @@ const Register = () => {
     setShowPassword(!showPassword);
   };
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   const handleSendOtp = async () => {
     if (!name || !email || !password) {
       setMessage('Please fill in all required fields');
@@ -69,7 +71,7 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/send-otp', { email });
+      const response = await axios.post(`${backendUrl}/api/auth/send-otp`, { email });
       setMessage(response.data.message);
       setMessageType('success');
       setOtpSent(true);
@@ -95,14 +97,14 @@ const Register = () => {
 
     try {
       // First verify OTP
-      const verifyResponse = await axios.post('http://localhost:5000/api/auth/verify-otp', {
+      const verifyResponse = await axios.post(`${backendUrl}/api/auth/verify-otp`, {
         email,
         otp,
       });
 
       if (verifyResponse.data.message === 'OTP verified successfully') {
         // Then proceed with registration
-        const registerResponse = await axios.post('http://localhost:5000/api/auth/register', {
+        const registerResponse = await axios.post(`${backendUrl}/api/auth/register`, {
           name,
           email,
           password,

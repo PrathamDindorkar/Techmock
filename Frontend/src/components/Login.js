@@ -37,6 +37,8 @@ const Login = () => {
   const [animateTitle, setAnimateTitle] = useState(false);
   const [animateForm, setAnimateForm] = useState(false);
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   useEffect(() => {
     // Trigger animations sequentially
     setTimeout(() => setAnimateTitle(true), 300);
@@ -52,7 +54,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(`${backendUrl}/api/auth/login`, {
         email,
         password,
       });

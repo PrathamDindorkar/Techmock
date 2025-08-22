@@ -39,8 +39,8 @@ const Cart = () => {
   const navigate = useNavigate();
   const theme = useTheme();
 
-  const RAZORPAY_KEY_ID = 'rzp_test_AIGubdZjVk90kQ'; // Replace with your actual test/live key
-
+  const RAZORPAY_KEY_ID = process.env.REACT_APP_RZP_KEY; // Replace with your actual test/live key
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -66,7 +66,7 @@ const Cart = () => {
     }
 
     try {
-      const response = await axios.get('http://localhost:5000/api/user/cart', {
+      const response = await axios.get(`${backendUrl}/api/user/cart`, {
         headers: { Authorization: token }
       });
       setCartItems(response.data.cart.map(item => ({
@@ -103,7 +103,7 @@ const Cart = () => {
 
     setOperationLoading(true);
     try {
-      await axios.delete(`http://localhost:5000/api/user/cart/remove/${mockTestId}`, {
+      await axios.delete(`${backendUrl}/api/user/cart/remove/${mockTestId}`, {
         headers: { Authorization: token }
       });
 
@@ -166,7 +166,7 @@ const Cart = () => {
 
       console.log('Creating order with amount:', total);
       const orderResponse = await axios.post(
-        'http://localhost:5000/api/payment/order',
+        `${backendUrl}/api/payment/order`,
         { amount: total },
         { headers: { Authorization: token } }
       );
@@ -189,7 +189,7 @@ const Cart = () => {
           try {
             console.log('Payment Response:', response);
             const verifyResponse = await axios.post(
-              'http://localhost:5000/api/payment/verify',
+              `${backendUrl}/api/payment/verify`,
               {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -199,7 +199,7 @@ const Cart = () => {
             );
 
             if (verifyResponse.data.success) {
-              await axios.post('http://localhost:5000/api/user/checkout', {}, {
+              await axios.post(`${backendUrl}/api/user/checkout`, {}, {
                 headers: { Authorization: token }
               });
 

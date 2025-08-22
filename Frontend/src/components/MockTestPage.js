@@ -75,6 +75,8 @@ const MockTestPage = () => {
   const progress = test ? Object.keys(answers).length / test.questions.length * 100 : 0;
   const timeProgress = test && timeLeft ? (timeLeft / (test.timeLimit * 60)) * 100 : 100;
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   // Check authentication
   useEffect(() => {
     if (!token) {
@@ -87,7 +89,7 @@ const MockTestPage = () => {
   const fetchTest = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/mock-test/${id}`, {
+      const response = await axios.get(`${backendUrl}/api/mock-test/${id}`, {
         headers: { Authorization: token },
       });
       const testData = response.data;
@@ -156,7 +158,7 @@ const MockTestPage = () => {
     try {
       setConfirmDialog(false);
       const response = await axios.post(
-        `http://localhost:5000/api/mock-test/${id}/submit`,
+        `${backendUrl}/api/mock-test/${id}/submit`,
         { answers },
         { headers: { Authorization: token } }
       );

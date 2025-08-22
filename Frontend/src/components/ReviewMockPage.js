@@ -24,16 +24,18 @@ const ReviewMockPage = () => {
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
+
   useEffect(() => {
     const fetchReviewData = async () => {
       try {
         setLoading(true);
-        const testResponse = await axios.get(`http://localhost:5000/api/mock-test/${id}`, {
+        const testResponse = await axios.get(`${backendUrl}/api/mock-test/${id}`, {
           headers: { Authorization: token },
         });
         setTest(testResponse.data);
 
-        const submissionResponse = await axios.get(`http://localhost:5000/api/mock-test/${id}/submission`, {
+        const submissionResponse = await axios.get(`${backendUrl}/api/mock-test/${id}/submission`, {
           headers: { Authorization: token },
         });
         setSubmission(submissionResponse.data);

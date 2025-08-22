@@ -23,11 +23,12 @@ const AdminPortal = () => {
     setQuestions(updatedQuestions);
   };
 
+  const backendUrl = process.env.REACT_APP_BACKEND_URL
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:5000/api/admin/add-mock-test',
+        `${backendUrl}/api/admin/add-mock-test`,
         { title, description, questions },
         { headers: { Authorization: token } }
       );

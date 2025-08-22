@@ -11,7 +11,7 @@ const Exams = () => {
   useEffect(() => {
     const fetchMockTests = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/admin/mock-tests', {
+        const response = await axios.get(`${backendUrl}/api/admin/mock-tests`, {
           headers: { Authorization: token },
         });
         setMockTests(response.data);
