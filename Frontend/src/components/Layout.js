@@ -93,7 +93,7 @@ const Layout = () => {
   };
 
   const goToAdminPortal = () => {
-    if (role === 'admin' && email === 'prathamdindorkar67@gmail.com') {
+    if (role === 'admin') {
       navigate('/admin');
     } else {
       alert('You do not have access to the Admin Portal');
