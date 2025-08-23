@@ -829,6 +829,54 @@ app.delete('/api/admin/mock-tests/:id', verifyAdmin, async (req, res) => {
   }
 });
 
+// Reset Password Route
+app.put('/api/auth/reset-password', async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    // Check if OTP is verified for this email
+    const storedOtp = otpStorage[email];
+    if (!storedOtp || !storedOtp.verified) {
+      return res.status(400).json({ message: 'Please verify OTP before resetting password' });
+    }
+
+    // Find the user by email
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password
+    const { error } = await supabase
+      .from('users')
+      .update({ password: hashedPassword })
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    // Clear OTP storage for this email
+    delete otpStorage[email];
+
+    res.status(200).json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Failed to reset password', error: error.message });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

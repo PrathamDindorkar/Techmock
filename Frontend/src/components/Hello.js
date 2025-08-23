@@ -226,177 +226,115 @@ const Hello = ({ darkMode }) => {
     format: 'a4'
   });
 
-  const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
-  
-  // Get current date and generate certificate ID
-  const currentDate = new Date();
-  const date = currentDate.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-  const certificateId = `HR-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+  const pageWidth = doc.internal.pageSize.width; // 297mm
+  const pageHeight = doc.internal.pageSize.height; // 210mm
 
-  // HackerRank color scheme
+  // Current date & unique certificate ID
+  const currentDate = new Date();
+  const date = currentDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const certificateId = `TM-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+  // 🎨 Colors
   const colors = {
-    primary: [0, 184, 169],      // HackerRank teal/green
-    secondary: [39, 79, 74],     // Dark green
-    text: [52, 73, 94],          // Dark blue-gray
-    lightText: [127, 140, 141],  // Light gray
-    background: [255, 255, 255], // White
-    accent: [241, 196, 15]       // Golden yellow for badges
+    primary: [33, 150, 243],     // Blue
+    secondary: [30, 136, 229],   // Darker Blue
+    accent: [255, 215, 0],       // Gold
+    text: [34, 34, 34],          // Dark Gray
+    light: [120, 144, 156],      // Light Gray
+    border: [180, 180, 180]      // Border
   };
 
-  // White background
-  doc.setFillColor(...colors.background);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-  // Top header section with colored background
+  // ===== HEADER BAR =====
   doc.setFillColor(...colors.primary);
-  doc.rect(0, 0, pageWidth, 40, 'F');
-
-  // HackerRank logo text (since we can't embed actual logo)
+  doc.rect(0, 0, pageWidth, 35, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
+  doc.setFontSize(26);
   doc.setTextColor(255, 255, 255);
-  doc.text('HackerRank', 25, 25);
+  doc.text('TechMock - Certificate of Achievement', pageWidth / 2, 22, { align: 'center' });
 
-  // Certificate of Achievement text in header
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
-  doc.text('Certificate of Achievement', pageWidth - 25, 25, { align: 'right' });
+  // ===== WATERMARK =====
+  doc.setFontSize(80);
+  doc.setTextColor(230, 230, 230);
+  doc.text('TechMock', pageWidth / 2, pageHeight / 2, { align: 'center' });
 
-  // Main content area
-  // "This is to certify that" text
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
+  // ===== MAIN TEXT =====
+  let y = 65;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(16);
   doc.setTextColor(...colors.text);
-  doc.text('This is to certify that', pageWidth / 2, 70, { align: 'center' });
+  doc.text('This is to certify that', pageWidth / 2, y, { align: 'center' });
 
-  // Recipient name (large, bold)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(32);
+  // Recipient Name
+  y += 25;
+  doc.setFont('calligraffitti', 'italic');
+  doc.setFontSize(38);
   doc.setTextColor(...colors.secondary);
-  doc.text(userName || 'Recipient Name', pageWidth / 2, 95, { align: 'center' });
+  doc.text(userName || 'Recipient Name', pageWidth / 2, y, { align: 'center' });
 
-  // Underline for name
-  doc.setLineWidth(0.8);
-  doc.setDrawColor(...colors.primary);
-  const nameWidth = doc.getTextWidth(userName || 'Recipient Name') * 1.1;
-  doc.line((pageWidth - nameWidth) / 2, 100, (pageWidth + nameWidth) / 2, 100);
+  // Decorative underline
+  const nameWidth = doc.getTextWidth(userName || 'Recipient Name') * 1.3;
+  doc.setDrawColor(...colors.accent);
+  doc.setLineWidth(1.2);
+  doc.line((pageWidth - nameWidth) / 2, y + 4, (pageWidth + nameWidth) / 2, y + 4);
 
-  // "has successfully completed" text
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
+  // Achievement text
+  y += 25;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(18);
   doc.setTextColor(...colors.text);
-  doc.text('has successfully completed the', pageWidth / 2, 120, { align: 'center' });
+  doc.text('has successfully completed the', pageWidth / 2, y, { align: 'center' });
 
-  // Course/Test name
+  // Test Title
+  y += 20;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(...colors.secondary);
-  doc.text(mockTitle || 'Skills Verification Test', pageWidth / 2, 140, { align: 'center' });
+  doc.setFontSize(28);
+  doc.setTextColor(...colors.primary);
+  doc.text(mockTitle || 'Skills Assessment', pageWidth / 2, y, { align: 'center' });
 
-  // Score section
+  // with the score of
+  y += 15;
+  doc.setFont('times', 'italic');
+  doc.setFontSize(18);
+  doc.setTextColor(...colors.text);
+  doc.text('with the score of', pageWidth / 2, y, {align: 'center'});
+
+  // Score Seal
   if (accuracy !== undefined && accuracy !== null) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(14);
-    doc.setTextColor(...colors.text);
-    doc.text('with a score of', pageWidth / 2, 160, { align: 'center' });
-    
-    // Score badge
-    doc.setFillColor(...colors.accent);
-    doc.roundedRect(pageWidth / 2 - 20, 165, 40, 15, 3, 3, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`${accuracy}%`, pageWidth / 2, 175, { align: 'center' });
+    y +=10
+    doc.text(`${accuracy}%`, pageWidth / 2, y + 5, { align: 'center' });
   }
 
-  // Date section
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
+  // ===== FOOTER DETAILS =====
+  y = pageHeight - 35;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(14);
   doc.setTextColor(...colors.text);
-  doc.text(`Completed on ${date}`, pageWidth / 2, 200, { align: 'center' });
+  doc.text(`Completed on ${date}`, pageWidth / 2, y, { align: 'center' });
 
-  // Certificate ID
-  doc.setFont('helvetica', 'normal');
+  y += 8;
+  doc.setFont('helvetica', 'italic');
   doc.setFontSize(10);
-  doc.setTextColor(...colors.lightText);
-  doc.text(`Certificate ID: ${certificateId}`, pageWidth / 2, 210, { align: 'center' });
+  doc.setTextColor(...colors.light);
+  doc.text(`Certificate ID: ${certificateId}`, pageWidth / 2, y, { align: 'center' });
 
-  // Verification URL (placeholder)
-  doc.text('Verify at: www.hackerrank.com/certificates/verify', pageWidth / 2, 220, { align: 'center' });
+  // ===== FOOTER TAGLINE =====
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.setTextColor(...colors.light);
+  doc.text('TechMock - Empowering Technical Excellence', pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-  // Bottom section with signatures
-  const leftX = 60;
-  const rightX = pageWidth - 60;
-  const sigY = pageHeight - 40;
-
-  // Left signature
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.setTextColor(...colors.text);
-  doc.text('Vivek Ravisankar', leftX, sigY, { align: 'center' });
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.lightText);
-  doc.text('Co-founder & CEO', leftX, sigY + 8, { align: 'center' });
-
-  // Right signature
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.setTextColor(...colors.text);
-  doc.text('Hari Karunanidhi', rightX, sigY, { align: 'center' });
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.lightText);
-  doc.text('Co-founder & CTO', rightX, sigY + 8, { align: 'center' });
-
-  // Side decorative elements
-  // Left side accent
-  doc.setFillColor(...colors.primary);
-  doc.rect(0, 50, 5, 120, 'F');
-
-  // Right side accent
-  doc.rect(pageWidth - 5, 50, 5, 120, 'F');
-
-  // Skills badge (if high score)
-  if (accuracy && accuracy >= 80) {
-    // Badge background
-    doc.setFillColor(...colors.primary);
-    doc.circle(pageWidth - 40, 60, 25, 'F');
-    
-    // Badge inner circle
-    doc.setFillColor(255, 255, 255);
-    doc.circle(pageWidth - 40, 60, 20, 'F');
-    
-    // Badge text
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...colors.primary);
-    doc.text('VERIFIED', pageWidth - 40, 55, { align: 'center' });
-    doc.text('SKILLS', pageWidth - 40, 63, { align: 'center' });
-  }
-
-  // Footer with HackerRank branding
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...colors.lightText);
-  doc.text('HackerRank - Technical Skills Assessment Platform', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-  // Subtle border
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(...colors.primary);
-  doc.rect(10, 45, pageWidth - 20, pageHeight - 60, 'S');
-
-  // Generate filename and save
+  // Save file
   const cleanTitle = (mockTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanName = (userName || 'User').replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `HackerRank_Certificate_${cleanTitle}_${cleanName}_${currentDate.getFullYear()}.pdf`;
-  
+  const fileName = `TechMock_Certificate_${cleanTitle}_${cleanName}_${currentDate.getFullYear()}.pdf`;
+
   doc.save(fileName);
 };
+
 
   const categoryStats = !isAdmin ? getCategoryStats() : [];
   const mockTestStats = isAdmin ? getMockTestStats() : null;

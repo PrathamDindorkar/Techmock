@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
-  Grid, 
-  Paper, 
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Grid,
+  Paper,
   Container,
   InputAdornment,
   IconButton,
   Divider,
   Fade,
-  Grow
+  Grow,
+  Modal,
+  Stack,
 } from '@mui/material';
-import { 
-  Email as EmailIcon, 
-  Lock as LockIcon, 
-  Visibility, 
+import {
+  Email as EmailIcon,
+  Lock as LockIcon,
+  Visibility,
   VisibilityOff,
   Login as LoginIcon,
-  ArrowForward
+  ArrowForward,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
@@ -31,16 +33,22 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [openForgotPassword, setOpenForgotPassword] = useState(false);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('sendOtp'); // 'sendOtp', 'verifyOtp', 'resetPassword'
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotPasswordError, setForgotPasswordError] = useState(null);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(null);
   const navigate = useNavigate();
 
   // Animation states
   const [animateTitle, setAnimateTitle] = useState(false);
   const [animateForm, setAnimateForm] = useState(false);
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
-    // Trigger animations sequentially
     setTimeout(() => setAnimateTitle(true), 300);
     setTimeout(() => setAnimateForm(true), 800);
   }, []);
@@ -52,27 +60,96 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       const response = await axios.post(`${backendUrl}/api/auth/login`, {
         email,
         password,
       });
 
-      // Save the JWT token and role to localStorage
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('email', response.data.email);
       localStorage.setItem('role', response.data.role);
 
-      // Short delay to show loading effect
       setTimeout(() => {
         setIsLoading(false);
         navigate('/hello');
       }, 1000);
-      
     } catch (error) {
       setIsLoading(false);
       setMessage(error.response?.data?.message || 'An error occurred');
+    }
+  };
+
+  const handleForgotPasswordOpen = () => {
+    setOpenForgotPassword(true);
+    setForgotPasswordStep('sendOtp');
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleForgotPasswordClose = () => {
+    setOpenForgotPassword(false);
+    setForgotPasswordStep('sendOtp');
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+    setEmail('');
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleSendOtp = async () => {
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+
+    try {
+      await axios.post(`${backendUrl}/api/auth/send-otp`, { email });
+      setForgotPasswordSuccess('OTP sent to your email');
+      setForgotPasswordStep('verifyOtp');
+    } catch (error) {
+      setForgotPasswordError(error.response?.data?.message || 'Failed to send OTP');
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+
+    try {
+      await axios.post(`${backendUrl}/api/auth/verify-otp`, { email, otp });
+      setForgotPasswordSuccess('OTP verified successfully');
+      setForgotPasswordStep('resetPassword');
+    } catch (error) {
+      setForgotPasswordError(error.response?.data?.message || 'Failed to verify OTP');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+
+    if (newPassword !== confirmPassword) {
+      setForgotPasswordError('New password and confirm password do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setForgotPasswordError('New password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      await axios.put(`${backendUrl}/api/auth/reset-password`, { email, newPassword });
+      setForgotPasswordSuccess('Password reset successfully');
+      setTimeout(() => {
+        handleForgotPasswordClose();
+      }, 2000);
+    } catch (error) {
+      setForgotPasswordError(error.response?.data?.message || 'Failed to reset password');
     }
   };
 
@@ -104,8 +181,7 @@ const Login = () => {
             boxShadow: { md: '15px 0 25px rgba(0, 0, 0, 0.1)' },
           }}
         >
-          {/* Animated background elements */}
-          <Box 
+          <Box
             component={motion.div}
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.1 }}
@@ -114,37 +190,36 @@ const Login = () => {
               position: 'absolute',
               width: '200%',
               height: '200%',
-              background: 'radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent), radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent) 50px 50px, linear-gradient(#104aa1 8px, transparent 8px) 0 -4px, linear-gradient(90deg, #104aa1 8px, transparent 8px) -4px 0',
+              background:
+                'radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent), radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent) 50px 50px, linear-gradient(#104aa1 8px, transparent 8px) 0 -4px, linear-gradient(90deg, #104aa1 8px, transparent 8px) -4px 0',
               backgroundSize: '100px 100px, 100px 100px, 50px 50px, 50px 50px',
               transform: 'rotate(10deg) scale(1.5)',
               zIndex: 0,
             }}
           />
-          
           <Grow in={animateTitle} timeout={1000}>
             <Box sx={{ zIndex: 1, textAlign: 'center' }}>
               <Typography
                 variant="h1"
                 component={motion.div}
-                sx={{ 
-                  fontWeight: 900, 
+                sx={{
+                  fontWeight: 900,
                   fontSize: { xs: '3rem', md: '4.5rem' },
                   letterSpacing: '-0.05em',
                   textShadow: '3px 3px 6px rgba(0, 0, 0, 0.3)',
-                  mb: 2
+                  mb: 2,
                 }}
               >
                 TechMock
               </Typography>
-              
-              <Typography 
-                variant="h6" 
+              <Typography
+                variant="h6"
                 component={motion.div}
-                sx={{ 
+                sx={{
                   opacity: 0.9,
                   maxWidth: '80%',
                   mx: 'auto',
-                  fontWeight: 300
+                  fontWeight: 300,
                 }}
               >
                 Your gateway to technical excellence
@@ -166,7 +241,7 @@ const Login = () => {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            background: 'transparent'
+            background: 'transparent',
           }}
         >
           <Container maxWidth="xs">
@@ -183,18 +258,18 @@ const Login = () => {
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
                 }}
               >
-                <Typography 
-                  component="h1" 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 700, 
+                <Typography
+                  component="h1"
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
                     color: '#1976d2',
-                    mb: 3
+                    mb: 3,
                   }}
                 >
                   Welcome Back
                 </Typography>
-                
+
                 {message && (
                   <Box
                     component={motion.div}
@@ -209,22 +284,13 @@ const Login = () => {
                       border: '1px solid rgba(211, 47, 47, 0.3)',
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      color="error"
-                      align="center"
-                    >
+                    <Typography variant="body2" color="error" align="center">
                       {message}
                     </Typography>
                   </Box>
                 )}
-                
-                <Box
-                  component="form"
-                  noValidate
-                  onSubmit={handleSubmit}
-                  sx={{ mt: 1, width: '100%' }}
-                >
+
+                <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
                   <TextField
                     margin="normal"
                     required
@@ -253,7 +319,6 @@ const Login = () => {
                       },
                     }}
                   />
-                  
                   <TextField
                     margin="normal"
                     required
@@ -293,23 +358,22 @@ const Login = () => {
                       },
                     }}
                   />
-                  
                   <Box sx={{ textAlign: 'right', mt: 1 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       color="primary"
                       component={motion.div}
                       whileHover={{ scale: 1.05 }}
-                      sx={{ 
+                      sx={{
                         display: 'inline-block',
                         cursor: 'pointer',
-                        fontWeight: 500
+                        fontWeight: 500,
                       }}
+                      onClick={handleForgotPasswordOpen}
                     >
                       Forgot password?
                     </Typography>
                   </Box>
-                  
                   <Button
                     component={motion.button}
                     whileHover={{ scale: 1.03 }}
@@ -338,13 +402,11 @@ const Login = () => {
                       </>
                     )}
                   </Button>
-                  
                   <Divider sx={{ my: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                       OR
                     </Typography>
                   </Divider>
-                  
                   <Box
                     component={motion.div}
                     whileHover={{ scale: 1.02 }}
@@ -352,9 +414,9 @@ const Login = () => {
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
-                    onClick={() => navigate("/register")}
+                    onClick={() => navigate('/register')}
                   >
                     <Typography
                       variant="body1"
@@ -363,7 +425,7 @@ const Login = () => {
                         color: '#1976d2',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1
+                        gap: 1,
                       }}
                     >
                       New to TechMock? Register Here
@@ -376,6 +438,113 @@ const Login = () => {
           </Container>
         </Grid>
       </Grid>
+
+      {/* Forgot Password Modal */}
+      <Modal open={openForgotPassword} onClose={handleForgotPasswordClose}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            borderRadius: '10px',
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
+            {forgotPasswordStep === 'sendOtp'
+              ? 'Forgot Password'
+              : forgotPasswordStep === 'verifyOtp'
+              ? 'Verify OTP'
+              : 'Reset Password'}
+          </Typography>
+
+          {forgotPasswordError && (
+            <Typography color="error" sx={{ mb: 2 }}>
+              {forgotPasswordError}
+            </Typography>
+          )}
+          {forgotPasswordSuccess && (
+            <Typography color="success.main" sx={{ mb: 2 }}>
+              {forgotPasswordSuccess}
+            </Typography>
+          )}
+
+          <Stack spacing={2}>
+            {forgotPasswordStep === 'sendOtp' && (
+              <>
+                <TextField
+                  label="Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSendOtp}
+                  disabled={!email}
+                  sx={{ borderRadius: '10px' }}
+                >
+                  Send OTP
+                </Button>
+              </>
+            )}
+
+            {forgotPasswordStep === 'verifyOtp' && (
+              <>
+                <TextField
+                  label="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleVerifyOtp}
+                  disabled={!otp}
+                  sx={{ borderRadius: '10px' }}
+                >
+                  Verify OTP
+                </Button>
+              </>
+            )}
+
+            {forgotPasswordStep === 'resetPassword' && (
+              <>
+                <TextField
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                />
+                <TextField
+                  label="Confirm New Password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleResetPassword}
+                  disabled={!newPassword || !confirmPassword}
+                  sx={{ borderRadius: '10px' }}
+                >
+                  Reset Password
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Box>
+      </Modal>
     </Box>
   );
 };

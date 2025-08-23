@@ -460,7 +460,8 @@ const MockTestPage = () => {
                   <AssignmentTurnedIn sx={{ fontSize: 80, color: 'success.main' }} />
                 </Box>
                 <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 700 }}>
-                  Your Score: {score !== null ? score : '...'}%
+                  {/*Your Score: {score !== null ? score : '...'}%*/}
+                  To Get Scores Visit User Dashboard
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 3 }}>
                   You've successfully completed the test. Thank you for your participation!
