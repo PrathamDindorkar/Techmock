@@ -11,3 +11,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.calligraffitti-regular {
+  font-family: "Calligraffitti", cursive;
+  font-weight: 400;
+  font-style: normal;
+}

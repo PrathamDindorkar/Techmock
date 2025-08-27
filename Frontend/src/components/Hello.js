@@ -93,17 +93,17 @@ const Hello = ({ darkMode }) => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL
 
   const handleReAttemptMock = async (mockId) => {
-  try {
-    const response = await axios.post(
-      `${backendUrl}/api/mock-test/${mockId}/submit`,
-      { answers: {} }, // Initial empty answers, to be filled during re-attempt
-      { headers: { Authorization: token } }
-    );
-    navigate(`/mock-test/${mockId}`);
-  } catch (error) {
-    setError('Failed to start re-attempt. Please try again.');
-  }
-};
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/mock-test/${mockId}/submit`,
+        { answers: {} }, // Initial empty answers, to be filled during re-attempt
+        { headers: { Authorization: token } }
+      );
+      navigate(`/mock-test/${mockId}`);
+    } catch (error) {
+      setError('Failed to start re-attempt. Please try again.');
+    }
+  };
 
   const handleCreateMock = () => {
     navigate('/admin');
@@ -220,121 +220,255 @@ const Hello = ({ darkMode }) => {
   };
 
   const generateCertificate = (mockTitle, userName, accuracy) => {
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4'
-  });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
 
-  const pageWidth = doc.internal.pageSize.width; // 297mm
-  const pageHeight = doc.internal.pageSize.height; // 210mm
+    doc.polygon = function (points, style) {
+      this.lines(
+        points.map((p, i) => i === 0 ? [0, 0] : [p[0] - points[0][0], p[1] - points[0][1]]),
+        points[0][0], points[0][1],
+        [1, 1],
+        style
+      );
+    };
 
-  // Current date & unique certificate ID
-  const currentDate = new Date();
-  const date = currentDate.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  const certificateId = `TM-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    const pageWidth = doc.internal.pageSize.width;  // 297mm
+    const pageHeight = doc.internal.pageSize.height; // 210mm
 
-  // 🎨 Colors
-  const colors = {
-    primary: [33, 150, 243],     // Blue
-    secondary: [30, 136, 229],   // Darker Blue
-    accent: [255, 215, 0],       // Gold
-    text: [34, 34, 34],          // Dark Gray
-    light: [120, 144, 156],      // Light Gray
-    border: [180, 180, 180]      // Border
+    // ===== Color Palette (Professional & Elegant) =====
+    const colors = {
+      navy: [25, 55, 100],       // Deep blue for titles
+      gold: [218, 165, 32],      // Rich gold accents
+      lightGold: [255, 215, 0],  // Bright stars
+      pale: [249, 250, 253],     // Soft off-white background
+      text: [50, 50, 50],        // Dark gray for readability
+      accent: [70, 130, 180],    // Subtle blue for details
+      lightNavy: [0, 50, 100]    // Lighter navy for ribbon shading
+    };
+
+    // ===== Background =====
+    doc.setFillColor(...colors.pale);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    // ===== Decorative Corner Elements =====
+    const drawCornerTriangle = (x1, y1, x2, y2, x3, y3, fill) => {
+      doc.setFillColor(...fill);
+      doc.triangle(x1, y1, x2, y2, x3, y3, 'F');
+    };
+
+    // Top-left corner
+    drawCornerTriangle(0, 0, 0, 35, 40, 0, colors.navy);
+    drawCornerTriangle(0, 35, 15, 20, 40, 0, colors.gold);
+
+    // Bottom-right corner
+    drawCornerTriangle(pageWidth, pageHeight, pageWidth, pageHeight - 35, pageWidth - 40, pageHeight, colors.navy);
+    drawCornerTriangle(pageWidth, pageHeight - 35, pageWidth - 15, pageHeight - 20, pageWidth - 40, pageHeight, colors.gold);
+
+    // Top-right small triangle
+    drawCornerTriangle(pageWidth, 0, pageWidth - 25, 0, pageWidth, 25, colors.navy);
+
+    // Bottom-left small triangle
+    drawCornerTriangle(0, pageHeight, 0, pageHeight - 25, 25, pageHeight, colors.navy);
+
+    // ===== Border Frame =====
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(2);
+    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+    // Inner decorative line
+    doc.setDrawColor(...colors.accent);
+    doc.setLineWidth(0.5);
+    doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
+
+    // ===== Main Title =====
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(34);
+    doc.setTextColor(...colors.navy);
+    doc.text("CERTIFICATE OF ACHIEVEMENT", pageWidth / 2, 36, { align: 'center' });
+
+    // Optional subtitle (smaller, italic)
+    doc.setFont('times', 'italic');
+    doc.setFontSize(16);
+    doc.setTextColor(...colors.gold);
+    doc.text("Official Recognition of Excellence", pageWidth / 2, 48, { align: 'center' });
+
+    // ===== Presented To =====
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(14);
+    doc.setTextColor(...colors.text);
+    doc.text("This certificate is proudly presented to:", pageWidth / 2, 68, { align: 'center' });
+
+    // ===== Recipient Name (Elegant Calligraphy Style) =====
+    doc.setFont('times', 'bolditalic');
+    doc.setFontSize(40);
+    const nameText = userName || "John Doe";
+    const nameWidth = doc.getTextWidth(nameText);
+    doc.setTextColor(...colors.gold);
+    doc.text(nameText, pageWidth / 2, 90, { align: 'center' });
+
+    // Decorative double underline
+    const lineOffset = 4;
+    const underlineY = 94;
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(1.8);
+    doc.line((pageWidth - nameWidth - 20) / 2, underlineY, (pageWidth + nameWidth + 20) / 2, underlineY);
+
+    doc.setDrawColor(...colors.accent);
+    doc.setLineWidth(0.6);
+    doc.line((pageWidth - nameWidth - 20) / 2, underlineY + 2, (pageWidth + nameWidth + 20) / 2, underlineY + 2);
+
+    // ===== Achievement Statement =====
+    doc.setFont('times', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(...colors.navy);
+    doc.text(`For successfully completing`, pageWidth / 2, 112, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(...colors.gold);
+    const titleText = mockTitle || "Advanced Training Program";
+    doc.text(titleText, pageWidth / 2, 124, { align: 'center', maxWidth: pageWidth - 80 });
+
+    // ===== Description Paragraph =====
+    doc.setFont('times', 'italic');
+    doc.setFontSize(12);
+    doc.setTextColor(...colors.text);
+    const desc = `${userName || "The recipient"} demonstrated exceptional knowledge and dedication, achieving a score of ${accuracy}% in the assessment. This reflects a high level of commitment, preparation, and mastery of the subject matter.`;
+    doc.text(desc, pageWidth / 2, 140, {
+      align: 'center',
+      maxWidth: pageWidth - 60,
+      lineHeightFactor: 1.5
+    });
+
+    // ===== Gold Seal (Improved, No Overlap, Top-Right Corner) =====
+    const sealX = pageWidth - 40; // Far right with margin
+    const sealY = 55;             // Below title
+    const radius = 22;            // Slightly larger seal
+
+    // Subtle shadow for seal
+    doc.setFillColor(0, 0, 0, 0.2); // Semi-transparent black
+    doc.circle(sealX + 2, sealY + 2, radius, 'F');
+
+    // Simulated gradient for gold ring (outer layer)
+    doc.setFillColor(...colors.gold);
+    doc.circle(sealX, sealY, radius, 'F');
+
+    // Inner gold ring for metallic effect
+    doc.setFillColor(...colors.lightGold);
+    doc.circle(sealX, sealY, radius - 2, 'F');
+
+    // Dotted border (refined)
+    doc.setFillColor(...colors.navy);
+    for (let angle = 0; angle < 360; angle += 10) { // Tighter spacing for elegance
+      const rad = (angle * Math.PI) / 180;
+      doc.circle(sealX + Math.cos(rad) * (radius + 2), sealY + Math.sin(rad) * (radius + 2), 0.8, 'F'); // Smaller dots
+    }
+
+    // Inner cream circle
+    doc.setFillColor(255, 248, 220); // Cream
+    doc.circle(sealX, sealY, radius - 5, 'F');
+
+    // Thin navy outline for inner circle
+    doc.setDrawColor(...colors.navy);
+    doc.setLineWidth(0.4);
+    doc.circle(sealX, sealY, radius - 5, 'S');
+
+    // Text inside seal
+    doc.setFont('times', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.navy);
+    doc.text("EXCELLENCE", sealX, sealY - 3, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(...colors.gold);
+    doc.text("AWARD", sealX, sealY + 2, { align: 'center' });
+
+    // Stars
+    doc.setFontSize(12);
+    doc.setTextColor(...colors.lightGold);
+    doc.text("* * *", sealX, sealY + 8, { align: 'center' });
+
+    // Ribbon (curved, flowing effect using lines)
+    // ===== Gold Seal Ribbon (Elegant, Symmetrical) =====
+    // Left ribbon tail
+    doc.setFillColor(...colors.navy);
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(0.5);
+    doc.polygon([
+      [sealX - 10, sealY + radius],           // Top left (under seal)
+      [sealX - 22, sealY + radius + 18],      // Bottom left
+      [sealX - 6, sealY + radius + 10],       // Inner tip
+    ], 'FD');
+
+    // Right ribbon tail
+    doc.setFillColor(...colors.navy);
+    doc.setDrawColor(...colors.gold);
+    doc.polygon([
+      [sealX + 10, sealY + radius],           // Top right (under seal)
+      [sealX + 22, sealY + radius + 18],      // Bottom right
+      [sealX + 6, sealY + radius + 10],       // Inner tip
+    ], 'FD');
+
+    // Ribbon center (under seal)
+    doc.setFillColor(...colors.lightNavy);
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(0.5);
+    doc.polygon([
+      [sealX - 6, sealY + radius + 10],       // Left tip
+      [sealX + 6, sealY + radius + 10],       // Right tip
+      [sealX, sealY + radius + 5],            // Center dip
+    ], 'FD');
+
+    // Optional ribbon text (e.g., year)
+    doc.setFont('times', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(255, 255, 255);
+    doc.text("2025", sealX, sealY + radius + 8, { align: 'center' });
+
+    // ===== Footer: Signatures & Date =====
+    const sigY = pageHeight - 40;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...colors.navy);
+
+    // Left Signature
+    doc.text("Authorized Signatory", 50, sigY, { align: 'center' });
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(0.8);
+    doc.line(30, sigY + 3, 70, sigY + 3);
+
+    // Right Signature
+    doc.text("Director", pageWidth - 50, sigY, { align: 'center' });
+    doc.line(pageWidth - 70, sigY + 3, pageWidth - 30, sigY + 3);
+
+    // Center Date & Location
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...colors.text);
+    const currentDate = new Date();
+    const dateStr = new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(currentDate);
+    doc.text(`Issued on: ${dateStr}`, pageWidth / 2, sigY + 14, { align: 'center' });
+    doc.text("TechMock", pageWidth / 2, sigY, { align: 'center' });
+
+    // Footer decorative line
+    doc.setDrawColor(...colors.gold);
+    doc.setLineWidth(1);
+    doc.line(50, sigY + 18, pageWidth - 50, sigY + 18);
+
+    // ===== Final Touch: Centering & Clean Output =====
+    const cleanName = (userName || 'Recipient').replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `Certificate_Of_Achievement_${cleanName}_${currentDate.getFullYear()}.pdf`;
+
+    doc.save(fileName);
   };
-
-  // ===== HEADER BAR =====
-  doc.setFillColor(...colors.primary);
-  doc.rect(0, 0, pageWidth, 35, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.setTextColor(255, 255, 255);
-  doc.text('TechMock - Certificate of Achievement', pageWidth / 2, 22, { align: 'center' });
-
-  // ===== WATERMARK =====
-  doc.setFontSize(80);
-  doc.setTextColor(230, 230, 230);
-  doc.text('TechMock', pageWidth / 2, pageHeight / 2, { align: 'center' });
-
-  // ===== MAIN TEXT =====
-  let y = 65;
-  doc.setFont('times', 'italic');
-  doc.setFontSize(16);
-  doc.setTextColor(...colors.text);
-  doc.text('This is to certify that', pageWidth / 2, y, { align: 'center' });
-
-  // Recipient Name
-  y += 25;
-  doc.setFont('calligraffitti', 'italic');
-  doc.setFontSize(38);
-  doc.setTextColor(...colors.secondary);
-  doc.text(userName || 'Recipient Name', pageWidth / 2, y, { align: 'center' });
-
-  // Decorative underline
-  const nameWidth = doc.getTextWidth(userName || 'Recipient Name') * 1.3;
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(1.2);
-  doc.line((pageWidth - nameWidth) / 2, y + 4, (pageWidth + nameWidth) / 2, y + 4);
-
-  // Achievement text
-  y += 25;
-  doc.setFont('times', 'italic');
-  doc.setFontSize(18);
-  doc.setTextColor(...colors.text);
-  doc.text('has successfully completed the', pageWidth / 2, y, { align: 'center' });
-
-  // Test Title
-  y += 20;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
-  doc.setTextColor(...colors.primary);
-  doc.text(mockTitle || 'Skills Assessment', pageWidth / 2, y, { align: 'center' });
-
-  // with the score of
-  y += 15;
-  doc.setFont('times', 'italic');
-  doc.setFontSize(18);
-  doc.setTextColor(...colors.text);
-  doc.text('with the score of', pageWidth / 2, y, {align: 'center'});
-
-  // Score Seal
-  if (accuracy !== undefined && accuracy !== null) {
-    y +=10
-    doc.text(`${accuracy}%`, pageWidth / 2, y + 5, { align: 'center' });
-  }
-
-  // ===== FOOTER DETAILS =====
-  y = pageHeight - 35;
-  doc.setFont('times', 'normal');
-  doc.setFontSize(14);
-  doc.setTextColor(...colors.text);
-  doc.text(`Completed on ${date}`, pageWidth / 2, y, { align: 'center' });
-
-  y += 8;
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.light);
-  doc.text(`Certificate ID: ${certificateId}`, pageWidth / 2, y, { align: 'center' });
-
-  // ===== FOOTER TAGLINE =====
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.setTextColor(...colors.light);
-  doc.text('TechMock - Empowering Technical Excellence', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-  // Save file
-  const cleanTitle = (mockTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
-  const cleanName = (userName || 'User').replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `TechMock_Certificate_${cleanTitle}_${cleanName}_${currentDate.getFullYear()}.pdf`;
-
-  doc.save(fileName);
-};
-
 
   const categoryStats = !isAdmin ? getCategoryStats() : [];
   const mockTestStats = isAdmin ? getMockTestStats() : null;
