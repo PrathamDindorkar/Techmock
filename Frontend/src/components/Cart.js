@@ -72,7 +72,7 @@ const Cart = () => {
       setCartItems(response.data.cart.map(item => ({
         id: item.mock_test_id,
         title: item.mock_tests.title,
-        price: item.price, // or item.mock_tests.price if using mock_tests.price
+        price: item.price, 
         description: item.mock_tests.description
       })));
     } catch (error) {
@@ -356,7 +356,7 @@ const Cart = () => {
               </React.Fragment>
             ))}
           </List>
-          <Box sx={{ p: 2, backgroundColor: 'grey.100' }}>
+          <Box sx={{ p: 2, backgroundColor: theme.palette.background.main }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Total: ₹{calculateTotal()}
             </Typography>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Avatar, Button, TextField, Stack, Card, CardContent, CircularProgress } from '@mui/material';
+import { Box, Typography, Avatar, Button, TextField, Stack, Card, CardContent, CircularProgress, useTheme} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -31,6 +31,7 @@ const Profile = ({ darkMode }) => {
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   const [activeSection, setActiveSection] = useState('My Profile'); // Track active section
   const token = localStorage.getItem('token');
+  const theme = useTheme();
 
   // Dynamically set colors based on darkMode prop
   const bgColor = darkMode ? '#121212' : '#f8f9fa';
@@ -223,8 +224,8 @@ const Profile = ({ darkMode }) => {
         maxWidth: 900,
         mx: 'auto',
         p: 3,
-        bgcolor: bgColor,
-        color: textPrimary,
+        bgcolor: theme.palette.background.default,
+        color: 'textPrimary',
         minHeight: '90vh',
         display: 'flex',
         gap: 4,
@@ -234,7 +235,7 @@ const Profile = ({ darkMode }) => {
       <Box
         sx={{
           width: 200,
-          bgcolor: darkMode ? '#1e1e1e' : '#e3f2fd',
+          bgcolor: theme.palette.background.default,
           borderRadius: 1,
           p: 2,
           position: 'sticky',
@@ -267,7 +268,7 @@ const Profile = ({ darkMode }) => {
           {/* Personal Info Section */}
           {activeSection === 'My Profile' && (
             <motion.div variants={itemVariants}>
-              <Card sx={{ p: 3, bgcolor: cardBgColor, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
+              <Card sx={{ p: 3, bgcolor: theme.palette.background.default, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: textPrimary }}>
                     Personal Information
@@ -298,7 +299,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingProfile}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="Full Name*"
@@ -308,7 +309,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingProfile}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="Email*"
@@ -318,7 +319,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingProfile}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                   </Stack>
 
@@ -350,7 +351,7 @@ const Profile = ({ darkMode }) => {
           {/* Change Password Section */}
           {activeSection === 'Change Password' && (
             <motion.div variants={itemVariants}>
-              <Card sx={{ p: 3, bgcolor: cardBgColor, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
+              <Card sx={{ p: 3, bgcolor: theme.palette.background.default, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: textPrimary }}>
                     Change Password
@@ -367,7 +368,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPassword}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="New Password"
@@ -378,7 +379,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPassword}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="Confirm New Password"
@@ -389,7 +390,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPassword}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                   </Stack>
                   <Box sx={{ mt: 3 }}>
@@ -420,7 +421,7 @@ const Profile = ({ darkMode }) => {
           {/* Purchased Tests Section */}
           {activeSection === 'Purchased Tests' && (
             <motion.div variants={itemVariants}>
-              <Card sx={{ p: 3, bgcolor: cardBgColor, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
+              <Card sx={{ p: 3, bgcolor: theme.palette.background.default, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: textPrimary }}>
                     Purchased Tests
@@ -430,7 +431,7 @@ const Profile = ({ darkMode }) => {
                       {purchasedTests.map((test, index) => (
                         <Card
                           key={index}
-                          sx={{ p: 2, bgcolor: cardBgColor, borderRadius: 1, boxShadow: `0 1px 2px ${borderColor}` }}
+                          sx={{ p: 2, bgcolor: theme.palette.background.deafult, borderRadius: 1, boxShadow: `0 1px 2px ${borderColor}` }}
                         >
                           <Typography variant="body1" color={textPrimary}>
                             {test.title} - {test.questions.length} Questions
@@ -454,7 +455,7 @@ const Profile = ({ darkMode }) => {
           {/* Payment Information Section */}
           {activeSection === 'Payment Information' && (
             <motion.div variants={itemVariants}>
-              <Card sx={{ p: 3, bgcolor: cardBgColor, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
+              <Card sx={{ p: 3, bgcolor: theme.palette.background.default, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, mb: 4 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: textPrimary }}>
                     Payment Information
@@ -468,7 +469,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPayment}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="Expiry Date (MM/YY)"
@@ -478,7 +479,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPayment}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                     <TextField
                       label="CVV"
@@ -488,7 +489,7 @@ const Profile = ({ darkMode }) => {
                       disabled={!isEditingPayment}
                       variant="outlined"
                       fullWidth
-                      sx={{ bgcolor: darkMode ? '#333' : '#fff' }}
+                      sx={{ bgcolor: theme.palette.background.default }}
                     />
                   </Stack>
                   <Box sx={{ mt: 3 }}>

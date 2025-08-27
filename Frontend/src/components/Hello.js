@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Stack, Card, CardContent, Typography, Box, Button, Tabs, Tab, Avatar, Chip, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Stack, Card, CardContent, Typography, Box, Button, Tabs, Tab, Avatar, Chip, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, useTheme} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -19,6 +19,7 @@ const Hello = ({ darkMode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState(null);
   const token = localStorage.getItem('token');
+  const theme = useTheme();
 
   // Dynamically set colors based on darkMode prop
   const bgColor = darkMode ? '#121212' : '#f8f9fa';
@@ -504,7 +505,7 @@ const Hello = ({ darkMode }) => {
         maxWidth: 1200,
         mx: 'auto',
         p: 3,
-        bgcolor: bgColor,
+        bgcolor: theme.palette.background.default,
         color: textPrimary,
         borderRadius: 2,
         boxShadow: darkMode ? '0 0 10px rgba(0,0,0,0.2)' : '0 0 10px rgba(0,0,0,0.05)',
@@ -544,7 +545,7 @@ const Hello = ({ darkMode }) => {
         </Box>
       </motion.div>
 
-      <Box sx={{ bgcolor: cardBgColor, borderRadius: 2, mb: 3, boxShadow: `0 2px 4px ${borderColor}` }}>
+      <Box sx={{ bgcolor: theme.palette.background.default, borderRadius: 2, mb: 3, boxShadow: `0 2px 4px ${borderColor}` }}>
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
@@ -667,7 +668,7 @@ const Hello = ({ darkMode }) => {
                       </Box>
                     </Box>
                   </Card>
-                  <Card sx={{ flex: '1 1 300px', p: 3, borderRadius: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: cardBgColor }}>
+                  <Card sx={{ flex: '1 1 300px', p: 3, borderRadius: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: theme.palette.background.default }}>
                     <Typography variant="h6" fontWeight="bold" color={textPrimary}>Latest Achievement</Typography>
                     {submissions.length > 0 ? (
                       <Box sx={{ mt: 2 }}>
@@ -702,7 +703,7 @@ const Hello = ({ darkMode }) => {
                             borderRadius: 2,
                             borderColor: 'transparent',
                             boxShadow: `0 2px 4px ${borderColor}`,
-                            bgcolor: cardBgColor,
+                            bgcolor: theme.palette.background.default,
                             '&:hover': { borderColor: 'primary.main' }
                           }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -820,7 +821,7 @@ const Hello = ({ darkMode }) => {
                       whileHover={{ scale: 1.01, boxShadow: darkMode ? '0 6px 12px rgba(255,255,255,0.05)' : '0 6px 12px rgba(0,0,0,0.08)' }}
                       transition={{ type: "spring", stiffness: 400, damping: 10 }}
                     >
-                      <Card sx={{ p: 3, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, bgcolor: cardBgColor }}>
+                      <Card sx={{ p: 3, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <Box>
                             <Typography variant="h6" fontWeight="bold" color={textPrimary}>{mock.title}</Typography>
@@ -955,7 +956,7 @@ const Hello = ({ darkMode }) => {
                         whileHover={{ scale: 1.01, boxShadow: darkMode ? '0 6px 12px rgba(255,255,255,0.05)' : '0 6px 12px rgba(0,0,0,0.08)' }}
                         transition={{ type: "spring", stiffness: 400, damping: 10 }}
                       >
-                        <Card sx={{ p: 3, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, bgcolor: cardBgColor }}>
+                        <Card sx={{ p: 3, borderRadius: 2, boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box>
                               <Typography variant="h6" fontWeight="bold" color={textPrimary}>{mock.title}</Typography>

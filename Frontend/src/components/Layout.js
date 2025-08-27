@@ -336,9 +336,9 @@ const Layout = () => {
           transition={{ duration: 0.3 }}
           position="sticky"
           sx={{
-            backdropFilter: scrolled ? 'blur(20px)' : 'none',
+            backdropFilter: scrolled ? 'blur(10px)' : 'none',
             backgroundColor: scrolled
-              ? alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.9)
+              ? alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7)
               : theme.palette.primary.main,
             color: scrolled ? 'text.primary' : '#fff',
             borderBottom: scrolled ? `1px solid ${alpha(theme.palette.divider, 0.08)}` : 'none',

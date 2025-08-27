@@ -78,66 +78,82 @@ const AllMocks = () => {
 
   // Function to fetch all data
   const fetchData = async () => {
-    try {
-      setLoading(true);
-      const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
-      setMockTests(mockResponse.data);
-      
-      if (Object.keys(mockResponse.data).length > 0) {
-        setExpandedCategory(Object.keys(mockResponse.data)[0]);
-      }
+  try {
+    setLoading(true);
+    const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
+    setMockTests(mockResponse.data);
 
-      const token = localStorage.getItem('token');
-      if (token) {
-        const [cartResponse, profileResponse] = await Promise.all([
-          axios.get(`${backendUrl}/api/user/cart`, {
-            headers: { Authorization: token }
-          }),
-          axios.get(`${backendUrl}/api/user/profile`, {
-            headers: { Authorization: token }
-          })
-        ]);
-
-        setCartItems(cartResponse.data.cart.map(item => ({
-          id: item.mockTestId._id,
-          title: item.mockTestId.title,
-          price: item.price
-        })));
-        console.log('Profile Response:', profileResponse.data); // Debug log
-        setPurchasedTests(profileResponse.data.purchasedTests.map(test => test._id));
-        console.log('Purchased Tests:', profileResponse.data.purchasedTests.map(test => test._id)); // Debug log
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      if (error.response?.status === 401) {
-        setAlertMessage('Session expired. Please log in again.');
-        setAlertSeverity('warning');
-        setAlertOpen(true);
-        localStorage.removeItem('token');
-        navigate('/login');
-      }
-    } finally {
-      setLoading(false);
+    if (Object.keys(mockResponse.data).length > 0) {
+      setExpandedCategory(Object.keys(mockResponse.data)[0]);
     }
-  };
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      const [cartResponse, profileResponse] = await Promise.all([
+        axios.get(`${backendUrl}/api/user/cart`, { headers: { Authorization: token } }),
+        axios.get(`${backendUrl}/api/user/profile`, { headers: { Authorization: token } }),
+      ]);
+
+      // Safely handle cart data
+      const cartData = cartResponse.data?.cart || [];
+      setCartItems(
+        cartData.map((item) => ({
+          id: item.mockTestId?._id || item.mockTestId?.id, // Fallback to id if _id is undefined
+          title: item.mockTestId?.title || 'Untitled',
+          price: item.price || 0,
+        }))
+      );
+      console.log('Cart Response:', cartResponse.data);
+
+      // Safely handle profile data
+      const profileData = profileResponse.data;
+      console.log('Profile Response:', profileData);
+      setPurchasedTests(
+        profileData?.purchasedTests?.map((test) => test._id) || []
+      );
+      console.log('Purchased Tests:', profileData?.purchasedTests?.map((test) => test._id) || []);
+    }
+  } catch (error) {
+    console.error('Error fetching data:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      setAlertMessage('Session expired. Please log in again.');
+      setAlertSeverity('warning');
+      setAlertOpen(true);
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
+      setAlertMessage('Failed to fetch data. Please try again.');
+      setAlertSeverity('error');
+      setAlertOpen(true);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch data on mount and when location changes (after checkout)
   useEffect(() => {
     fetchData();
+    console.log('Updated purchasedTests:', purchasedTests);
   }, [location.pathname]); // Re-fetch when route changes
 
   const hasUserPurchased = (mockId) => {
     const mockTest = findMockById(mockId);
     const isPurchased = mockTest && (mockTest.pricingType === 'free' || purchasedTests.includes(mockId));
-    console.log(`Checking if ${mockId} is purchased:`, { isFree: mockTest?.pricingType === 'free', isInPurchased: purchasedTests.includes(mockId), result: isPurchased });
+    console.log(`Checking if ${mockId} is purchased:`, {
+      mockTest,
+      isFree: mockTest?.pricingType === 'free',
+      isInPurchased: purchasedTests.includes(mockId),
+      result: isPurchased
+    });
     return isPurchased;
   };
 
   const findMockById = (mockId) => {
     for (const category in mockTests) {
-      const mock = mockTests[category].find(m => m.id === mockId);
+      const mock = mockTests[category].find(m => m.id === mockId || m._id === mockId);
       if (mock) {
-        console.log(`Found mock ${mockId}:`, mock); // Add this log
+        console.log(`Found mock ${mockId}:`, mock);
         return mock;
       }
     }
@@ -363,8 +379,8 @@ const AllMocks = () => {
                 <Chip 
                   label={`${mockTests[category].length} Tests`} 
                   sx={{ 
-                    backgroundColor: 'rgba(255,255,255,0.2)', 
-                    color: 'inherit', 
+                    backgroundColor: theme.palette.primary.default,
+                    color: 'primary', 
                     fontWeight: 500 
                   }} 
                 />
