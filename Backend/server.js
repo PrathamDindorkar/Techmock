@@ -1028,6 +1028,135 @@ app.delete('/api/admin/users/:userId', verifyAdmin, async (req, res) => {
   }
 });
 
+// Admin: Get All Purchased Tests with Filter and Sort
+app.get('/api/admin/purchased-tests', verifyAdmin, async (req, res) => {
+  try {
+    const { category, sortBy = 'purchased_at', sortOrder = 'desc', userEmail } = req.query;
+
+    let query = supabase
+      .from('purchased_tests')
+      .select(`
+        id,
+        user_id,
+        mock_test_id,
+        purchased_at,
+        users (name, email),
+        mock_tests (title, category, pricing_type, price)
+      `);
+
+    // Apply filters
+    if (category) {
+      query = query.eq('mock_tests.category', category);
+    }
+    if (userEmail) {
+      query = query.ilike('users.email', `%${userEmail}%`);
+    }
+
+    // Apply sorting
+    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching purchased tests:', error);
+      return res.status(500).json({ message: 'Error fetching purchased tests', error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Transform data to match frontend expectations
+    const transformedPurchasedTests = data.map(purchase => ({
+      id: purchase.id,
+      userName: purchase.users?.name || 'Unknown',
+      userEmail: purchase.users?.email || 'N/A',
+      mockTestTitle: purchase.mock_tests?.title || 'Untitled Test',
+      category: purchase.mock_tests?.category || 'Uncategorized',
+      pricingType: purchase.mock_tests?.pricing_type || 'free',
+      price: purchase.mock_tests?.price || 0,
+      purchaseDate: purchase.purchased_at,
+    }));
+
+    res.status(200).json(transformedPurchasedTests);
+  } catch (error) {
+    console.error('Unexpected error fetching purchased tests:', error);
+    res.status(500).json({ message: 'Unexpected error fetching purchased tests', error: error.message });
+  }
+});
+
+// Admin: Get All Submissions
+app.get('/api/admin/submissions', verifyAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('submissions')
+      .select(`
+        id,
+        user_id,
+        mock_test_id,
+        answers,
+        created_at,
+        users (name, email),
+        mock_tests (title, category)
+      `);
+
+    if (error) {
+      console.error('Error fetching submissions:', error);
+      return res.status(500).json({ message: 'Error fetching submissions', error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Transform data to match frontend expectations
+    const transformedSubmissions = data.map(submission => ({
+      id: submission.id,
+      userName: submission.users?.name || 'Unknown',
+      userEmail: submission.users?.email || 'N/A',
+      mockTestTitle: submission.mock_tests?.title || 'Untitled Test',
+      category: submission.mock_tests?.category || 'Uncategorized',
+      mock_test_id: submission.mock_test_id,
+      answers: submission.answers || {},
+      created_at: submission.created_at,
+    }));
+
+    res.status(200).json(transformedSubmissions);
+  } catch (error) {
+    console.error('Unexpected error fetching submissions:', error);
+    res.status(500).json({ message: 'Unexpected error fetching submissions', error: error.message });
+  }
+});
+
+// Admin: Delete Submission
+app.delete('/api/admin/submissions/:submissionId', verifyAdmin, async (req, res) => {
+  const { submissionId } = req.params;
+
+  try {
+    const { data: submission, error: submissionError } = await supabase
+      .from('submissions')
+      .select('id')
+      .eq('id', submissionId)
+      .single();
+
+    if (submissionError || !submission) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', submissionId);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Submission deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting submission:', error);
+    res.status(500).json({ message: 'Error deleting submission', error: error.message });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
