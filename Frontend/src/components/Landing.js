@@ -133,8 +133,8 @@ const Landing = ({ toggleColorMode }) => {
               right: 0,
               bottom: 0,
               background: isDarkMode
-                ? "linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(25,25,25,0.9))"
-                : "linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0.6))",
+                ? "linear-gradient(to bottom, rgba(0, 128, 255, 1), rgba(25,25,25,0.9))"
+                : "linear-gradient(to bottom, rgba(0, 128, 255, 1), rgba(255, 255, 255, 1))",
             }
           }}
         />
