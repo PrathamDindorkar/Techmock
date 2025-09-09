@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { 
-  Box, TextField, Button, Typography, Container, Avatar, Tab, Tabs, 
+import {
+  Box, TextField, Button, Typography, Container, Avatar, Tab, Tabs,
   Paper, Grid, Card, CardContent, IconButton, InputAdornment, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, Switch, Collapse,
@@ -12,12 +12,12 @@ import {
 import { styled } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { 
-  Add as AddIcon, 
-  Search as SearchIcon, 
-  Edit as EditIcon, 
-  Delete as DeleteIcon, 
-  Person as PersonIcon, 
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
   FileUpload as FileUploadIcon,
   Save as SaveIcon,
   FilterList as FilterIcon,
@@ -72,7 +72,7 @@ const StyledTab = styled(Tab)(({ theme }) => ({
 const AdminPortal = () => {
   // State for tabs
   const [activeTab, setActiveTab] = useState(0);
-  
+
   // State for mock test creation
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -80,11 +80,11 @@ const AdminPortal = () => {
   const [timeLimit, setTimeLimit] = useState('');
   const [questions, setQuestions] = useState([{ questionText: '', options: ['', '', '', ''], correctAnswer: '', explaination: '' }]);
   const [adminDetails, setAdminDetails] = useState({ name: '', email: '', profileImage: '' });
-  
+
   // State for pricing
   const [pricingType, setPricingType] = useState('free');
   const [price, setPrice] = useState('');
-  
+
   // State for mock test search
   const [mockTests, setMockTests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,16 +93,16 @@ const AdminPortal = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
-  
+
   // State for user management
   const [users, setUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userEditDialogOpen, setUserEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Notifications
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  
+
   // Navigation
   const navigate = useNavigate();
   const role = localStorage.getItem('role');
@@ -140,11 +140,11 @@ const AdminPortal = () => {
         headers: { Authorization: token },
       });
       setMockTests(response.data);
-      
+
       // Extract unique categories for filtering
       const categories = [...new Set(response.data.map(test => test.category))];
       setAvailableCategories(categories);
-      
+
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching mock tests:', error);
@@ -209,24 +209,24 @@ const AdminPortal = () => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     setIsLoading(true);
     const reader = new FileReader();
-  
+
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const excelData = XLSX.utils.sheet_to_json(sheet);
-  
+
         if (excelData.length > 0) {
           const firstRow = excelData[0];
           setTitle(firstRow.Title || '');
           setDescription(firstRow.Description || '');
           setCategory(firstRow.Category || '');
           setTimeLimit(firstRow.TimeLimit || '');
-  
+
           const uploadedQuestions = excelData.map((row) => {
             const question = {
               questionText: row.Question || '',
@@ -241,13 +241,13 @@ const AdminPortal = () => {
             };
             return question;
           });
-  
-          const validQuestions = uploadedQuestions.filter(q => 
-            q.questionText && 
-            q.options.every(opt => opt !== '') && 
+
+          const validQuestions = uploadedQuestions.filter(q =>
+            q.questionText &&
+            q.options.every(opt => opt !== '') &&
             q.correctAnswer
           );
-              
+
           if (validQuestions.length > 0) {
             setQuestions(validQuestions);
             showSnackbar(`Successfully processed ${validQuestions.length} questions!`, 'success');
@@ -264,7 +264,7 @@ const AdminPortal = () => {
         setIsLoading(false);
       }
     };
-  
+
     reader.readAsArrayBuffer(file);
   };
 
@@ -280,9 +280,9 @@ const AdminPortal = () => {
       return;
     }
 
-    const invalidQuestions = questions.filter(q => 
-      !q.questionText || 
-      q.options.some(opt => !opt) || 
+    const invalidQuestions = questions.filter(q =>
+      !q.questionText ||
+      q.options.some(opt => !opt) ||
       !q.correctAnswer
     );
 
@@ -290,7 +290,7 @@ const AdminPortal = () => {
       showSnackbar('All questions must have text, four options, and a correct answer!', 'error');
       return;
     }
-    
+
     // Validate price if paid option is selected
     if (pricingType === 'paid' && (!price || isNaN(price) || Number(price) <= 0)) {
       showSnackbar('Please enter a valid price for the paid test', 'error');
@@ -302,10 +302,10 @@ const AdminPortal = () => {
       const token = localStorage.getItem('token');
       await axios.post(
         `${backendUrl}/api/admin/add-mock-test`,
-        { 
-          title, 
-          description, 
-          category, 
+        {
+          title,
+          description,
+          category,
           timeLimit: Number(timeLimit),
           questions,
           pricingType,
@@ -315,7 +315,7 @@ const AdminPortal = () => {
       );
       showSnackbar('Mock test added successfully!', 'success');
       console.log('Submitting:', { pricingType, price });
-      
+
       // Reset form after successful submission
       setTitle('');
       setDescription('');
@@ -325,13 +325,13 @@ const AdminPortal = () => {
       setPricingType('free');
       setPrice('');
       setIsLoading(false);
-      
+
       // Switch to the search tab to show the newly added test
       setActiveTab(1);
       setTimeout(() => {
         fetchMockTests();
       }, 500);
-      
+
     } catch (error) {
       console.error('Error adding mock test', error);
       showSnackbar('Failed to add mock test. Please try again.', 'error');
@@ -341,22 +341,38 @@ const AdminPortal = () => {
 
   const handleDeleteTest = async (testId) => {
     if (window.confirm('Are you sure you want to delete this mock test?')) {
-      setIsLoading(true);
+      // Log for debugging
+      console.log('Attempting to delete test with ID:', testId);
+      if (!testId) {
+        console.error('Delete failed: testId is missing or invalid');
+        showSnackbar('Cannot delete: Invalid test ID', 'error');
+        return;
+      }
+
+      // Per-row loading (you can tie this to a state if needed for UI spinner on button)
       try {
         const token = localStorage.getItem('token');
         const response = await axios.delete(`${backendUrl}/api/admin/mock-tests/${testId}`, {
           headers: { Authorization: token }
         });
+        console.log('Delete response:', response.data); // Log success
         showSnackbar(response.data.message || 'Mock test deleted successfully!', 'success');
-        fetchMockTests();
+
+        // Optimistically remove from local state before full refresh
+        setMockTests(prev => prev.filter(test => test.id !== testId));
+
+        // Then refresh full list
+        await fetchMockTests();
       } catch (error) {
-        console.error('Error deleting mock test:', error);
+        // Enhanced logging for debugging
+        console.error('Full error object in delete:', error);
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+        console.error('Request config URL:', error.config?.url);
         showSnackbar(
-          error.response?.data?.message || 'Failed to delete mock test. Please try again.',
+          error.response?.data?.message || `Failed to delete mock test (Status: ${error.response?.status}). Check console for details.`,
           'error'
         );
-      } finally {
-        setIsLoading(false);
       }
     }
   };
@@ -408,12 +424,12 @@ const AdminPortal = () => {
 
   const filteredMockTests = mockTests.filter(test => {
     const matchesSearch = test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          test.description.toLowerCase().includes(searchQuery.toLowerCase());
+      test.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter ? test.category === categoryFilter : true;
     return matchesSearch && matchesCategory;
   });
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
@@ -429,7 +445,7 @@ const AdminPortal = () => {
   // Animation variants for framer-motion
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
       transition: { duration: 0.5 }
     }
@@ -437,8 +453,8 @@ const AdminPortal = () => {
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
+    visible: {
+      y: 0,
       opacity: 1,
       transition: { type: 'spring', stiffness: 100 }
     }
@@ -446,9 +462,9 @@ const AdminPortal = () => {
 
   return (
     <Container maxWidth="lg">
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
@@ -465,15 +481,15 @@ const AdminPortal = () => {
         {/* Admin Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', my: 3 }}>
           <motion.div whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 300 }}>
-            <Avatar 
-              src={adminDetails.profileImage} 
-              alt={adminDetails.name} 
-              sx={{ 
-                width: 80, 
-                height: 80, 
+            <Avatar
+              src={adminDetails.profileImage}
+              alt={adminDetails.name}
+              sx={{
+                width: 80,
+                height: 80,
                 mr: 3,
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)' 
-              }} 
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+              }}
             />
           </motion.div>
           <Box>
@@ -491,10 +507,10 @@ const AdminPortal = () => {
 
         {/* Tabs Navigation */}
         <Paper sx={{ mb: 3, borderRadius: '12px', overflow: 'hidden' }}>
-          <Tabs 
-            value={activeTab} 
-            onChange={handleTabChange} 
-            variant="fullWidth" 
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            variant="fullWidth"
             indicatorColor="primary"
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
@@ -517,14 +533,14 @@ const AdminPortal = () => {
                   Create New Mock Test
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
-                
+
                 <Grid container spacing={3}>
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      label="Test Title" 
-                      value={title} 
-                      onChange={(e) => setTitle(e.target.value)} 
+                    <TextField
+                      fullWidth
+                      label="Test Title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
                       required
                       variant="outlined"
                       InputProps={{
@@ -537,11 +553,11 @@ const AdminPortal = () => {
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      label="Category" 
-                      value={category} 
-                      onChange={(e) => setCategory(e.target.value)} 
+                    <TextField
+                      fullWidth
+                      label="Category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
                       required
                       variant="outlined"
                       InputProps={{
@@ -554,21 +570,21 @@ const AdminPortal = () => {
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      label="Time Limit (in minutes)" 
+                    <TextField
+                      fullWidth
+                      label="Time Limit (in minutes)"
                       type="number"
-                      value={timeLimit} 
-                      onChange={(e) => setTimeLimit(e.target.value)} 
-                      inputProps={{ min: 1 }} 
+                      value={timeLimit}
+                      onChange={(e) => setTimeLimit(e.target.value)}
+                      inputProps={{ min: 1 }}
                       required
                       variant="outlined"
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Button 
-                      variant="outlined" 
-                      component="label" 
+                    <Button
+                      variant="outlined"
+                      component="label"
                       fullWidth
                       startIcon={<FileUploadIcon />}
                       sx={{ height: '56px' }}
@@ -577,7 +593,7 @@ const AdminPortal = () => {
                       <input type="file" accept=".xlsx, .xls" hidden onChange={handleFileUpload} />
                     </Button>
                   </Grid>
-                  
+
                   {/* Pricing Options */}
                   <Grid item xs={12} sm={6}>
                     <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
@@ -595,7 +611,7 @@ const AdminPortal = () => {
                         <FormControlLabel value="free" control={<Radio />} label="Free" />
                         <FormControlLabel value="paid" control={<Radio />} label="Paid" />
                       </RadioGroup>
-                      
+
                       <Collapse in={pricingType === 'paid'}>
                         <TextField
                           fullWidth
@@ -616,13 +632,13 @@ const AdminPortal = () => {
                       </Collapse>
                     </Paper>
                   </Grid>
-                  
+
                   <Grid item xs={12} sm={6}>
-                    <TextField 
-                      fullWidth 
-                      label="Description" 
-                      value={description} 
-                      onChange={(e) => setDescription(e.target.value)} 
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
                       multiline
                       rows={6}
                       variant="outlined"
@@ -634,9 +650,9 @@ const AdminPortal = () => {
                   <Typography variant="h6" color="primary" gutterBottom>
                     Questions
                   </Typography>
-                  
+
                   {questions.map((q, qIndex) => (
-                    <motion.div 
+                    <motion.div
                       key={qIndex}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -644,20 +660,20 @@ const AdminPortal = () => {
                     >
                       <QuestionCard elevation={1}>
                         <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
-                          <IconButton 
-                            color="error" 
-                            size="small" 
+                          <IconButton
+                            color="error"
+                            size="small"
                             onClick={() => removeQuestion(qIndex)}
                             disabled={questions.length === 1}
                           >
                             <DeleteIcon />
                           </IconButton>
                         </Box>
-                        
+
                         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                           Question {qIndex + 1}
                         </Typography>
-                        
+
                         <TextField
                           fullWidth
                           label="Question Text"
@@ -667,7 +683,7 @@ const AdminPortal = () => {
                           required
                           sx={{ mb: 2 }}
                         />
-                        
+
                         <Grid container spacing={2}>
                           {q.options.map((option, oIndex) => (
                             <Grid item xs={12} sm={6} key={oIndex}>
@@ -682,7 +698,7 @@ const AdminPortal = () => {
                               />
                             </Grid>
                           ))}
-                          
+
                           <Grid item xs={12} sm={6}>
                             <TextField
                               fullWidth
@@ -695,7 +711,7 @@ const AdminPortal = () => {
                               helperText="Enter exactly as written in the options"
                             />
                           </Grid>
-                          
+
                           <Grid item xs={12} sm={6}>
                             <TextField
                               fullWidth
@@ -710,19 +726,19 @@ const AdminPortal = () => {
                       </QuestionCard>
                     </motion.div>
                   ))}
-                  
+
                   <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                    <Button 
-                      variant="outlined" 
+                    <Button
+                      variant="outlined"
                       onClick={addQuestion}
                       startIcon={<AddIcon />}
                     >
                       Add Question
                     </Button>
-                    
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
+
+                    <Button
+                      variant="contained"
+                      color="primary"
                       onClick={handleSubmit}
                       startIcon={<SaveIcon />}
                       disabled={isLoading}
@@ -750,7 +766,7 @@ const AdminPortal = () => {
                   Manage Mock Tests
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
-                
+
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={6}>
                     <TextField
@@ -786,9 +802,9 @@ const AdminPortal = () => {
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} sm={2}>
-                    <Button 
-                      fullWidth 
-                      variant="outlined" 
+                    <Button
+                      fullWidth
+                      variant="outlined"
                       onClick={fetchMockTests}
                       startIcon={<RefreshIcon />}
                       sx={{ height: '56px' }}
@@ -797,7 +813,7 @@ const AdminPortal = () => {
                     </Button>
                   </Grid>
                 </Grid>
-                
+
                 {isLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
                     <CircularProgress />
@@ -821,56 +837,28 @@ const AdminPortal = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {filteredMockTests.map((test) => (
-                          <TableRow key={test._id} hover>
-                            <TableCell>{test.title}</TableCell>
-                            <TableCell>
-                              <Chip label={test.category} size="small" color="primary" variant="outlined" />
-                            </TableCell>
-                            <TableCell>{test.timeLimit} min</TableCell>
-                            <TableCell>{test.questions.length}</TableCell>
-                            <TableCell>
-                              {test.pricingType === 'free' ? (
-                                <Chip label="Free" size="small" color="success" />
-                              ) : (
-                                <Chip label={`₹${test.price}`} size="small" color="secondary" />
-                              )}
-                            </TableCell>
-                            <TableCell>{new Date(test.createdAt).toLocaleDateString()}</TableCell>
-                            <TableCell align="center">
-                              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                <Tooltip title="View Details">
-                                <IconButton 
-                                    size="small" 
-                                    color="primary"
-                                    onClick={() => handleViewTest(test)}
-                                  >
-                                    <SearchIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete Test">
-                                  <IconButton 
-                                    size="small" 
-                                    color="error"
-                                    onClick={() => handleDeleteTest(test._id)}
-                                  >
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {filteredMockTests.map((test) => {
+                          const timeValue = Number(test.time_limit || test.timeLimit || 0);
+                          const priceValue = Number(test.price || 0);
+                          const isFree = test.pricingType === 'free' || priceValue === 0;
+                          const displayText = timeValue === 1 ? '1 minute' : `${timeValue} minutes`; // Handle singular/plural for better UX
+
+                          return (
+                            <TableRow key={test.id} hover>
+                              <TableCell>{test.title}</TableCell><TableCell><Chip label={test.category} size="small" color="primary" variant="outlined" /></TableCell><TableCell><span style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{displayText}</span></TableCell><TableCell>{test.questions?.length || 0}</TableCell><TableCell>{isFree ? <Chip label="Free" size="small" color="success" /> : <Chip label={`₹${priceValue}`} size="small" color="secondary" />}</TableCell><TableCell>{new Date(test.createdAt || test.created_at).toLocaleDateString()}</TableCell><TableCell align="center"><Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}><Tooltip title="View Details"><IconButton size="small" color="primary" onClick={() => handleViewTest(test)}><SearchIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete Test"><IconButton size="small" color="error" onClick={() => handleDeleteTest(test.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip></Box></TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>
                 )}
               </Box>
             </StyledPaper>
-            
+
             {/* Dialog for viewing test details */}
-            <Dialog 
-              open={testDialogOpen} 
+            <Dialog
+              open={testDialogOpen}
               onClose={() => setTestDialogOpen(false)}
               maxWidth="md"
               fullWidth
@@ -892,18 +880,18 @@ const AdminPortal = () => {
                         {selectedTest.description || "No description provided."}
                       </Typography>
                     </Box>
-                    
+
                     <Box sx={{ mb: 3 }}>
                       <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                         Pricing
                       </Typography>
-                      <Chip 
+                      <Chip
                         label={selectedTest.pricingType === 'free' ? 'Free' : `₹${selectedTest.price}`}
                         color={selectedTest.pricingType === 'free' ? 'success' : 'secondary'}
                         size="small"
                       />
                     </Box>
-                    
+
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                       Questions ({selectedTest.questions.length})
                     </Typography>
@@ -915,9 +903,9 @@ const AdminPortal = () => {
                         <Grid container spacing={1} sx={{ mt: 1 }}>
                           {q.options.map((option, oIndex) => (
                             <Grid item xs={12} sm={6} key={oIndex}>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
+                              <Typography
+                                variant="body2"
+                                sx={{
                                   color: option === q.correctAnswer ? 'success.main' : 'text.primary',
                                   fontWeight: option === q.correctAnswer ? 'bold' : 'normal'
                                 }}
@@ -960,7 +948,7 @@ const AdminPortal = () => {
                   User Management
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
-                
+
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={8}>
                     <TextField
@@ -979,9 +967,9 @@ const AdminPortal = () => {
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Button 
-                      fullWidth 
-                      variant="outlined" 
+                    <Button
+                      fullWidth
+                      variant="outlined"
                       onClick={fetchUsers}
                       startIcon={<RefreshIcon />}
                       sx={{ height: '56px' }}
@@ -990,7 +978,7 @@ const AdminPortal = () => {
                     </Button>
                   </Grid>
                 </Grid>
-                
+
                 {isLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
                     <CircularProgress />
@@ -1017,8 +1005,8 @@ const AdminPortal = () => {
                           <TableRow key={user._id} hover>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Avatar 
-                                  src={user.profileImage} 
+                                <Avatar
+                                  src={user.profileImage}
                                   alt={user.name}
                                   sx={{ width: 30, height: 30, mr: 1 }}
                                 />
@@ -1027,16 +1015,16 @@ const AdminPortal = () => {
                             </TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
-                              <Chip 
-                                label={user.role} 
+                              <Chip
+                                label={user.role}
                                 size="small"
                                 color={user.role === 'admin' ? 'secondary' : 'primary'}
                               />
                             </TableCell>
                             <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell>
-                              <Chip 
-                                label={user.isActive ? 'Active' : 'Inactive'} 
+                              <Chip
+                                label={user.isActive ? 'Active' : 'Inactive'}
                                 size="small"
                                 color={user.isActive ? 'success' : 'default'}
                               />
@@ -1044,8 +1032,8 @@ const AdminPortal = () => {
                             <TableCell align="center">
                               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                                 <Tooltip title="Edit User">
-                                  <IconButton 
-                                    size="small" 
+                                  <IconButton
+                                    size="small"
                                     color="primary"
                                     onClick={() => handleEditUser(user)}
                                   >
@@ -1053,8 +1041,8 @@ const AdminPortal = () => {
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Delete User">
-                                  <IconButton 
-                                    size="small" 
+                                  <IconButton
+                                    size="small"
                                     color="error"
                                     onClick={() => handleDeleteUser(user._id)}
                                   >
@@ -1071,10 +1059,10 @@ const AdminPortal = () => {
                 )}
               </Box>
             </StyledPaper>
-            
+
             {/* Dialog for editing user */}
-            <Dialog 
-              open={userEditDialogOpen} 
+            <Dialog
+              open={userEditDialogOpen}
               onClose={() => setUserEditDialogOpen(false)}
               maxWidth="sm"
               fullWidth
@@ -1087,28 +1075,28 @@ const AdminPortal = () => {
                   <DialogContent dividers>
                     <Grid container spacing={2}>
                       <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                        <Avatar 
-                          src={selectedUser.profileImage} 
+                        <Avatar
+                          src={selectedUser.profileImage}
                           alt={selectedUser.name}
                           sx={{ width: 80, height: 80 }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <TextField 
-                          fullWidth 
-                          label="Name" 
-                          value={selectedUser.name} 
-                          onChange={(e) => setSelectedUser({...selectedUser, name: e.target.value})}
-                          variant="outlined" 
+                        <TextField
+                          fullWidth
+                          label="Name"
+                          value={selectedUser.name}
+                          onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <TextField 
-                          fullWidth 
-                          label="Email" 
-                          value={selectedUser.email} 
-                          onChange={(e) => setSelectedUser({...selectedUser, email: e.target.value})}
-                          variant="outlined" 
+                        <TextField
+                          fullWidth
+                          label="Email"
+                          value={selectedUser.email}
+                          onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                          variant="outlined"
                           type="email"
                         />
                       </Grid>
@@ -1117,7 +1105,7 @@ const AdminPortal = () => {
                           <InputLabel>Role</InputLabel>
                           <Select
                             value={selectedUser.role}
-                            onChange={(e) => setSelectedUser({...selectedUser, role: e.target.value})}
+                            onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
                             label="Role"
                           >
                             <MenuItem value="user">User</MenuItem>
@@ -1130,9 +1118,9 @@ const AdminPortal = () => {
                           <Typography variant="body2" gutterBottom>Account Status</Typography>
                           <FormControlLabel
                             control={
-                              <Switch 
-                                checked={selectedUser.isActive} 
-                                onChange={(e) => setSelectedUser({...selectedUser, isActive: e.target.checked})}
+                              <Switch
+                                checked={selectedUser.isActive}
+                                onChange={(e) => setSelectedUser({ ...selectedUser, isActive: e.target.checked })}
                                 color="primary"
                               />
                             }
@@ -1144,9 +1132,9 @@ const AdminPortal = () => {
                   </DialogContent>
                   <DialogActions>
                     <Button onClick={() => setUserEditDialogOpen(false)}>Cancel</Button>
-                    <Button 
-                      onClick={handleSaveUser} 
-                      variant="contained" 
+                    <Button
+                      onClick={handleSaveUser}
+                      variant="contained"
                       color="primary"
                       disabled={isLoading}
                     >

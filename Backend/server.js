@@ -10,10 +10,10 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app'], // Remove trailing slash for consistency
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight requests
+  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // Allow credentials (e.g., Authorization header)
+  credentials: true, 
 }));
 
 // Initialize Supabase client
