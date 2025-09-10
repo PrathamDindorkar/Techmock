@@ -529,6 +529,7 @@ app.get('/api/mock-test/:id', async (req, res) => {
   }
 });
 
+/*
 // Submit Mock Test Answers
 app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
   const { id } = req.params; // mockTestId
@@ -586,7 +587,7 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
     res.status(500).json({ message: 'Failed to submit test', error: error.message });
   }
 });
-
+*/
 // Fetch User Submission for a Specific Mock Test
 app.get('/api/mock-test/:id/submission', verifyUser, async (req, res) => {
   const { id } = req.params; // mockTestId
@@ -1156,6 +1157,200 @@ app.delete('/api/admin/submissions/:submissionId', verifyAdmin, async (req, res)
     res.status(500).json({ message: 'Error deleting submission', error: error.message });
   }
 });
+
+// <<<<<<<<<<---------   USER RANK & BADGE SYSTEM     -------->>>>>>>>
+
+// Middleware to update user rank based on points
+const updateUserRank = async (userId, pointsToAdd) => {
+  try {
+    const { data: currentRank, error } = await supabase
+      .from('user_ranks')
+      .select('points')
+      .eq('user_id', userId)
+      .single();
+
+    let newPoints = pointsToAdd;
+    if (currentRank) {
+      newPoints += currentRank.points;
+    }
+
+    let rank = 'Beginner';
+    if (newPoints >= 1000) rank = 'Master';
+    else if (newPoints >= 500) rank = 'Expert';
+    else if (newPoints >= 200) rank = 'Advanced';
+    else if (newPoints >= 50) rank = 'Intermediate';
+
+    const { error: updateError } = await supabase
+      .from('user_ranks')
+      .upsert({
+        user_id: userId,
+        rank,
+        points: newPoints,
+        updated_at: new Date()
+      });
+
+    if (updateError) throw updateError;
+
+    return { rank, points: newPoints };
+  } catch (error) {
+    console.error('Error updating user rank:', error);
+    throw error;
+  }
+};
+
+// Award badge to user
+const awardBadge = async (userId, badgeName, badgeDescription, badgeIcon) => {
+  try {
+    const { data: existingBadge, error: checkError } = await supabase
+      .from('badges')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('name', badgeName)
+      .single();
+
+    if (existingBadge) return null; // Badge already awarded
+
+    const { data, error } = await supabase
+      .from('badges')
+      .insert({
+        user_id: userId,
+        name: badgeName,
+        description: badgeDescription,
+        icon: badgeIcon,
+        earned_at: new Date()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error awarding badge:', error);
+    throw error;
+  }
+};
+
+// Update submission endpoint to award badges and points
+app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
+  const { id } = req.params;
+  const { answers } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const { data: mockTest, error: mockTestError } = await supabase
+      .from('mock_tests')
+      .select('id, questions')
+      .eq('id', id)
+      .single();
+
+    if (mockTestError || !mockTest) {
+      return res.status(404).json({ message: 'Mock test not found' });
+    }
+
+    // Calculate score
+    let correctAnswers = 0;
+    mockTest.questions.forEach((question, index) => {
+      const userAnswer = answers[index.toString()];
+      if (userAnswer && userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase()) {
+        correctAnswers++;
+      }
+    });
+    const accuracy = Math.round((correctAnswers / mockTest.questions.length) * 100);
+
+    // Save submission
+    const { data: existingSubmission, error: existingError } = await supabase
+      .from('submissions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('mock_test_id', id)
+      .single();
+
+    let submission;
+    if (existingSubmission) {
+      const { data, error } = await supabase
+        .from('submissions')
+        .update({ answers, created_at: new Date() })
+        .eq('id', existingSubmission.id)
+        .select()
+        .single();
+      if (error) throw error;
+      submission = data;
+    } else {
+      const { data, error } = await supabase
+        .from('submissions')
+        .insert([{ user_id: userId, mock_test_id: id, answers }])
+        .select()
+        .single();
+      if (error) throw error;
+      submission = data;
+    }
+
+    // Award badges based on performance
+    const pointsEarned = correctAnswers * 10; // 10 points per correct answer
+    await updateUserRank(userId, pointsEarned);
+
+    if (accuracy >= 80) {
+      await awardBadge(userId, 'High Achiever', 'Scored 80% or above on a mock test', '🏆');
+    }
+    if (correctAnswers === mockTest.questions.length) {
+      await awardBadge(userId, 'Perfect Score', 'Achieved 100% on a mock test', '🌟');
+    }
+    const { count, error: countError } = await supabase
+      .from('submissions')
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId);
+    if (countError) throw countError;
+    if (count >= 5) {
+      await awardBadge(userId, 'Dedicated Learner', 'Completed 5 mock tests', '📚');
+    }
+
+    res.status(201).json({ message: 'Submission successful', submission });
+  } catch (error) {
+    console.error('Error saving submission:', error);
+    res.status(500).json({ message: 'Failed to submit test', error: error.message });
+  }
+});
+
+// Fetch user badges
+app.get('/api/user/badges', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { data, error } = await supabase
+      .from('badges')
+      .select('name, description, icon, earned_at')
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json(data || []);
+  } catch (error) {
+    console.error('Error fetching badges:', error);
+    res.status(500).json({ message: 'Failed to fetch badges', error: error.message });
+  }
+});
+
+// Fetch user rank
+app.get('/api/user/rank', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { data, error } = await supabase
+      .from('user_ranks')
+      .select('rank, points')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    res.status(200).json(data || { rank: 'Beginner', points: 0 });
+  } catch (error) {
+    console.error('Error fetching rank:', error);
+    res.status(500).json({ message: 'Failed to fetch rank', error: error.message });
+  }
+});
+
 
 // Start the server
 const PORT = process.env.PORT || 5000;

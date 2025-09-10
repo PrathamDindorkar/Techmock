@@ -18,12 +18,13 @@ import {
   TableHead,
   TableRow,
   Paper,
-  useTheme
+  useTheme,
+  Badge as MuiBadge
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { AssignmentTurnedIn, School, Psychology, Home, PeopleAlt, Delete } from '@mui/icons-material';
+import { AssignmentTurnedIn, School, Psychology, Home, PeopleAlt, Delete, Star } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -40,6 +41,8 @@ const Hello = ({ darkMode }) => {
   const [userStats, setUserStats] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState(null);
+  const [badges, setBadges] = useState([]);
+  const [userRank, setUserRank] = useState({ rank: 'Beginner', points: 0 });
   const token = localStorage.getItem('token');
   const theme = useTheme();
 
@@ -52,45 +55,49 @@ const Hello = ({ darkMode }) => {
 
   useEffect(() => {
     if (!token) {
-      console.log('No token found, redirecting to login');
       navigate('/login');
       return;
     }
 
     try {
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
-      console.log('User email:', decodedToken.email);
-      console.log('User role:', decodedToken.role);
-
       setIsAdmin(decodedToken.role === 'admin');
 
       const fetchData = async () => {
         setLoading(true);
         setError(null);
         try {
-          const userResponse = await axios.get(`${backendUrl}/api/user/profile`, {
-            headers: { Authorization: token },
-          });
-          console.log('User profile data:', userResponse.data);
+          const [userResponse, mockResponse, badgesResponse, rankResponse] = await Promise.all([
+            axios.get(`${backendUrl}/api/user/profile`, {
+              headers: { Authorization: token },
+            }),
+            axios.get(`${backendUrl}/api/admin/mock-tests`, {
+              headers: { Authorization: token },
+            }),
+            axios.get(`${backendUrl}/api/user/badges`, {
+              headers: { Authorization: token },
+            }),
+            axios.get(`${backendUrl}/api/user/rank`, {
+              headers: { Authorization: token },
+            })
+          ]);
+
           setUserData(userResponse.data);
           setPurchasedTests(Array.isArray(userResponse.data.purchasedTests) ? userResponse.data.purchasedTests : []);
-
-          const mockResponse = await axios.get(`${backendUrl}/api/admin/mock-tests`, {
-            headers: { Authorization: token },
-          });
-          console.log('Mock tests:', mockResponse.data);
           setMockTests(Array.isArray(mockResponse.data) ? mockResponse.data : []);
+          setBadges(Array.isArray(badgesResponse.data) ? badgesResponse.data : []);
+          setUserRank(rankResponse.data);
 
           if (decodedToken.role === 'admin') {
-            const purchasedTestsResponse = await axios.get(`${backendUrl}/api/admin/purchased-tests`, {
-              headers: { Authorization: token },
-            });
+            const [purchasedTestsResponse, submissionsResponse] = await Promise.all([
+              axios.get(`${backendUrl}/api/admin/purchased-tests`, {
+                headers: { Authorization: token },
+              }),
+              axios.get(`${backendUrl}/api/admin/submissions`, {
+                headers: { Authorization: token },
+              })
+            ]);
             setAllPurchasedTests(Array.isArray(purchasedTestsResponse.data) ? purchasedTestsResponse.data : []);
-
-            const submissionsResponse = await axios.get(`${backendUrl}/api/admin/submissions`, {
-              headers: { Authorization: token },
-            });
-            console.log('All submissions:', submissionsResponse.data);
             setAllSubmissions(Array.isArray(submissionsResponse.data) ? submissionsResponse.data : []);
           }
 
@@ -110,7 +117,7 @@ const Hello = ({ darkMode }) => {
 
       fetchData();
     } catch (error) {
-      console.error('Invalid or expired token - Details:', error.message);
+      console.error('Invalid or expired token:', error);
       setError('Invalid or expired token. Please log in again.');
       navigate('/login');
       setLoading(false);
@@ -153,6 +160,16 @@ const Hello = ({ darkMode }) => {
 
   const handleViewUsers = () => {
     navigate('/admin/users');
+  };
+
+  const getRankColor = (rank) => {
+    switch (rank) {
+      case 'Master': return '#FFD700';
+      case 'Expert': return '#C0C0C0';
+      case 'Advanced': return '#CD7F32';
+      case 'Intermediate': return '#4CAF50';
+      default: return '#2196F3';
+    }
   };
 
   const containerVariants = {
@@ -225,14 +242,14 @@ const Hello = ({ darkMode }) => {
   };
 
   const getMockAccuracy = (mockId) => {
-    console.log(`Calculating accuracy for mockId: ${mockId}`);
+    //console.log(`Calculating accuracy for mockId: ${mockId}`);
     const submission = allSubmissions.find((sub) => sub.mock_test_id.toString() === mockId.toString()) ||
-                     submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
+      submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
     if (!submission) {
       console.log(`No submission found for mockId: ${mockId}`);
       return 0;
     }
-    console.log('Submission found:', submission);
+    //console.log('Submission found:', submission);
 
     const mockTest = [...mockTests, ...purchasedTests].find(
       (test) => test.id.toString() === submission.mock_test_id.toString()
@@ -241,38 +258,38 @@ const Hello = ({ darkMode }) => {
       console.log(`No mock test found for mockId: ${mockId}`);
       return 0;
     }
-    console.log('Mock test found:', mockTest);
+   // console.log('Mock test found:', mockTest);
 
     const userAnswers = submission.answers || {};
-    console.log('User answers:', userAnswers);
+    //console.log('User answers:', userAnswers);
     let correct = 0;
     const totalQuestions = mockTest.questions.length;
-    console.log(`Total questions: ${totalQuestions}`);
+    //console.log(`Total questions: ${totalQuestions}`);
 
     mockTest.questions.forEach((question, index) => {
       const userAnswer = userAnswers[index.toString()];
       const correctAnswer = question.correctAnswer;
-      console.log(`Question ${index}: userAnswer=${userAnswer}, correctAnswer=${correctAnswer}`);
+     // console.log(`Question ${index}: userAnswer=${userAnswer}, correctAnswer=${correctAnswer}`);
       if (userAnswer != null && userAnswer !== '') {
         if (userAnswer.toString().trim().toLowerCase() === correctAnswer.toString().trim().toLowerCase()) {
           correct += 1;
-          console.log(`Question ${index}: Correct`);
+          //console.log(`Question ${index}: Correct`);
         } else {
-          console.log(`Question ${index}: Incorrect`);
+         // console.log(`Question ${index}: Incorrect`);
         }
       } else {
-        console.log(`Question ${index}: Not answered`);
+       // console.log(`Question ${index}: Not answered`);
       }
     });
 
     const accuracy = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
-    console.log(`Accuracy: ${accuracy}% (Correct: ${correct}, Total: ${totalQuestions})`);
+    //console.log(`Accuracy: ${accuracy}% (Correct: ${correct}, Total: ${totalQuestions})`);
     return accuracy;
   };
 
   const getCorrectCount = (mockId) => {
     const submission = allSubmissions.find((sub) => sub.mock_test_id.toString() === mockId.toString()) ||
-                     submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
+      submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
     if (!submission) return 0;
 
     const mockTest = [...mockTests, ...purchasedTests].find(
@@ -570,20 +587,66 @@ const Hello = ({ darkMode }) => {
       <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main' }} src={userData?.profilePicture}>
-              {userData?.name?.charAt(0) || 'U'}
-            </Avatar>
+            <MuiBadge badgeContent={<Star sx={{ color: getRankColor(userRank.rank) }} />}>
+              <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main' }} src={userData?.profilePicture}>
+                {userData?.name?.charAt(0) || 'U'}
+              </Avatar>
+            </MuiBadge>
             <Box>
               <Typography variant='h4' sx={{ fontWeight: 'bold', color: textPrimary }}>
                 {getGreeting()}, {userData?.name || 'User'}!
               </Typography>
-              <Typography variant='body1' color={textSecondary}>
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </Typography>
-              {isAdmin && (
-                <Chip label='ADMIN' color='primary' size='small' sx={{ ml: 1, fontWeight: 'bold' }} />
-              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant='body1' color={textSecondary}>
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </Typography>
+                <Chip
+                  label={`${userRank.rank} (Points: ${userRank.points})`}
+                  sx={{ bgcolor: getRankColor(userRank.rank), color: 'white', fontWeight: 'bold' }}
+                />
+                {isAdmin && (
+                  <Chip label='ADMIN' color='primary' size='small' sx={{ ml: 1, fontWeight: 'bold' }} />
+                )}
+              </Box>
             </Box>
+          </Box>
+        </Box>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant='h6' sx={{ fontWeight: 'bold', color: textPrimary, mb: 2 }}>
+            Your Badges
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {badges.length > 0 ? (
+              badges.map((badge, index) => (
+                <Card
+                  key={index}
+                  sx={{
+                    p: 2,
+                    minWidth: '150px',
+                    borderRadius: 2,
+                    boxShadow: `0 2px 4px ${borderColor}`,
+                    bgcolor: theme.palette.background.default,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant='h6'>{badge.icon}</Typography>
+                    <Typography variant='body1' fontWeight='bold' color={textPrimary}>
+                      {badge.name}
+                    </Typography>
+                  </Box>
+                  <Typography variant='body2' color={textSecondary}>
+                    {badge.description}
+                  </Typography>
+                  <Typography variant='caption' color={textSecondary}>
+                    Earned: {new Date(badge.earned_at).toLocaleDateString()}
+                  </Typography>
+                </Card>
+              ))
+            ) : (
+              <Typography variant='body1' color={textSecondary}>
+                No badges earned yet. Complete more tests to earn badges!
+              </Typography>
+            )}
           </Box>
         </Box>
       </motion.div>
@@ -866,6 +929,9 @@ const Hello = ({ darkMode }) => {
                         <Typography variant='body2' sx={{ opacity: 0.9, mt: 1 }}>
                           Average accuracy: {Math.round(overallAccuracy)}%
                         </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, mt: 1 }}>
+                          Rank: {userRank.rank} ({userRank.points} points)
+                        </Typography>
                         {totalAnswered === 0 && (
                           <Typography variant='body2' sx={{ opacity: 0.7, mt: 1, color: 'white' }}>
                             No progress yet. Start a mock test!
@@ -886,6 +952,26 @@ const Hello = ({ darkMode }) => {
                     <Typography variant='h6' fontWeight='bold' color={textPrimary}>
                       Latest Achievement
                     </Typography>
+                    {badges.length > 0 ? (
+                      <Box sx={{ mt: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Typography variant='h6'>{badges[0].icon}</Typography>
+                          <Typography variant='body1' fontWeight='medium' color={textPrimary}>
+                            {badges[0].name}
+                          </Typography>
+                        </Box>
+                        <Typography variant='body2' color={textSecondary}>
+                          {badges[0].description}
+                        </Typography>
+                        <Typography variant='caption' color={textSecondary}>
+                          Earned: {new Date(badges[0].earned_at).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant='body1' sx={{ mt: 2, color: textSecondary }}>
+                        No badges earned yet. Start a mock test to earn your first!
+                      </Typography>
+                    )}
                     {submissions.length > 0 ? (
                       <Box sx={{ mt: 2 }}>
                         <Typography variant='body1' fontWeight='medium' color={textPrimary}>

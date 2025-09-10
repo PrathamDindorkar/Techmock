@@ -34,6 +34,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import StarIcon from '@mui/icons-material/Star';
+import axios from 'axios';
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -42,18 +44,62 @@ const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
+  const [userRank, setUserRank] = useState({ rank: 'Beginner', points: 0 });
+  const [badges, setBadges] = useState([]);
+  const [error, setError] = useState(null);
 
+  const token = localStorage.getItem('token');
   const email = localStorage.getItem('email');
   const role = localStorage.getItem('role');
   const username = email ? email.split('@')[0] : 'User';
-
   const isMobile = useMediaQuery('(max-width:900px)');
 
-  // Load dark mode preference
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+  // Map rank to number
+  const getRankNumber = (rank) => {
+    const rankMap = {
+      Beginner: 1,
+      Intermediate: 2,
+      Advanced: 3,
+      Expert: 4,
+      Master: 5,
+    };
+    return rankMap[rank] || 1;
+  };
+
+  // Load dark mode preference and fetch rank/badges
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
-  }, []);
+
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        const [rankResponse, badgesResponse] = await Promise.all([
+          axios.get(`${backendUrl}/api/user/rank`, {
+            headers: { Authorization: token },
+          }),
+          axios.get(`${backendUrl}/api/user/badges`, {
+            headers: { Authorization: token },
+          }),
+        ]);
+        setUserRank(rankResponse.data || { rank: 'Beginner', points: 0 });
+        setBadges(Array.isArray(badgesResponse.data) ? badgesResponse.data : []);
+      } catch (err) {
+        console.error('Error fetching rank/badges:', err);
+        setError('Failed to load user data. Please log in again.');
+        localStorage.clear();
+        navigate('/login');
+      }
+    };
+
+    fetchData();
+  }, [token, navigate]);
 
   // Handle scroll effects
   useEffect(() => {
@@ -119,6 +165,17 @@ const Layout = () => {
   const handleCartClick = () => {
     navigate('/cart');
     if (isMobile) setMobileOpen(false);
+  };
+
+  // Function to get rank color (same as in Hello.jsx)
+  const getRankColor = (rank) => {
+    switch (rank) {
+      case 'Master': return '#FFD700';
+      case 'Expert': return '#C0C0C0';
+      case 'Advanced': return '#CD7F32';
+      case 'Intermediate': return '#4CAF50';
+      default: return '#2196F3';
+    }
   };
 
   // Navigation items
@@ -187,7 +244,7 @@ const Layout = () => {
           paper: {
             width: '80%',
             maxWidth: 280,
-            overflowY: 'auto', // Enable scrolling
+            overflowY: 'auto',
           },
         },
       },
@@ -196,12 +253,14 @@ const Layout = () => {
 
   // Mobile drawer content
   const drawer = (
-    <Box sx={{ 
-      height: '100%', 
-      backgroundColor: 'background.paper', 
-      display: 'flex', 
-      flexDirection: 'column' 
-    }}>
+    <Box
+      sx={{
+        height: '100%',
+        backgroundColor: 'background.paper',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Drawer Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
         <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
@@ -216,23 +275,66 @@ const Layout = () => {
 
       {/* User Info */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar
-          sx={{
-            bgcolor: theme.palette.primary.main,
-            width: 40,
-            height: 40,
-          }}
+        <Badge
+          overlap="circular"
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          badgeContent={<StarIcon sx={{ fontSize: 16, color: getRankColor(userRank.rank) }} />}
         >
-          {username.charAt(0).toUpperCase()}
-        </Avatar>
+          <Avatar
+            sx={{
+              bgcolor: theme.palette.primary.main,
+              width: 40,
+              height: 40,
+              fontSize: '1rem',
+              fontWeight: 'bold',
+            }}
+          >
+            {getRankNumber(userRank.rank)}
+          </Avatar>
+        </Badge>
         <Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {username}
+            {username} ({userRank.rank})
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {role || 'user'}
+            {role || 'user'} | {userRank.points} points
           </Typography>
         </Box>
+      </Box>
+
+      {/* Badges in Drawer */}
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+          Your Badges
+        </Typography>
+        {badges.length > 0 ? (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {badges.slice(0, 3).map((badge, index) => (
+              <Badge key={index} badgeContent={badge.icon} color="primary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    borderRadius: 1,
+                    px: 1,
+                    py: 0.5,
+                  }}
+                >
+                  {badge.name}
+                </Typography>
+              </Badge>
+            ))}
+            {badges.length > 3 && (
+              <Typography variant="caption" color="text.secondary">
+                +{badges.length - 3} more
+              </Typography>
+            )}
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            No badges earned yet
+          </Typography>
+        )}
       </Box>
 
       <Divider />
@@ -273,14 +375,12 @@ const Layout = () => {
             />
           </ListItem>
         ))}
-
         <ListItem button onClick={handleProfileClick} sx={{ py: 1.5 }}>
           <ListItemIcon sx={{ minWidth: '40px' }}>
             <AccountCircleIcon />
           </ListItemIcon>
           <ListItemText primary="My Profile" />
         </ListItem>
-
         <ListItem button onClick={handleLogout} sx={{ py: 1.5, color: theme.palette.error.main }}>
           <ListItemIcon sx={{ minWidth: '40px', color: theme.palette.error.main }}>
             <LogoutIcon />
@@ -321,13 +421,15 @@ const Layout = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{
-        minHeight: '100vh',
-        backgroundColor: 'background.default',
-        color: 'text.primary',
-        width: '100%',
-        transition: 'background-color 0.3s ease',
-      }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          color: 'text.primary',
+          width: '100%',
+          transition: 'background-color 0.3s ease',
+        }}
+      >
         {/* Navbar */}
         <AppBar
           component={motion.div}
@@ -361,7 +463,6 @@ const Layout = () => {
                   <MenuIcon />
                 </IconButton>
               )}
-
               <Link
                 component={motion.a}
                 whileHover={{ scale: 1.05 }}
@@ -486,17 +587,24 @@ const Layout = () => {
                   color="inherit"
                   endIcon={<KeyboardArrowDownIcon />}
                   startIcon={
-                    <Avatar
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        bgcolor: scrolled ? theme.palette.primary.main : alpha('#fff', 0.3),
-                        color: scrolled ? '#fff' : '#fff',
-                        fontSize: '0.875rem',
-                      }}
+                    <Badge
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      badgeContent={<StarIcon sx={{ fontSize: 16, color: getRankColor(userRank.rank) }} />}
                     >
-                      {username.charAt(0).toUpperCase()}
-                    </Avatar>
+                      <Avatar
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          bgcolor: scrolled ? theme.palette.primary.main : alpha('#fff', 0.3),
+                          color: scrolled ? '#fff' : '#fff',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {getRankNumber(userRank.rank)}
+                      </Avatar>
+                    </Badge>
                   }
                   sx={{
                     ml: 1,
@@ -542,6 +650,42 @@ const Layout = () => {
                   <Typography variant="body2" color="text.secondary">
                     {email}
                   </Typography>
+                  <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
+                    Rank: {userRank.rank} ({userRank.points} points)
+                  </Typography>
+                </Box>
+                <Box sx={{ px: 2, pb: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Your Badges
+                  </Typography>
+                  {badges.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {badges.slice(0, 3).map((badge, index) => (
+                        <Badge key={index} badgeContent={badge.icon} color="primary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              bgcolor: alpha(theme.palette.primary.main, 0.1),
+                              borderRadius: 1,
+                              px: 1,
+                              py: 0.5,
+                            }}
+                          >
+                            {badge.name}
+                          </Typography>
+                        </Badge>
+                      ))}
+                      {badges.length > 3 && (
+                        <Typography variant="caption" color="text.secondary">
+                          +{badges.length - 3} more
+                        </Typography>
+                      )}
+                    </Box>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">
+                      No badges earned yet
+                    </Typography>
+                  )}
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <MenuItem onClick={handleProfileClick} sx={{ py: 1.5 }}>
@@ -584,7 +728,7 @@ const Layout = () => {
               maxWidth: 280,
               height: '100%',
               boxShadow: theme.shadows[8],
-              overflowY: 'auto', // Ensure scrollability
+              overflowY: 'auto',
             },
           }}
           PaperProps={{
@@ -600,7 +744,12 @@ const Layout = () => {
 
         {/* Page Content */}
         <Container maxWidth="xl" sx={{ pt: 3, pb: 8 }}>
-          <Outlet />
+          {error && (
+            <Typography color="error" sx={{ mb: 2, textAlign: 'center' }}>
+              {error}
+            </Typography>
+          )}
+          <Outlet context={{ darkMode }} />
         </Container>
       </Box>
     </ThemeProvider>
