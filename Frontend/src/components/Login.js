@@ -16,6 +16,8 @@ import {
   Grow,
   Modal,
   Stack,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -45,6 +47,12 @@ const Login = () => {
   // Animation states
   const [animateTitle, setAnimateTitle] = useState(false);
   const [animateForm, setAnimateForm] = useState(false);
+
+  // Responsive breakpoints
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
@@ -156,84 +164,89 @@ const Login = () => {
   return (
     <Box
       sx={{
-        height: '100vh',
-        overflow: 'hidden',
+        minHeight: '100vh',
+        height: isMobile ? 'auto' : '100vh',
+        overflow: isMobile ? 'auto' : 'hidden',
         background: 'linear-gradient(to right, #f5f7fa, #c3cfe2)',
+        py: isMobile ? 2 : 0,
       }}
     >
-      <Grid container component="main" sx={{ height: '100vh' }}>
+      <Grid container component="main" sx={{ minHeight: '100vh' }}>
         {/* Left Section - Branding */}
-        <Grid
-          item
-          xs={false}
-          sm={5}
-          md={6}
-          sx={{
-            position: 'relative',
-            overflow: 'hidden',
-            background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'column',
-            borderRadius: { md: '0 30px 30px 0' },
-            boxShadow: { md: '15px 0 25px rgba(0, 0, 0, 0.1)' },
-          }}
-        >
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.1 }}
-            transition={{ duration: 2 }}
+        {!isMobile && (
+          <Grid
+            item
+            xs={false}
+            sm={5}
+            md={6}
             sx={{
-              position: 'absolute',
-              width: '200%',
-              height: '200%',
-              background:
-                'radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent), radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent) 50px 50px, linear-gradient(#104aa1 8px, transparent 8px) 0 -4px, linear-gradient(90deg, #104aa1 8px, transparent 8px) -4px 0',
-              backgroundSize: '100px 100px, 100px 100px, 50px 50px, 50px 50px',
-              transform: 'rotate(10deg) scale(1.5)',
-              zIndex: 0,
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              borderRadius: { md: '0 30px 30px 0' },
+              boxShadow: { md: '15px 0 25px rgba(0, 0, 0, 0.1)' },
             }}
-          />
-          <Grow in={animateTitle} timeout={1000}>
-            <Box sx={{ zIndex: 1, textAlign: 'center' }}>
-              <Typography
-                variant="h1"
-                component={motion.div}
-                sx={{
-                  fontWeight: 900,
-                  fontSize: { xs: '3rem', md: '4.5rem' },
-                  letterSpacing: '-0.05em',
-                  textShadow: '3px 3px 6px rgba(0, 0, 0, 0.3)',
-                  mb: 2,
-                }}
-              >
-                TechMock
-              </Typography>
-              <Typography
-                variant="h6"
-                component={motion.div}
-                sx={{
-                  opacity: 0.9,
-                  maxWidth: '80%',
-                  mx: 'auto',
-                  fontWeight: 300,
-                }}
-              >
-                Your gateway to technical excellence
-              </Typography>
-            </Box>
-          </Grow>
-        </Grid>
+          >
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.1 }}
+              transition={{ duration: 2 }}
+              sx={{
+                position: 'absolute',
+                width: '200%',
+                height: '200%',
+                background:
+                  'radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent), radial-gradient(circle, transparent 20%, #1565c0 20%, #1565c0 80%, transparent 80%, transparent) 50px 50px, linear-gradient(#104aa1 8px, transparent 8px) 0 -4px, linear-gradient(90deg, #104aa1 8px, transparent 8px) -4px 0',
+                backgroundSize: '100px 100px, 100px 100px, 50px 50px, 50px 50px',
+                transform: 'rotate(10deg) scale(1.5)',
+                zIndex: 0,
+              }}
+            />
+            <Grow in={animateTitle} timeout={1000}>
+              <Box sx={{ zIndex: 1, textAlign: 'center', px: 2 }}>
+                <Typography
+                  variant="h1"
+                  component={motion.div}
+                  sx={{
+                    fontWeight: 900,
+                    fontSize: { xs: '2.5rem', sm: '3rem', md: '4rem', lg: '4.5rem' },
+                    letterSpacing: '-0.05em',
+                    textShadow: '3px 3px 6px rgba(0, 0, 0, 0.3)',
+                    mb: 2,
+                  }}
+                >
+                  TechMock
+                </Typography>
+                <Typography
+                  variant="h6"
+                  component={motion.div}
+                  sx={{
+                    opacity: 0.9,
+                    maxWidth: '80%',
+                    mx: 'auto',
+                    fontWeight: 300,
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                  }}
+                >
+                  Your gateway to technical excellence
+                </Typography>
+              </Box>
+            </Grow>
+          </Grid>
+        )}
 
         {/* Right Section (Login Form) */}
         <Grid
           item
           xs={12}
-          sm={7}
-          md={6}
+          sm={isMobile ? 12 : 7}
+          md={isMobile ? 12 : 6}
           component={Paper}
           elevation={0}
           square
@@ -242,20 +255,59 @@ const Login = () => {
             flexDirection: 'column',
             justifyContent: 'center',
             background: 'transparent',
+            px: isMobile ? 1 : 0,
           }}
         >
-          <Container maxWidth="xs">
+          <Container maxWidth={isMobile ? 'sm' : 'xs'}>
+            {/* Mobile Brand Header */}
+            {isMobile && (
+              <Grow in={animateTitle} timeout={1000}>
+                <Box sx={{ textAlign: 'center', mb: 4, mt: 2 }}>
+                  <Typography
+                    variant="h3"
+                    component={motion.div}
+                    sx={{
+                      fontWeight: 900,
+                      fontSize: { xs: '2.5rem', sm: '3rem' },
+                      letterSpacing: '-0.05em',
+                      background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      mb: 1,
+                    }}
+                  >
+                    TechMock
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      color: '#1976d2',
+                      fontWeight: 400,
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    }}
+                  >
+                    Your gateway to technical excellence
+                  </Typography>
+                </Box>
+              </Grow>
+            )}
+
             <Fade in={animateForm} timeout={1000}>
               <Box
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  p: 4,
-                  borderRadius: '20px',
+                  p: { xs: 2, sm: 3, md: 4 },
+                  borderRadius: { xs: '15px', sm: '20px' },
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  boxShadow: { 
+                    xs: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                    sm: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                  },
+                  mx: { xs: 1, sm: 0 },
                 }}
               >
                 <Typography
@@ -264,7 +316,9 @@ const Login = () => {
                   sx={{
                     fontWeight: 700,
                     color: '#1976d2',
-                    mb: 3,
+                    mb: { xs: 2, sm: 3 },
+                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' },
+                    textAlign: 'center',
                   }}
                 >
                   Welcome Back
@@ -276,15 +330,20 @@ const Login = () => {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     sx={{
-                      p: 2,
-                      mb: 3,
+                      p: { xs: 1.5, sm: 2 },
+                      mb: { xs: 2, sm: 3 },
                       width: '100%',
                       borderRadius: '8px',
                       backgroundColor: 'rgba(211, 47, 47, 0.1)',
                       border: '1px solid rgba(211, 47, 47, 0.3)',
                     }}
                   >
-                    <Typography variant="body2" color="error" align="center">
+                    <Typography 
+                      variant="body2" 
+                      color="error" 
+                      align="center"
+                      sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                    >
                       {message}
                     </Typography>
                   </Box>
@@ -305,17 +364,24 @@ const Login = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <EmailIcon color="primary" />
+                          <EmailIcon color="primary" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: '10px',
+                        borderRadius: { xs: '8px', sm: '10px' },
                         transition: 'transform 0.3s',
                         '&:hover': {
-                          transform: 'translateY(-2px)',
+                          transform: isMobile ? 'none' : 'translateY(-2px)',
                         },
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                        py: { xs: '12px', sm: '16.5px' },
                       },
                     }}
                   />
@@ -333,7 +399,7 @@ const Login = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <LockIcon color="primary" />
+                          <LockIcon color="primary" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                         </InputAdornment>
                       ),
                       endAdornment: (
@@ -342,19 +408,30 @@ const Login = () => {
                             aria-label="toggle password visibility"
                             onClick={handleClickShowPassword}
                             edge="end"
+                            size={isMobile ? "small" : "medium"}
                           >
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                            {showPassword ? 
+                              <VisibilityOff sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} /> : 
+                              <Visibility sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                            }
                           </IconButton>
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: '10px',
+                        borderRadius: { xs: '8px', sm: '10px' },
                         transition: 'transform 0.3s',
                         '&:hover': {
-                          transform: 'translateY(-2px)',
+                          transform: isMobile ? 'none' : 'translateY(-2px)',
                         },
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                        py: { xs: '12px', sm: '16.5px' },
                       },
                     }}
                   />
@@ -363,11 +440,13 @@ const Login = () => {
                       variant="body2"
                       color="primary"
                       component={motion.div}
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: isMobile ? 1 : 1.05 }}
                       sx={{
                         display: 'inline-block',
                         cursor: 'pointer',
                         fontWeight: 500,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                        py: 1,
                       }}
                       onClick={handleForgotPasswordOpen}
                     >
@@ -376,19 +455,19 @@ const Login = () => {
                   </Box>
                   <Button
                     component={motion.button}
-                    whileHover={{ scale: 1.03 }}
+                    whileHover={{ scale: isMobile ? 1 : 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     type="submit"
                     fullWidth
                     variant="contained"
                     disabled={isLoading}
                     sx={{
-                      mt: 3,
-                      mb: 3,
-                      py: 1.5,
-                      borderRadius: '10px',
+                      mt: { xs: 2, sm: 3 },
+                      mb: { xs: 2, sm: 3 },
+                      py: { xs: 1.2, sm: 1.5 },
+                      borderRadius: { xs: '8px', sm: '10px' },
                       fontWeight: 600,
-                      fontSize: '1rem',
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
                       background: 'linear-gradient(90deg, #1976d2, #2196f3)',
                       boxShadow: '0 4px 20px rgba(33, 150, 243, 0.4)',
                       position: 'relative',
@@ -398,23 +477,28 @@ const Login = () => {
                     {isLoading ? 'Signing in...' : (
                       <>
                         Sign In
-                        <LoginIcon sx={{ ml: 1 }} />
+                        <LoginIcon sx={{ ml: 1, fontSize: { xs: '1.1rem', sm: '1.25rem' } }} />
                       </>
                     )}
                   </Button>
                   <Divider sx={{ my: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                    >
                       OR
                     </Typography>
                   </Divider>
                   <Box
                     component={motion.div}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: isMobile ? 1 : 1.02 }}
                     sx={{
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
                       cursor: 'pointer',
+                      py: 1,
                     }}
                     onClick={() => navigate('/register')}
                   >
@@ -426,6 +510,8 @@ const Login = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
+                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                        textAlign: 'center',
                       }}
                     >
                       New to TechMock? Register Here
@@ -447,14 +533,25 @@ const Login = () => {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 400,
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
             bgcolor: 'background.paper',
             boxShadow: 24,
-            p: 4,
-            borderRadius: '10px',
+            p: { xs: 3, sm: 4 },
+            borderRadius: { xs: '15px', sm: '10px' },
+            maxHeight: '90vh',
+            overflow: 'auto',
           }}
         >
-          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              mb: 2, 
+              color: '#1976d2',
+              fontSize: { xs: '1.1rem', sm: '1.25rem' },
+              textAlign: 'center',
+            }}
+          >
             {forgotPasswordStep === 'sendOtp'
               ? 'Forgot Password'
               : forgotPasswordStep === 'verifyOtp'
@@ -463,12 +560,32 @@ const Login = () => {
           </Typography>
 
           {forgotPasswordError && (
-            <Typography color="error" sx={{ mb: 2 }}>
+            <Typography 
+              color="error" 
+              sx={{ 
+                mb: 2, 
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                textAlign: 'center',
+                p: 1,
+                borderRadius: '5px',
+                bgcolor: 'rgba(211, 47, 47, 0.1)',
+              }}
+            >
               {forgotPasswordError}
             </Typography>
           )}
           {forgotPasswordSuccess && (
-            <Typography color="success.main" sx={{ mb: 2 }}>
+            <Typography 
+              color="success.main" 
+              sx={{ 
+                mb: 2,
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                textAlign: 'center',
+                p: 1,
+                borderRadius: '5px',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+              }}
+            >
               {forgotPasswordSuccess}
             </Typography>
           )}
@@ -482,12 +599,25 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   fullWidth
                   variant="outlined"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                  }}
                 />
                 <Button
                   variant="contained"
                   onClick={handleSendOtp}
                   disabled={!email}
-                  sx={{ borderRadius: '10px' }}
+                  sx={{ 
+                    borderRadius: '10px',
+                    py: { xs: 1, sm: 1.5 },
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                  }}
                 >
                   Send OTP
                 </Button>
@@ -502,12 +632,25 @@ const Login = () => {
                   onChange={(e) => setOtp(e.target.value)}
                   fullWidth
                   variant="outlined"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                  }}
                 />
                 <Button
                   variant="contained"
                   onClick={handleVerifyOtp}
                   disabled={!otp}
-                  sx={{ borderRadius: '10px' }}
+                  sx={{ 
+                    borderRadius: '10px',
+                    py: { xs: 1, sm: 1.5 },
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                  }}
                 >
                   Verify OTP
                 </Button>
@@ -523,6 +666,15 @@ const Login = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   fullWidth
                   variant="outlined"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                  }}
                 />
                 <TextField
                   label="Confirm New Password"
@@ -531,12 +683,25 @@ const Login = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   fullWidth
                   variant="outlined"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                    },
+                  }}
                 />
                 <Button
                   variant="contained"
                   onClick={handleResetPassword}
                   disabled={!newPassword || !confirmPassword}
-                  sx={{ borderRadius: '10px' }}
+                  sx={{ 
+                    borderRadius: '10px',
+                    py: { xs: 1, sm: 1.5 },
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                  }}
                 >
                   Reset Password
                 </Button>
