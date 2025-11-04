@@ -529,65 +529,6 @@ app.get('/api/mock-test/:id', async (req, res) => {
   }
 });
 
-/*
-// Submit Mock Test Answers
-app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
-  const { id } = req.params; // mockTestId
-  const { answers } = req.body;
-  const userId = req.user.id;
-
-  try {
-    const { data: mockTest, error: mockTestError } = await supabase
-      .from('mock_tests')
-      .select('id')
-      .eq('id', id)
-      .single();
-
-    if (mockTestError || !mockTest) {
-      return res.status(404).json({ message: 'Mock test not found' });
-    }
-
-    // Check if submission exists
-    const { data: existingSubmission, error: existingError } = await supabase
-      .from('submissions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('mock_test_id', id)
-      .single();
-
-    if (existingError && existingError.code !== 'PGRST116') {
-      throw existingError;
-    }
-
-    let submission;
-    if (existingSubmission) {
-      // Update existing submission
-      const { data, error } = await supabase
-        .from('submissions')
-        .update({ answers, created_at: new Date() }) // Update with new answers and timestamp
-        .eq('id', existingSubmission.id)
-        .select()
-        .single();
-      if (error) throw error;
-      submission = data;
-    } else {
-      // Create new submission
-      const { data, error } = await supabase
-        .from('submissions')
-        .insert([{ user_id: userId, mock_test_id: id, answers }])
-        .select()
-        .single();
-      if (error) throw error;
-      submission = data;
-    }
-
-    res.status(201).json({ message: 'Submission successful', submission });
-  } catch (error) {
-    console.error('Error saving submission:', error);
-    res.status(500).json({ message: 'Failed to submit test', error: error.message });
-  }
-});
-*/
 // Fetch User Submission for a Specific Mock Test
 app.get('/api/mock-test/:id/submission', verifyUser, async (req, res) => {
   const { id } = req.params; // mockTestId

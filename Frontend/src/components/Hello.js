@@ -17,10 +17,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Paper,
   useTheme,
   Badge as MuiBadge
 } from '@mui/material';
+import {styled} from '@mui/material/styles'
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -30,6 +32,8 @@ import 'jspdf-autotable';
 
 const Hello = ({ darkMode }) => {
   const navigate = useNavigate();
+
+  /*------------   STATES    -----------------*/
   const [mockTests, setMockTests] = useState([]);
   const [purchasedTests, setPurchasedTests] = useState([]);
   const [allPurchasedTests, setAllPurchasedTests] = useState([]);
@@ -52,6 +56,61 @@ const Hello = ({ darkMode }) => {
   const borderColor = darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+  // Styled components for badges
+const BadgeCard = styled(Card)(({ theme, rankColor }) => ({
+  p: 2,
+  minWidth: '180px',
+  borderRadius: 12,
+  boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${rankColor}20 100%)`,
+  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.05) rotate(2deg)',
+    boxShadow: `0 8px 16px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}`,
+  },
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  textAlign: 'center',
+  position: 'relative',
+  overflow: 'hidden',
+}));
+
+const BadgeIcon = styled(Box)(({ theme, isNew }) => ({
+  fontSize: 40,
+  marginBottom: theme.spacing(1),
+  animation: isNew ? 'pulse 2s infinite' : 'none',
+  '@keyframes pulse': {
+    '0%': { transform: 'scale(1)', opacity: 1 },
+    '50%': { transform: 'scale(1.2)', opacity: 0.7 },
+    '100%': { transform: 'scale(1)', opacity: 1 },
+  },
+}));
+
+const LatestAchievementCard = styled(Card)(({ theme }) => ({
+  p: 3,
+  borderRadius: 12,
+  boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+  color: 'white',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  textAlign: 'center',
+  position: 'relative',
+  overflow: 'hidden',
+  '&:before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)',
+    opacity: 0.5,
+  },
+}));
 
   useEffect(() => {
     if (!token) {

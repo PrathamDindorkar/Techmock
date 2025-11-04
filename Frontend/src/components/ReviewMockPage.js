@@ -95,7 +95,7 @@ const ReviewMockPage = () => {
                 p: 3,
                 mb: 3,
                 borderRadius: '12px',
-                background: userAnswers[index.toString()] === question.correctAnswer ? '#e8f5e9' : '#ffebee',
+                background: userAnswers[index.toString()] === question.correctAnswer ? '#d4edd6ff' : '#ddbcc1ff',
                 transition: 'all 0.3s ease-in-out',
                 '&:hover': { transform: 'scale(1.02)', boxShadow: 6 },
               }}

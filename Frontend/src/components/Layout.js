@@ -432,23 +432,21 @@ const Layout = () => {
       >
         {/* Navbar */}
         <AppBar
-          component={motion.div}
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          position="sticky"
-          sx={{
-            backdropFilter: scrolled ? 'blur(10px)' : 'none',
-            backgroundColor: scrolled
-              ? alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7)
-              : theme.palette.primary.main,
-            color: scrolled ? 'text.primary' : '#fff',
-            borderBottom: scrolled ? `1px solid ${alpha(theme.palette.divider, 0.08)}` : 'none',
-            transition: 'all 0.3s ease',
-            width: '100%',
-          }}
-          elevation={scrolled ? 0 : 3}
-        >
+  component={motion.div}
+  initial={{ y: -10, opacity: 0 }}
+  animate={{ y: 0, opacity: 1 }}
+  transition={{ duration: 0.3 }}
+  position="sticky"
+  sx={{
+    backdropFilter: 'blur(10px)', // Always blurred
+    backgroundColor: alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7), // Always translucent
+    color: 'text.primary',
+    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+    transition: 'all 0.3s ease',
+    width: '100%',
+  }}
+  elevation={0}
+>
           <Toolbar sx={{ justifyContent: 'space-between', padding: { xs: '0 16px', sm: '0 24px' } }}>
             {/* Left side - Logo and mobile menu button */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -479,12 +477,10 @@ const Layout = () => {
                 <Typography
                   variant="h6"
                   sx={{
-                    fontWeight: 700,
-                    background: scrolled
-                      ? (darkMode ? 'linear-gradient(45deg, #90caf9, #64b5f6)' : 'linear-gradient(45deg, #1976d2, #2196f3)')
-                      : 'white',
+                    fontWeight: 1000,
+                    background: alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7),
                     WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: scrolled ? 'transparent' : 'white',
+                    WebkitTextFillColor: darkMode ? theme.palette.primary.dark : theme.palette.primary.light,
                     letterSpacing: '0.5px',
                   }}
                 >
@@ -596,8 +592,8 @@ const Layout = () => {
                         sx={{
                           width: 28,
                           height: 28,
-                          bgcolor: scrolled ? theme.palette.primary.main : alpha('#fff', 0.3),
-                          color: scrolled ? '#fff' : '#fff',
+                          bgcolor: theme.palette.primary.main,
+                          color: '#fff',
                           fontSize: '0.875rem',
                           fontWeight: 'bold',
                         }}
