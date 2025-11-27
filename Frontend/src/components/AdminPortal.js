@@ -81,6 +81,10 @@ const AdminPortal = () => {
   const [questions, setQuestions] = useState([{ questionText: '', options: ['', '', '', ''], correctAnswer: '', explaination: '' }]);
   const [adminDetails, setAdminDetails] = useState({ name: '', email: '', profileImage: '' });
 
+  // State for mock test editing
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTest, setEditingTest] = useState(null);
+
   // State for pricing
   const [pricingType, setPricingType] = useState('free');
   const [price, setPrice] = useState('');
@@ -169,6 +173,70 @@ const AdminPortal = () => {
     }
   };
 
+  const handleEditTest = (test) => {
+    setEditingTest({
+      ...test,
+      timeLimit: test.time_limit || test.timeLimit,
+      price: test.price || 0,
+      pricingType: test.pricing_type || 'free'
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateTest = async () => {
+    if (!editingTest.title || !editingTest.category || !editingTest.timeLimit) {
+      showSnackbar('Title, Category, and Time Limit are required!', 'error');
+      return;
+    }
+
+    if (editingTest.questions.length === 0) {
+      showSnackbar('At least one question is required!', 'error');
+      return;
+    }
+
+    const invalidQuestions = editingTest.questions.filter(q =>
+      !q.questionText || q.options.some(opt => !opt) || !q.correctAnswer
+    );
+
+    if (invalidQuestions.length > 0) {
+      showSnackbar('All questions must have text, four options, and correct answer!', 'error');
+      return;
+    }
+
+    if (editingTest.pricingType === 'paid' && (!editingTest.price || editingTest.price <= 0)) {
+      showSnackbar('Please enter a valid price for paid test', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${backendUrl}/api/admin/edit-mock-test/${editingTest.id}`,
+        {
+          title: editingTest.title,
+          description: editingTest.description,
+          category: editingTest.category,
+          timeLimit: Number(editingTest.timeLimit),
+          questions: editingTest.questions,
+          pricingType: editingTest.pricingType,
+          price: editingTest.pricingType === 'paid' ? Number(editingTest.price) : 0
+        },
+        { headers: { Authorization: token } }
+      );
+
+      showSnackbar('Mock test updated successfully!', 'success');
+      setEditDialogOpen(false);
+      setEditingTest(null);
+      fetchMockTests(); // Refresh list
+    } catch (error) {
+      console.error('Error updating mock test:', error);
+      showSnackbar(error.response?.data?.message || 'Failed to update mock test', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
@@ -176,6 +244,34 @@ const AdminPortal = () => {
   if (role !== 'admin') {
     return <Navigate to="/hello" />;
   }
+
+  const addQuestionInEdit = () => {
+    setEditingTest({
+      ...editingTest,
+      questions: [...editingTest.questions, {
+        questionText: '', options: ['', '', '', ''], correctAnswer: '', explaination: ''
+      }]
+    });
+  };
+
+  const removeQuestionInEdit = (index) => {
+    setEditingTest({
+      ...editingTest,
+      questions: editingTest.questions.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleQuestionChangeInEdit = (index, field, value) => {
+    const updated = [...editingTest.questions];
+    updated[index][field] = value;
+    setEditingTest({ ...editingTest, questions: updated });
+  };
+
+  const handleOptionChangeInEdit = (qIndex, oIndex, value) => {
+    const updated = [...editingTest.questions];
+    updated[qIndex].options[oIndex] = value;
+    setEditingTest({ ...editingTest, questions: updated });
+  };
 
   const addQuestion = () => {
     setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctAnswer: '', explaination: '' }]);
@@ -845,7 +941,36 @@ const AdminPortal = () => {
 
                           return (
                             <TableRow key={test.id} hover>
-                              <TableCell>{test.title}</TableCell><TableCell><Chip label={test.category} size="small" color="primary" variant="outlined" /></TableCell><TableCell><span style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{displayText}</span></TableCell><TableCell>{test.questions?.length || 0}</TableCell><TableCell>{isFree ? <Chip label="Free" size="small" color="success" /> : <Chip label={`₹${priceValue}`} size="small" color="secondary" />}</TableCell><TableCell>{new Date(test.createdAt || test.created_at).toLocaleDateString()}</TableCell><TableCell align="center"><Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}><Tooltip title="View Details"><IconButton size="small" color="primary" onClick={() => handleViewTest(test)}><SearchIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete Test"><IconButton size="small" color="error" onClick={() => handleDeleteTest(test.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip></Box></TableCell>
+                              <TableCell>{test.title}</TableCell>
+                              <TableCell>
+                                <Chip label={test.category} size="small" color="primary" variant="outlined" />
+                              </TableCell>
+                              <TableCell>
+                                <span style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{displayText}</span>
+                              </TableCell>
+                              <TableCell>{test.questions?.length || 0}
+                              </TableCell>
+                              <TableCell>{isFree ? <Chip label="Free" size="small" color="success" /> : <Chip label={`₹${priceValue}`} size="small" color="secondary" />}
+                              </TableCell>
+                              <TableCell>{new Date(test.createdAt || test.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell align="center"><Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                                <Tooltip title="View Details">
+                                  <IconButton size="small" color="primary" onClick={() => handleViewTest(test)}>
+                                    <SearchIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Edit Test">
+                                  <IconButton size="small" color="secondary" onClick={() => handleEditTest(test)}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete Test">
+                                  <IconButton size="small" color="error" onClick={() => handleDeleteTest(test.id)}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -931,6 +1056,137 @@ const AdminPortal = () => {
                   </DialogActions>
                 </>
               )}
+            </Dialog>
+            {/* Edit Mock Test Dialog */}
+            <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="lg" fullWidth>
+              <DialogTitle>
+                <Typography variant="h6" color="primary">Edit Mock Test</Typography>
+              </DialogTitle>
+              <DialogContent dividers>
+                {editingTest && (
+                  <Box sx={{ mt: 2 }}>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth label="Test Title" required
+                          value={editingTest.title}
+                          onChange={(e) => setEditingTest({ ...editingTest, title: e.target.value })}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth label="Category" required
+                          value={editingTest.category}
+                          onChange={(e) => setEditingTest({ ...editingTest, category: e.target.value })}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth label="Time Limit (minutes)" type="number" required
+                          value={editingTest.timeLimit}
+                          onChange={(e) => setEditingTest({ ...editingTest, timeLimit: e.target.value })}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth label="Description" multiline rows={4}
+                          value={editingTest.description || ''}
+                          onChange={(e) => setEditingTest({ ...editingTest, description: e.target.value })}
+                        />
+                      </Grid>
+
+                      {/* Pricing */}
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Pricing</Typography>
+                          <RadioGroup
+                            value={editingTest.pricingType}
+                            onChange={(e) => setEditingTest({ ...editingTest, pricingType: e.target.value, price: e.target.value === 'free' ? 0 : editingTest.price })}
+                          >
+                            <FormControlLabel value="free" control={<Radio />} label="Free" />
+                            <FormControlLabel value="paid" control={<Radio />} label="Paid" />
+                          </RadioGroup>
+                          {editingTest.pricingType === 'paid' && (
+                            <TextField
+                              fullWidth label="Price (₹)" type="number" sx={{ mt: 2 }}
+                              value={editingTest.price}
+                              onChange={(e) => setEditingTest({ ...editingTest, price: e.target.value })}
+                              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                            />
+                          )}
+                        </Paper>
+                      </Grid>
+                    </Grid>
+
+                    <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Questions</Typography>
+                    {editingTest.questions.map((q, qIndex) => (
+                      <QuestionCard key={qIndex} elevation={2} sx={{ mb: 3 }}>
+                        <IconButton
+                          color="error" size="small"
+                          sx={{ position: 'absolute', top: 8, right: 8 }}
+                          onClick={() => removeQuestionInEdit(qIndex)}
+                          disabled={editingTest.questions.length === 1}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+
+                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                          Question {qIndex + 1}
+                        </Typography>
+
+                        <TextField
+                          fullWidth label="Question Text" required sx={{ mb: 2 }}
+                          value={q.questionText}
+                          onChange={(e) => handleQuestionChangeInEdit(qIndex, 'questionText', e.target.value)}
+                        />
+
+                        <Grid container spacing={2}>
+                          {q.options.map((opt, oIndex) => (
+                            <Grid item xs={12} sm={6} key={oIndex}>
+                              <TextField
+                                fullWidth label={`Option ${oIndex + 1}`} required size="small"
+                                value={opt}
+                                onChange={(e) => handleOptionChangeInEdit(qIndex, oIndex, e.target.value)}
+                              />
+                            </Grid>
+                          ))}
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth label="Correct Answer" required size="small"
+                              value={q.correctAnswer}
+                              onChange={(e) => handleQuestionChangeInEdit(qIndex, 'correctAnswer', e.target.value)}
+                              helperText="Must match one of the options exactly"
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth label="Explanation (Optional)" size="small"
+                              value={q.explaination || ''}
+                              onChange={(e) => handleQuestionChangeInEdit(qIndex, 'explaination', e.target.value)}
+                            />
+                          </Grid>
+                        </Grid>
+                      </QuestionCard>
+                    ))}
+
+                    <Button variant="outlined" startIcon={<AddIcon />} onClick={addQuestionInEdit} sx={{ mt: 2 }}>
+                      Add Question
+                    </Button>
+                  </Box>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUpdateTest}
+                  disabled={isLoading}
+                  startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
+                >
+                  Update Test
+                </Button>
+              </DialogActions>
             </Dialog>
           </motion.div>
         )}
