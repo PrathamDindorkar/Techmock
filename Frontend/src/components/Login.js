@@ -303,7 +303,7 @@ const Login = () => {
                   borderRadius: { xs: '15px', sm: '20px' },
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: { 
+                  boxShadow: {
                     xs: '0 4px 20px rgba(0, 0, 0, 0.08)',
                     sm: '0 8px 32px rgba(0, 0, 0, 0.1)'
                   },
@@ -338,9 +338,9 @@ const Login = () => {
                       border: '1px solid rgba(211, 47, 47, 0.3)',
                     }}
                   >
-                    <Typography 
-                      variant="body2" 
-                      color="error" 
+                    <Typography
+                      variant="body2"
+                      color="error"
                       align="center"
                       sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
                     >
@@ -410,8 +410,8 @@ const Login = () => {
                             edge="end"
                             size={isMobile ? "small" : "medium"}
                           >
-                            {showPassword ? 
-                              <VisibilityOff sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} /> : 
+                            {showPassword ?
+                              <VisibilityOff sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} /> :
                               <Visibility sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                             }
                           </IconButton>
@@ -482,8 +482,8 @@ const Login = () => {
                     )}
                   </Button>
                   <Divider sx={{ my: 2 }}>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       color="text.secondary"
                       sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
                     >
@@ -543,10 +543,10 @@ const Login = () => {
             overflow: 'auto',
           }}
         >
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              mb: 2, 
+          <Typography
+            variant="h6"
+            sx={{
+              mb: 2,
               color: '#1976d2',
               fontSize: { xs: '1.1rem', sm: '1.25rem' },
               textAlign: 'center',
@@ -555,15 +555,15 @@ const Login = () => {
             {forgotPasswordStep === 'sendOtp'
               ? 'Forgot Password'
               : forgotPasswordStep === 'verifyOtp'
-              ? 'Verify OTP'
-              : 'Reset Password'}
+                ? 'Verify OTP'
+                : 'Reset Password'}
           </Typography>
 
           {forgotPasswordError && (
-            <Typography 
-              color="error" 
-              sx={{ 
-                mb: 2, 
+            <Typography
+              color="error"
+              sx={{
+                mb: 2,
                 fontSize: { xs: '0.8rem', sm: '0.875rem' },
                 textAlign: 'center',
                 p: 1,
@@ -575,9 +575,9 @@ const Login = () => {
             </Typography>
           )}
           {forgotPasswordSuccess && (
-            <Typography 
-              color="success.main" 
-              sx={{ 
+            <Typography
+              color="success.main"
+              sx={{
                 mb: 2,
                 fontSize: { xs: '0.8rem', sm: '0.875rem' },
                 textAlign: 'center',
@@ -613,7 +613,7 @@ const Login = () => {
                   variant="contained"
                   onClick={handleSendOtp}
                   disabled={!email}
-                  sx={{ 
+                  sx={{
                     borderRadius: '10px',
                     py: { xs: 1, sm: 1.5 },
                     fontSize: { xs: '0.9rem', sm: '1rem' },
@@ -646,7 +646,7 @@ const Login = () => {
                   variant="contained"
                   onClick={handleVerifyOtp}
                   disabled={!otp}
-                  sx={{ 
+                  sx={{
                     borderRadius: '10px',
                     py: { xs: 1, sm: 1.5 },
                     fontSize: { xs: '0.9rem', sm: '1rem' },
@@ -697,7 +697,7 @@ const Login = () => {
                   variant="contained"
                   onClick={handleResetPassword}
                   disabled={!newPassword || !confirmPassword}
-                  sx={{ 
+                  sx={{
                     borderRadius: '10px',
                     py: { xs: 1, sm: 1.5 },
                     fontSize: { xs: '0.9rem', sm: '1rem' },
