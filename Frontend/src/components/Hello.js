@@ -570,14 +570,6 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
     doc.setFontSize(12);
     doc.setTextColor(...colors.navy);
 
-    doc.text('Authorized Signatory', 50, sigY, { align: 'center' });
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(0.8);
-    doc.line(30, sigY + 3, 70, sigY + 3);
-
-    doc.text('Director', pageWidth - 50, sigY, { align: 'center' });
-    doc.line(pageWidth - 70, sigY + 3, pageWidth - 30, sigY + 3);
-
     doc.setFont('times', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...colors.text);
@@ -588,7 +580,7 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
       day: 'numeric',
     }).format(currentDate);
     doc.text(`Issued on: ${dateStr}`, pageWidth / 2, sigY + 14, { align: 'center' });
-    doc.text('TechMock', pageWidth / 2, sigY, { align: 'center' });
+    doc.text('TechMocks', pageWidth / 2, sigY, { align: 'center' });
 
     doc.setDrawColor(...colors.gold);
     doc.setLineWidth(1);

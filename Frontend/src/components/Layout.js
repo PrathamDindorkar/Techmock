@@ -466,7 +466,7 @@ const Layout = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 color="inherit"
-                onClick={() => navigate('/hello')}
+                onClick={() => navigate('/home')}
                 sx={{
                   textDecoration: 'none',
                   cursor: 'pointer',
