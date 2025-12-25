@@ -20,11 +20,12 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/mock-test/:id" element={<MockTestPage />} />
+        
         {/* Protected Routes with Layout */}
         <Route element={<Layout />}>
-        <Route path="/mock-test/:id/review" element={<ReviewMockPage />} />
+          <Route path="/mock-test/:id/review" element={<ReviewMockPage />} />
           <Route path='/mocks' element={<AllMocks/>}/>
-          <Route path='/Home' element={<Landing />} />
+          <Route path='/home' element={<Landing />} />
           <Route path="/hello" element={<Hello />} />
           <Route path="/admin" element={<AdminPortal />} />
           <Route path="/cart" element ={<Cart/>}/>
@@ -33,7 +34,7 @@ const App = () => {
         </Route>
 
         {/* Redirect to Login by Default */}
-        <Route path="*" element={<Navigate to="/Home" />} />
+        <Route path="*" element={<Navigate to="/home" />} />
       </Routes>
     </Router>
   );

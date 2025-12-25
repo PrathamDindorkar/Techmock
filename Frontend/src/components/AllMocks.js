@@ -50,9 +50,11 @@ const AllMocks = () => {
   const location = useLocation();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
-  // Category colors for light and dark modes
+  const PROGRAMMING_LANGUAGES = [
+    'Java', 'Python', 'JavaScript', 'C++', 'React', 'Node.js', 'Go', 'TypeScript', 'PHP', 'C#', 'Ruby', 'Swift', 'Kotlin'
+  ];
+
   const getCategoryColors = () => ({
     'Science': isDarkMode 
       ? 'linear-gradient(135deg, #433773 0%, #2c2243 100%)' 
@@ -70,91 +72,100 @@ const AllMocks = () => {
       ? 'linear-gradient(135deg, #2c466b 0%, #315a7c 100%)' 
       : 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
   });
+
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const categoryColors = getCategoryColors();
   const defaultCategoryColor = isDarkMode 
     ? 'linear-gradient(135deg, #333740 0%, #252932 100%)' 
     : 'linear-gradient(135deg, #8e9eab 0%, #eef2f3 100%)';
 
-  // Function to fetch all data
   const fetchData = async () => {
-  try {
-    setLoading(true);
-    const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
-    setMockTests(mockResponse.data);
+    try {
+      setLoading(true);
+      const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
+      let data = mockResponse.data;
 
-    if (Object.keys(mockResponse.data).length > 0) {
-      setExpandedCategory(Object.keys(mockResponse.data)[0]);
+      // === GROUP OF PROGRAMMING LANGUAGES ===
+      const languagesGroup = {};
+      let totalLangTests = 0;
+
+      PROGRAMMING_LANGUAGES.forEach(lang => {
+        if (data[lang]) {
+          languagesGroup[lang] = data[lang];
+          totalLangTests += data[lang].length;
+          delete data[lang]; 
+        }
+      });
+
+      if (Object.keys(languagesGroup).length > 0) {
+        data['Languages'] = languagesGroup;
+      }
+      // ====================================================
+
+      setMockTests(data);
+
+      if (Object.keys(data).length > 0) {
+        setExpandedCategory(Object.keys(data)[0]);
+      }
+
+      const token = localStorage.getItem('token');
+      if (token) {
+        const [cartResponse, profileResponse] = await Promise.all([
+          axios.get(`${backendUrl}/api/user/cart`, { headers: { Authorization: token } }),
+          axios.get(`${backendUrl}/api/user/profile`, { headers: { Authorization: token } }),
+        ]);
+
+        const cartData = cartResponse.data?.cart || [];
+        setCartItems(
+          cartData.map((item) => ({
+            id: item.mockTestId?._id || item.mockTestId?.id,
+            title: item.mockTestId?.title || 'Untitled',
+            price: item.price || 0,
+          }))
+        );
+
+        const profileData = profileResponse.data;
+        setPurchasedTests(
+          profileData?.purchasedTests?.map((test) => test._id) || []
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        setAlertMessage('Session expired. Please log in again.');
+        setAlertSeverity('warning');
+        setAlertOpen(true);
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
+        setAlertMessage('Failed to fetch data. Please try again.');
+        setAlertSeverity('error');
+        setAlertOpen(true);
+      }
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const token = localStorage.getItem('token');
-    if (token) {
-      const [cartResponse, profileResponse] = await Promise.all([
-        axios.get(`${backendUrl}/api/user/cart`, { headers: { Authorization: token } }),
-        axios.get(`${backendUrl}/api/user/profile`, { headers: { Authorization: token } }),
-      ]);
-
-      // Safely handle cart data
-      const cartData = cartResponse.data?.cart || [];
-      setCartItems(
-        cartData.map((item) => ({
-          id: item.mockTestId?._id || item.mockTestId?.id, // Fallback to id if _id is undefined
-          title: item.mockTestId?.title || 'Untitled',
-          price: item.price || 0,
-        }))
-      );
-      console.log('Cart Response:', cartResponse.data);
-
-      // Safely handle profile data
-      const profileData = profileResponse.data;
-      console.log('Profile Response:', profileData);
-      setPurchasedTests(
-        profileData?.purchasedTests?.map((test) => test._id) || []
-      );
-      console.log('Purchased Tests:', profileData?.purchasedTests?.map((test) => test._id) || []);
-    }
-  } catch (error) {
-    console.error('Error fetching data:', error.response?.data || error.message);
-    if (error.response?.status === 401) {
-      setAlertMessage('Session expired. Please log in again.');
-      setAlertSeverity('warning');
-      setAlertOpen(true);
-      localStorage.removeItem('token');
-      navigate('/login');
-    } else {
-      setAlertMessage('Failed to fetch data. Please try again.');
-      setAlertSeverity('error');
-      setAlertOpen(true);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Fetch data on mount and when location changes (after checkout)
   useEffect(() => {
     fetchData();
-    console.log('Updated purchasedTests:', purchasedTests);
-  }, [location.pathname]); // Re-fetch when route changes
+  }, [location.pathname]);
 
   const hasUserPurchased = (mockId) => {
     const mockTest = findMockById(mockId);
-    const isPurchased = mockTest && (mockTest.pricingType === 'free' || purchasedTests.includes(mockId));
-    console.log(`Checking if ${mockId} is purchased:`, {
-      mockTest,
-      isFree: mockTest?.pricingType === 'free',
-      isInPurchased: purchasedTests.includes(mockId),
-      result: isPurchased
-    });
-    return isPurchased;
+    return mockTest && (mockTest.pricingType === 'free' || purchasedTests.includes(mockId));
   };
 
   const findMockById = (mockId) => {
     for (const category in mockTests) {
-      const mock = mockTests[category].find(m => m.id === mockId || m._id === mockId);
-      if (mock) {
-        console.log(`Found mock ${mockId}:`, mock);
-        return mock;
+      if (category === 'Languages') {
+        for (const subCat in mockTests[category]) {
+          const mock = mockTests[category][subCat].find(m => m.id === mockId || m._id === mockId);
+          if (mock) return mock;
+        }
+      } else {
+        const mock = mockTests[category].find(m => m.id === mockId || m._id === mockId);
+        if (mock) return mock;
       }
     }
     return null;
@@ -173,17 +184,7 @@ const AllMocks = () => {
       return;
     }
     
-    const mockTest = findMockById(mockId);
-    if (!mockTest) {
-      setAlertMessage('Test not found!');
-      setAlertSeverity('error');
-      setAlertOpen(true);
-      return;
-    }
-    
-    const canAccess = hasUserPurchased(mockId);
-    console.log(`Attempting to access ${mockId}, canAccess: ${canAccess}`);
-    if (canAccess) {
+    if (hasUserPurchased(mockId)) {
       navigate(`/mock-test/${mockId}`);
     } else {
       setAlertMessage('Please purchase this test to access it!');
@@ -203,14 +204,6 @@ const AllMocks = () => {
       return;
     }
     
-    const mockTest = findMockById(mockId);
-    if (!mockTest) {
-      setAlertMessage('Test not found!');
-      setAlertSeverity('error');
-      setAlertOpen(true);
-      return;
-    }
-    
     if (isInCart(mockId)) {
       setAlertMessage('This item is already in your cart!');
       setAlertSeverity('info');
@@ -220,19 +213,18 @@ const AllMocks = () => {
 
     setCartLoading(true);
     try {
-      const response = await axios.post(
+      await axios.post(
         `${backendUrl}/api/user/cart/add`,
         { mockTestId: mockId },
         { headers: { Authorization: token } }
       );
 
-      const newCartItem = { id: mockId, title: mockTest.title, price: mockTest.price || 0 };
-      setCartItems([...cartItems, newCartItem]);
+      const mockTest = findMockById(mockId);
+      setCartItems([...cartItems, { id: mockId, title: mockTest.title, price: mockTest.price || 0 }]);
       setAlertMessage('Added to cart successfully!');
       setAlertSeverity('success');
       setAlertOpen(true);
     } catch (error) {
-      console.error('Error adding to cart:', error);
       setAlertMessage(error.response?.data?.message || 'Failed to add to cart');
       setAlertSeverity('error');
       setAlertOpen(true);
@@ -257,7 +249,7 @@ const AllMocks = () => {
   };
 
   const getDifficultyIcon = (difficulty) => {
-    switch (difficulty) {
+    switch (difficulty?.toLowerCase()) {
       case 'easy': return <Chip icon={<EmojiEventsIcon />} label="Easy" size="small" color="success" />;
       case 'medium': return <Chip icon={<EmojiEventsIcon />} label="Medium" size="small" color="primary" />;
       case 'hard': return <Chip icon={<EmojiEventsIcon />} label="Hard" size="small" color="error" />;
@@ -275,7 +267,7 @@ const AllMocks = () => {
   };
 
   const getAccessIndicator = (mock) => {
-    if (hasUserPurchased(mock.id)) {
+    if (hasUserPurchased(mock.id || mock._id)) {
       return null;
     }
     return (
@@ -294,185 +286,193 @@ const AllMocks = () => {
     );
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { when: "beforeChildren", staggerChildren: 0.3 } }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
-  };
-
-  const cardVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 100, delay: 0.1 } },
-    hover: { scale: 1.05, boxShadow: isDarkMode ? "0px 10px 30px rgba(0, 0, 0, 0.4)" : "0px 10px 30px rgba(0, 0, 0, 0.2)", transition: { type: "spring", stiffness: 300 } }
-  };
-
-  // Get gradient based on theme mode
   const headerGradient = isDarkMode 
     ? 'linear-gradient(90deg, #4568b0 0%, #264075 100%)' 
     : 'linear-gradient(90deg, #4b6cb7 0%, #182848 100%)';
 
   return (
-    <MotionContainer initial="hidden" animate="visible" variants={containerVariants} maxWidth="lg">
-      <Box sx={{ textAlign: 'center' }}>
+    <MotionContainer maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 100 }}>
           <Typography variant="h3" sx={{ 
-            mt: 5, 
-            mb: 3, 
             fontWeight: 700, 
             background: headerGradient, 
             WebkitBackgroundClip: 'text', 
             WebkitTextFillColor: 'transparent',
-            color: theme.palette.text.primary // Fallback for browsers that don't support background-clip
           }}>
             Prepare with Our Mock Tests
           </Typography>
         </motion.div>
+        <Typography variant="h6" align="center" color="textSecondary" sx={{ mt: 2, maxWidth: '800px', mx: 'auto' }}>
+          Enhance your skills with our comprehensive collection of mock tests categorized by subject area
+        </Typography>
       </Box>
-      
-      <Typography variant="h6" align="center" color="textSecondary" sx={{ mb: 5, maxWidth: '800px', mx: 'auto' }}>
-        Enhance your skills with our comprehensive collection of mock tests categorized by subject area
-      </Typography>
 
-      <Box sx={{ mt: 4, mb: 8 }}>
+      <Box sx={{ mt: 4 }}>
         {Object.keys(mockTests).length === 0 ? (
-          <Box sx={{ 
-            textAlign: 'center', 
-            py: 8, 
-            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 30, 30, 0.8)' : '#f5f5f5', 
-            borderRadius: 2 
-          }}>
+          <Box sx={{ textAlign: 'center', py: 8, backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 30, 30, 0.8)' : '#f5f5f5', borderRadius: 2 }}>
             <Typography variant="h5" color="text.primary">No mock tests available at the moment</Typography>
             <Typography variant="body1" color="textSecondary" sx={{ mt: 2 }}>Please check back later for new content</Typography>
           </Box>
         ) : (
-          Object.keys(mockTests).map((category, index) => (
-            <MotionAccordion 
-              key={category} 
-              expanded={expandedCategory === category} 
-              onChange={handleAccordionChange(category)} 
-              sx={{ 
-                mb: 3, 
-                borderRadius: '12px', 
-                overflow: 'hidden', 
-                '&:before': { display: 'none' }, 
-                boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.25)' : '0 4px 20px rgba(0,0,0,0.08)',
-                backgroundColor: theme.palette.background.paper,
-              }} 
-              variants={itemVariants}
-            >
-              <AccordionSummary 
-                expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.getContrastText('#667eea') }} />} 
+          Object.keys(mockTests).map((category) => {
+            const isLanguagesCategory = category === 'Languages';
+            const testsData = mockTests[category];
+
+            const totalTestsInCategory = isLanguagesCategory 
+              ? Object.values(testsData).reduce((sum, arr) => sum + arr.length, 0)
+              : testsData.length;
+
+            return (
+              <MotionAccordion 
+                key={category}
+                expanded={expandedCategory === category}
+                onChange={handleAccordionChange(category)}
                 sx={{ 
-                  background: categoryColors[category] || defaultCategoryColor, 
-                  color: theme.palette.getContrastText('#667eea'), 
-                  '& .MuiAccordionSummary-content': { 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center' 
-                  } 
+                  mb: 4, 
+                  borderRadius: '12px', 
+                  overflow: 'hidden', 
+                  '&:before': { display: 'none' }, 
+                  boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.25)' : '0 4px 20px rgba(0,0,0,0.08)',
+                  backgroundColor: theme.palette.background.paper,
                 }}
               >
-                <Typography variant="h5" sx={{ fontWeight: 600 }}>{category}</Typography>
-                <Chip 
-                  label={`${mockTests[category].length} Tests`} 
+                <AccordionSummary 
+                  expandIcon={<ExpandMoreIcon />}
                   sx={{ 
-                    backgroundColor: theme.palette.primary.default,
-                    color: 'primary', 
-                    fontWeight: 500 
-                  }} 
-                />
-              </AccordionSummary>
-              <AccordionDetails sx={{ 
-                p: 3, 
-                backgroundColor: isDarkMode ? theme.palette.background.paper : '#f9fafc' 
-              }}>
-                <Grid container spacing={3}>
-                  {mockTests[category].map((mock) => (
-                    <Grid item xs={12} sm={6} md={4} key={mock.id}>
-                      <MotionCard 
-                        variants={cardVariants} 
-                        whileHover="hover" 
-                        initial="hidden" 
-                        animate="visible" 
-                        sx={{ 
-                          height: '100%', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          borderRadius: '12px', 
-                          overflow: 'hidden', 
-                          transition: 'all 0.3s ease', 
-                          position: 'relative',
-                          backgroundColor: theme.palette.background.paper,
-                          boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.2)' : undefined,
-                        }}
-                      >
-                        {getAccessIndicator(mock)}
-                        <CardActionArea onClick={() => handleCardClick(mock.id)} sx={{ flexGrow: 1 }}>
-                          <CardMedia 
-                            component="div" 
+                    background: categoryColors[category] || defaultCategoryColor, 
+                    color: 'white',
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 600 }}>{category}</Typography>
+                  <Chip label={`${totalTestsInCategory} Tests`} sx={{ ml: 2, backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                </AccordionSummary>
+
+                <AccordionDetails sx={{ p: 3, backgroundColor: isDarkMode ? theme.palette.background.paper : '#f9fafc' }}>
+                  {isLanguagesCategory ? (
+                    // Nested accordions for each programming language
+                    Object.keys(testsData).map((subCategory) => (
+                      <Accordion key={subCategory} sx={{ boxShadow: 'none', '&:before': { display: 'none' }, mb: 3 }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>{subCategory}</Typography>
+                          <Chip label={`${testsData[subCategory].length} Tests`} size="small" sx={{ ml: 2 }} />
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Grid container spacing={3}>
+                            {testsData[subCategory].map((mock) => (
+                              <Grid item xs={12} sm={6} md={4} key={mock.id || mock._id}>
+                                <MotionCard 
+                                  whileHover={{ scale: 1.05 }}
+                                  sx={{ 
+                                    height: '100%', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    borderRadius: '12px', 
+                                    overflow: 'hidden', 
+                                    position: 'relative',
+                                    boxShadow: 3,
+                                  }}
+                                >
+                                  {getAccessIndicator(mock)}
+                                  <CardActionArea onClick={() => handleCardClick(mock.id || mock._id)} sx={{ flexGrow: 1 }}>
+                                    <CardMedia 
+                                      component="div" 
+                                      sx={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.04)' }}
+                                    >
+                                      <AssignmentIcon sx={{ fontSize: 60, opacity: 0.7, color: theme.palette.primary.main }} />
+                                    </CardMedia>
+                                    <CardContent>
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{mock.title}</Typography>
+                                        {mock.pricingType === "paid" && !hasUserPurchased(mock.id || mock._id) && (
+                                          <IconButton 
+                                            onClick={(e) => handleAddToCart(mock.id || mock._id, e)}
+                                            disabled={isInCart(mock.id || mock._id) || cartLoading}
+                                          >
+                                            {cartLoading ? <CircularProgress size={24} /> : <AddShoppingCartIcon />}
+                                          </IconButton>
+                                        )}
+                                      </Box>
+                                      <Typography variant="body2" color="textSecondary" sx={{ my: 2 }}>{mock.description}</Typography>
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        {getDifficultyIcon(mock.difficulty)}
+                                        {getPriceDisplay(mock)}
+                                      </Box>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                                        <Typography variant="body2" color="text.secondary">{mock.timeLimit} min</Typography>
+                                      </Box>
+                                    </CardContent>
+                                  </CardActionArea>
+                                </MotionCard>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </AccordionDetails>
+                      </Accordion>
+                    ))
+                  ) : (
+                    // Regular category (non-Languages)
+                    <Grid container spacing={3}>
+                      {testsData.map((mock) => (
+                        <Grid item xs={12} sm={6} md={4} key={mock.id || mock._id}>
+                          <MotionCard 
+                            whileHover={{ scale: 1.05 }}
                             sx={{ 
-                              height: 140, 
+                              height: '100%', 
                               display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' 
+                              flexDirection: 'column', 
+                              borderRadius: '12px', 
+                              overflow: 'hidden', 
+                              position: 'relative',
+                              boxShadow: 3,
                             }}
                           >
-                            <AssignmentIcon sx={{ fontSize: 60, opacity: 0.7, color: theme.palette.primary.main }} />
-                          </CardMedia>
-                          <CardContent sx={{ flexGrow: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>{mock.title}</Typography>
-                              {mock.pricingType === "paid" && !hasUserPurchased(mock.id) && (
-                                <IconButton 
-                                  color={isInCart(mock.id) ? "secondary" : "primary"} 
-                                  onClick={(e) => handleAddToCart(mock.id, e)} 
-                                  disabled={isInCart(mock.id) || cartLoading} 
-                                  size="small"
-                                >
-                                  {cartLoading && !isInCart(mock.id) ? <CircularProgress size={24} /> : <AddShoppingCartIcon />}
-                                </IconButton>
-                              )}
-                            </Box>
-                            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>{mock.description}</Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-                              <Box>{mock.difficulty && getDifficultyIcon(mock.difficulty)}</Box>
-                              <Box>{getPriceDisplay(mock)}</Box>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">{mock.timeLimit} min</Typography>
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </CardActionArea>
-                      </MotionCard>
+                            {getAccessIndicator(mock)}
+                            <CardActionArea onClick={() => handleCardClick(mock.id || mock._id)} sx={{ flexGrow: 1 }}>
+                              <CardMedia 
+                                component="div" 
+                                sx={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.04)' }}
+                              >
+                                <AssignmentIcon sx={{ fontSize: 60, opacity: 0.7, color: theme.palette.primary.main }} />
+                              </CardMedia>
+                              <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography variant="h6" sx={{ fontWeight: 600 }}>{mock.title}</Typography>
+                                  {mock.pricingType === "paid" && !hasUserPurchased(mock.id || mock._id) && (
+                                    <IconButton 
+                                      onClick={(e) => handleAddToCart(mock.id || mock._id, e)}
+                                      disabled={isInCart(mock.id || mock._id) || cartLoading}
+                                    >
+                                      {cartLoading ? <CircularProgress size={24} /> : <AddShoppingCartIcon />}
+                                    </IconButton>
+                                  )}
+                                </Box>
+                                <Typography variant="body2" color="textSecondary" sx={{ my: 2 }}>{mock.description}</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  {getDifficultyIcon(mock.difficulty)}
+                                  {getPriceDisplay(mock)}
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                                  <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">{mock.timeLimit} min</Typography>
+                                </Box>
+                              </CardContent>
+                            </CardActionArea>
+                          </MotionCard>
+                        </Grid>
+                      ))}
                     </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </MotionAccordion>
-          ))
+                  )}
+                </AccordionDetails>
+              </MotionAccordion>
+            );
+          })
         )}
       </Box>
 
-      <Snackbar 
-        open={alertOpen} 
-        autoHideDuration={4000} 
-        onClose={() => setAlertOpen(false)} 
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity={alertSeverity} 
-          onClose={() => setAlertOpen(false)} 
-          variant="filled" 
-          elevation={6} 
-          sx={{ width: '100%' }}
-        >
+      <Snackbar open={alertOpen} autoHideDuration={4000} onClose={() => setAlertOpen(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert severity={alertSeverity} onClose={() => setAlertOpen(false)} variant="filled" elevation={6}>
           {alertMessage}
         </Alert>
       </Snackbar>

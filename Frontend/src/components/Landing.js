@@ -4,31 +4,43 @@ import {
   Typography,
   Container,
   Box,
-  Link,
-  useMediaQuery,
   IconButton,
-  useTheme
+  Stack,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  useTheme,
+  useMediaQuery
 } from "@mui/material";
 import {
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
   ArrowDownward,
   School,
   WorkOutline,
-  TrendingUp
+  TrendingUp,
+  Speed,
+  EmojiEvents,
+  Analytics
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import image1 from "./freepik__the-style-is-candid-image-photography-with-natural__89544.jpeg";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const Landing = ({ toggleColorMode }) => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [scrolled, setScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
-  // Handle scroll effect
+  // Check if user is logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 100);
@@ -37,110 +49,76 @@ const Landing = ({ toggleColorMode }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6 }
-    }
-  };
-
   const benefits = [
     {
       icon: <School fontSize="large" />,
       title: "Industry-Relevant Content",
-      description: "Our questions are curated by experts to match real certification exams and interviews."
+      description: "Curated by experts to match real certification exams and interviews.",
+      color: "#00d4ff"
+    },
+    {
+      icon: <Speed fontSize="large" />,
+      title: "Real-Time Feedback",
+      description: "Get instant results and explanations to learn from mistakes.",
+      color: "#ff6b6b"
+    },
+    {
+      icon: <Analytics fontSize="large" />,
+      title: "Performance Analytics",
+      description: "Track progress with detailed analytics and personalized insights.",
+      color: "#4ecdc4"
+    },
+    {
+      icon: <EmojiEvents fontSize="large" />,
+      title: "Earn Certifications",
+      description: "Motivational certificates based on your mock exam scores.",
+      color: "#ffd93d"
     },
     {
       icon: <WorkOutline fontSize="large" />,
       title: "Career Advancement",
-      description: "95% of our users report increased confidence in their technical interviews."
+      description: "95% of users report increased confidence in technical interviews.",
+      color: "#a8e6cf"
     },
     {
       icon: <TrendingUp fontSize="large" />,
-      title: "Performance Analytics",
-      description: "Track your progress with detailed analytics and personalized recommendations."
+      title: "Customized Practice",
+      description: "Tailor sessions by difficulty, topic, or exam type.",
+      color: "#ff8b94"
     }
   ];
 
+  const glassStyle = {
+    background: isDarkMode 
+      ? 'rgba(255, 255, 255, 0.05)' 
+      : 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(20px)',
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)'}`,
+    boxShadow: isDarkMode 
+      ? '0 8px 32px 0 rgba(0, 0, 0, 0.37)' 
+      : '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+  };
+
   return (
     <Box sx={{
-      bgcolor: theme.palette.background.default,
+      bgcolor: 'transparent',
       color: theme.palette.text.primary,
-      transition: "all 0.3s ease-in-out",
-      overflow: "hidden"
+      overflow: "hidden",
+      position: "relative",
+      minHeight: "100vh"
     }}>
-      {/* Header with theme toggle */}
-      <Box
-        component={motion.div}
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-        sx={{
-          position: "fixed",
-          top: 0,
-          width: "100%",
-          zIndex: 1000,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          py: 2,
-          px: 4,
-          backdropFilter: scrolled ? "blur(10px)" : "none",
-          boxShadow: scrolled ? 3 : 0,
-          bgcolor: scrolled ? (isDarkMode ? 'rgba(18, 18, 18, 0.8)' : 'rgba(255, 255, 255, 0.8)') : 'transparent',
-          transition: "all 0.3s ease"
-        }}
-      >
-      </Box>
-
       {/* Hero Section */}
       <Box
-        component={motion.div}
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
         sx={{
-          height: "100vh",
-          width: "100%",
-          borderRadius: '50px',
-          position: "relative",
+          minHeight: "100vh",
           display: "flex",
-          justifyContent: "center",
           alignItems: "center",
-          textAlign: "center",
-          overflow: "hidden",
+          position: "relative",
+          zIndex: 1,
+          pt: 8
         }}
       >
-        {/* Background with overlay */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            filter: isDarkMode ? "brightness(0.4)" : "brightness(0.7)",
-            transition: "filter 0.5s ease",
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: isDarkMode
-                ? "linear-gradient(to bottom, rgba(0, 128, 255, 1), rgba(25,25,25,0.9))"
-                : "linear-gradient(to bottom, rgba(0, 128, 255, 1), rgba(255, 255, 255, 1))",
-            }
-          }}
-        />
-
-        {/* Hero Content */}
-        <Container maxWidth="md" sx={{ position: "relative", zIndex: 2 }}>
+        <Container maxWidth="lg" sx={{ textAlign: "center" }}>
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -148,16 +126,18 @@ const Landing = ({ toggleColorMode }) => {
           >
             <Typography
               variant="h1"
-              component="h1"
               sx={{
-                fontWeight: 800,
-                fontSize: { xs: "2.5rem", sm: "3.5rem", md: "4.5rem" },
-                mb: 2,
-                textShadow: "0 2px 10px rgba(0,0,0,0.2)",
-                color: isDarkMode ? "white" : "white",
+                fontSize: { xs: "2.5rem", md: "5rem" },
+                fontWeight: 900,
+                mb: 3,
+                lineHeight: 1.1,
+                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              Ace Your Tech Career
+              Master Your Tech Journey
             </Typography>
           </motion.div>
 
@@ -168,75 +148,98 @@ const Landing = ({ toggleColorMode }) => {
           >
             <Typography
               variant="h5"
-              sx={{
-                mb: 4,
+              sx={{ 
+                maxWidth: "760px", 
+                mx: "auto", 
+                mb: 5, 
                 fontWeight: 400,
-                color: isDarkMode ? "rgba(255,255,255,0.9)" : "white",
-                textShadow: "0 1px 5px rgba(0,0,0,0.2)",
-                maxWidth: "800px",
-                mx: "auto",
+                color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
               }}
             >
-              Practice with our intelligent mock exams designed by industry experts.
-              Stand out in interviews and certification exams with confidence.
+              Realistic mock exams for AWS, Azure, GCP, Cisco, CompTIA, and more. 
+              Practice with confidence and ace your certifications.
             </Typography>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-          >
-            <Box sx={{ display: "flex", gap: 3, justifyContent: "center", mt: 5 }}>
+          {!isLoggedIn && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+            >
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={3} justifyContent="center">
+                <Button
+                  component={motion.button}
+                  whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0, 212, 255, 0.4)' }}
+                  whileTap={{ scale: 0.97 }}
+                  variant="contained"
+                  size="large"
+                  sx={{
+                    px: 5, 
+                    py: 2, 
+                    fontSize: "1.1rem",
+                    background: "linear-gradient(135deg, #00d4ff 0%, #0077b6 100%)",
+                    borderRadius: "50px",
+                    boxShadow: "0 10px 30px rgba(0, 212, 255, 0.3)",
+                    textTransform: 'none',
+                    fontWeight: 600
+                  }}
+                >
+                  Start Free Trial • No Credit Card
+                </Button>
+
+                <Button
+                  component={motion.button}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.97 }}
+                  variant="outlined"
+                  size="large"
+                  sx={{
+                    px: 5, 
+                    py: 2, 
+                    fontSize: "1.1rem",
+                    borderRadius: "50px",
+                    borderWidth: 2,
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                    color: isDarkMode ? 'white' : 'black',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    ...glassStyle
+                  }}
+                >
+                  Browse Certifications
+                </Button>
+              </Stack>
+            </motion.div>
+          )}
+
+          {isLoggedIn && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+            >
               <Button
                 component={motion.button}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0, 212, 255, 0.4)' }}
                 whileTap={{ scale: 0.97 }}
                 variant="contained"
                 size="large"
-                onClick={() => navigate("/login")}
                 sx={{
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.1rem",
-                  borderRadius: "30px",
-                  background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-                  boxShadow: "0 3px 15px rgba(33, 150, 243, 0.3)",
-                  textTransform: "none",
+                  px: 6, 
+                  py: 2, 
+                  fontSize: "1.2rem",
+                  background: "linear-gradient(135deg, #00d4ff 0%, #0077b6 100%)",
+                  borderRadius: "50px",
+                  boxShadow: "0 10px 30px rgba(0, 212, 255, 0.3)",
+                  textTransform: 'none',
                   fontWeight: 600
                 }}
               >
-                Get Started
+                Continue to Dashboard
               </Button>
-
-              <Button
-                component={motion.button}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
-                variant="outlined"
-                size="large"
-                onClick={() => navigate("/register")}
-                sx={{
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.1rem",
-                  borderRadius: "30px",
-                  borderWidth: "2px",
-                  textTransform: "none",
-                  fontWeight: 600,
-                  borderColor: "white",
-                  color: "white",
-                  "&:hover": {
-                    borderWidth: "2px",
-                    borderColor: "white",
-                    background: "rgba(255,255,255,0.1)"
-                  }
-                }}
-              >
-                Learn More
-              </Button>
-            </Box>
-          </motion.div>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0 }}
@@ -254,415 +257,287 @@ const Landing = ({ toggleColorMode }) => {
                   behavior: "smooth"
                 });
               }}
-              sx={{ color: "white" }}
+              sx={{ 
+                color: isDarkMode ? 'white' : 'black',
+                ...glassStyle,
+                width: 56,
+                height: 56
+              }}
             >
               <ArrowDownward />
             </IconButton>
           </motion.div>
+
+          {/* Floating Tech Logos */}
+          <Stack 
+            direction="row" 
+            spacing={4} 
+            justifyContent="center" 
+            sx={{ mt: 8, flexWrap: "wrap", gap: 2 }}
+          >
+            {['AWS', 'Azure', 'GCP', 'Cisco', 'Python', 'React'].map((tech, index) => (
+              <motion.div
+                key={tech}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.5 + index * 0.1 }}
+                whileHover={{ y: -5 }}
+              >
+                <Box sx={{
+                  ...glassStyle,
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: '20px',
+                  fontWeight: 600,
+                  fontSize: '1rem'
+                }}>
+                  {tech}
+                </Box>
+              </motion.div>
+            ))}
+          </Stack>
         </Container>
       </Box>
 
-      {/* Main Content Section */}
-      <Container
-        maxWidth="lg"
-        sx={{
-          py: 10,
-          px: { xs: 2, sm: 4 },
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: isMobile ? "column-reverse" : "row",
-            alignItems: "center",
-            gap: 6,
-            mb: 10
-          }}
-        >
-          {/* Left Content */}
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
+      {/* Certification Categories Section */}
+      <Box sx={{ py: 12, position: 'relative', zIndex: 1 }}>
+        <Container maxWidth="lg">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            sx={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              gap: 3
-            }}
+            transition={{ duration: 0.6 }}
           >
-            <Typography
-              variant="h3"
-              component="h2"
-              sx={{
-                fontWeight: 700,
-                color: theme.palette.primary.main,
-                lineHeight: 1.2,
-                mb: 2
+            <Typography 
+              variant="h3" 
+              align="center" 
+              sx={{ 
+                mb: 8, 
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              Empower Your Career with Tailored Mock Exams
+              Choose Your Preparation Path
             </Typography>
+          </motion.div>
 
-            <Typography variant="body1" sx={{ fontSize: "1.1rem", mb: 3 }}>
-              Prepare for success with <strong>TechMock</strong>, the ultimate platform for mock exams designed to sharpen your technical skills. Whether you're gearing up for certifications, job interviews, or skill assessments, we've got you covered with industry-relevant questions and real-time results.
-            </Typography>
+          <Grid container spacing={4}>
+            {[
+              {
+                title: "Cloud Certifications",
+                items: ["AWS Solutions Architect", "Azure Administrator", "GCP Cloud Architect", "AWS DevOps Engineer"],
+                gradient: "linear-gradient(135deg, rgba(0,212,255,0.2) 0%, rgba(138,43,226,0.2) 100%)"
+              },
+              {
+                title: "Security & Networking",
+                items: ["CompTIA Security+", "Cisco CCNA", "Ethical Hacker (CEH)", "Network Security"],
+                gradient: "linear-gradient(135deg, rgba(255,107,107,0.2) 0%, rgba(255,139,148,0.2) 100%)"
+              },
+              {
+                title: "Developer & Interview Prep",
+                items: ["System Design", "Java / Spring Boot", "React / Frontend", "Python / Data Science"],
+                gradient: "linear-gradient(135deg, rgba(78,205,196,0.2) 0%, rgba(168,230,207,0.2) 100%)"
+              }
+            ].map((category, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                  whileHover={{ y: -10 }}
+                >
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 4,
+                      height: "100%",
+                      borderRadius: 4,
+                      ...glassStyle,
+                      background: category.gradient,
+                      transition: "all 0.3s ease"
+                    }}
+                  >
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+                      {category.title}
+                    </Typography>
+                    <List dense>
+                      {category.items.map((item, idx) => (
+                        <ListItem key={idx} sx={{ px: 0 }}>
+                          <ListItemText 
+                            primary={item}
+                            primaryTypographyProps={{
+                              fontWeight: 500
+                            }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                    <Button 
+                      variant="outlined" 
+                      fullWidth 
+                      sx={{ 
+                        mt: 3, 
+                        borderRadius: "20px",
+                        borderWidth: 2,
+                        fontWeight: 600,
+                        textTransform: 'none'
+                      }}
+                      component={motion.button}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      Explore Exams
+                    </Button>
+                  </Paper>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
 
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <Button
-                component={motion.button}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                variant="contained"
-                color="primary"
-                size="large"
-                onClick={() => navigate("/login")}
-                sx={{
-                  borderRadius: "10px",
-                  py: 1.5,
-                  px: 3,
-                  textTransform: "none",
-                  fontWeight: 600
-                }}
-              >
-                Login Now
-              </Button>
-
-              <Button
-                component={motion.button}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                variant="outlined"
-                color="primary"
-                size="large"
-                onClick={() => navigate("/register")}
-                sx={{
-                  borderRadius: "10px",
-                  py: 1.5,
-                  px: 3,
-                  textTransform: "none",
-                  fontWeight: 600
-                }}
-              >
-                Create Account
-              </Button>
-            </Box>
-          </Box>
-
-          {/* Right Content: Image */}
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            sx={{
-              flex: 1,
-              position: "relative"
-            }}
-          >
-            <Box
-              component={motion.div}
-              whileHover={{ scale: 1.02, rotate: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              sx={{
-                position: "relative",
-                borderRadius: "20px",
-                overflow: "hidden",
-                boxShadow: isDarkMode
-                  ? "0 20px 40px rgba(0,0,0,0.4)"
-                  : "0 20px 40px rgba(0,0,0,0.15)",
-                transform: "rotate(-2deg)",
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  background: isDarkMode
-                    ? "linear-gradient(45deg, rgba(33,150,243,0.2), rgba(33,203,243,0.2))"
-                    : "linear-gradient(45deg, rgba(33,150,243,0.1), rgba(33,203,243,0.1))",
-                  zIndex: 1
-                }
-              }}
-            >
-              <img
-                src={image1}
-                alt="TechMock Illustration"
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  display: "block",
-                }}
-              />
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Benefits Section */}
-        <Typography
-          variant="h4"
-          component={motion.h3}
+      {/* Features Section */}
+      <Container maxWidth="lg" sx={{ py: 12, position: 'relative', zIndex: 1 }}>
+        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          sx={{
-            textAlign: "center",
-            mb: 8,
-            fontWeight: 700
-          }}
         >
-          Why Choose TechMock?
-        </Typography>
+          <Typography
+            variant="h3"
+            sx={{
+              textAlign: "center",
+              mb: 8,
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Why Choose TechMock?
+          </Typography>
+        </motion.div>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
-            gap: 4,
-            mb: 10
-          }}
-        >
+        <Grid container spacing={4}>
           {benefits.map((benefit, index) => (
-            <Box
-              key={index}
-              component={motion.div}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.2 }}
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{
+                  y: -10,
+                  transition: { duration: 0.2 }
+                }}
+              >
+                <Box
+                  sx={{
+                    p: 4,
+                    borderRadius: "20px",
+                    textAlign: "center",
+                    ...glassStyle,
+                    height: '100%',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${benefit.color}, transparent)`,
+                    }
+                  }}
+                >
+                  <Box
+                    sx={{
+                      color: benefit.color,
+                      mb: 2,
+                      display: "flex",
+                      justifyContent: "center",
+                      '& svg': {
+                        fontSize: '3rem'
+                      }
+                    }}
+                  >
+                    {benefit.icon}
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                    {benefit.title}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    {benefit.description}
+                  </Typography>
+                </Box>
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+
+      {/* CTA Section */}
+      {!isLoggedIn && (
+        <Box sx={{ pb: 12, position: 'relative', zIndex: 1 }}>
+          <Container maxWidth="md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              whileHover={{
-                y: -10,
-                boxShadow: theme.shadows[10]
-              }}
-              sx={{
-                p: 4,
-                borderRadius: "16px",
-                textAlign: "center",
-                bgcolor: theme.palette.background.paper,
-                boxShadow: theme.shadows[4],
-                transition: "all 0.3s ease",
-                border: `1px solid ${theme.palette.divider}`,
-              }}
             >
               <Box
                 sx={{
-                  color: theme.palette.primary.main,
-                  mb: 2,
-                  display: "flex",
-                  justifyContent: "center"
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: "30px",
+                  p: { xs: 5, md: 8 },
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  boxShadow: "0 20px 60px rgba(102, 126, 234, 0.4)",
                 }}
               >
-                {benefit.icon}
+                <Typography variant="h3" sx={{ mb: 3, fontWeight: 800, color: 'white' }}>
+                  Ready to Excel?
+                </Typography>
+
+                <Typography variant="h6" sx={{ mb: 5, color: 'rgba(255,255,255,0.9)', fontWeight: 400 }}>
+                  Join thousands of professionals accelerating their tech careers
+                </Typography>
+
+                <Button
+                  component={motion.button}
+                  whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(255,255,255,0.3)' }}
+                  whileTap={{ scale: 0.97 }}
+                  variant="contained"
+                  size="large"
+                  sx={{
+                    bgcolor: "white",
+                    color: "#667eea",
+                    px: 6,
+                    py: 2,
+                    borderRadius: "30px",
+                    fontSize: "1.2rem",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.95)"
+                    }
+                  }}
+                >
+                  Start Your Free Trial
+                </Button>
               </Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                {benefit.title}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                {benefit.description}
-              </Typography>
-            </Box>
-          ))}
+            </motion.div>
+          </Container>
         </Box>
-
-        {/* Call to Action */}
-        <Box
-          component={motion.div}
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-          sx={{
-            bgcolor: theme.palette.primary.main,
-            color: "white",
-            borderRadius: "20px",
-            p: { xs: 4, md: 6 },
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
-            boxShadow: "0 10px 30px rgba(33, 150, 243, 0.3)",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              top: "-50%",
-              left: "-50%",
-              width: "200%",
-              height: "200%",
-              background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)",
-              transform: "rotate(30deg)",
-            }
-          }}
-        >
-          <Typography variant="h3" sx={{ mb: 3, fontWeight: 700 }}>
-            Ready to excel in your tech career?
-          </Typography>
-
-          <Typography variant="h6" sx={{ mb: 4, maxWidth: "700px", mx: "auto", fontWeight: 400 }}>
-            Join thousands of professionals who've accelerated their careers with TechMock's personalized practice exams.
-          </Typography>
-
-          <Button
-            component={motion.button}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
-            variant="contained"
-            size="large"
-            onClick={() => navigate("/register")}
-            sx={{
-              bgcolor: "white",
-              color: theme.palette.primary.main,
-              px: 5,
-              py: 1.5,
-              borderRadius: "30px",
-              fontSize: "1.1rem",
-              fontWeight: 600,
-              textTransform: "none",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,0.9)"
-              }
-            }}
-          >
-            Start Free Trial
-          </Button>
-        </Box>
-      </Container>
-
-      {/* Footer Section */}
-      <Box
-        component={motion.footer}
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        viewport={{ once: true }}
-        sx={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)', // Frosted white with transparency
-          backdropFilter: 'blur(12px)', // Apply blur
-          color: theme.palette.text.secondary,
-          py: 6,
-          borderTop: `1px solid ${theme.palette.divider}`,
-          borderRadius: '90px',
-          mt: 10
-        }}
-      >
-        <Container maxWidth="lg">
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              justifyContent: "space-between",
-              alignItems: { xs: "center", md: "flex-start" },
-              textAlign: { xs: "center", md: "left" },
-              gap: 4
-            }}
-          >
-            <Box sx={{ maxWidth: "350px" }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: "bold",
-                  mb: 2,
-                  background: "-webkit-linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent"
-                }}
-              >
-                TechMock
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 3 }}>
-                Empowering tech professionals with industry-leading practice exams
-                and personalized learning paths.
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1,
-                alignItems: { xs: "center", md: "flex-start" }
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>Connect</Typography>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="https://mail.google.com/mail/?view=cm&fs=1&to=techmock972@gmail.com"
-                target="_blank"
-                rel="noopener"
-                color="inherit"
-                underline="hover"
-              >
-                Email Us
-              </Link>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="https://github.com/PrathamDindorkar"
-                target="_blank"
-                rel="noopener"
-                color="inherit"
-                underline="hover"
-              >
-                GitHub
-              </Link>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="https://www.linkedin.com/in/pratham-d-22b53b1ab/"
-                target="_blank"
-                rel="noopener"
-                color="inherit"
-                underline="hover"
-              >
-                LinkedIn
-              </Link>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1,
-                alignItems: { xs: "center", md: "flex-start" }
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>Legal</Typography>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="/Privacy Policy.pdf"
-                color="inherit"
-                underline="hover"
-                target="_blank"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="/Terms of Service.pdf"
-                color="inherit"
-                underline="hover"
-                target="_blank"
-              >
-                Terms & Conditions
-              </Link>
-              <Link
-                component={motion.a}
-                whileHover={{ x: 5 }}
-                href="https://mail.google.com/mail/?view=cm&fs=1&to=techmock972@gmail.com"
-                color="inherit"
-                underline="hover"
-              >
-                Contact Us
-              </Link>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
+      )}
     </Box>
   );
 };

@@ -36,6 +36,7 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import StarIcon from '@mui/icons-material/Star';
 import axios from 'axios';
+import Footer from "./Footer";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -72,6 +73,12 @@ const Layout = () => {
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
+
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth',
+    });
 
     if (!token) {
       navigate('/login');
@@ -420,6 +427,7 @@ const Layout = () => {
   );
 
   return (
+    
     <ThemeProvider theme={theme}>
       <Box
         sx={{
@@ -430,6 +438,83 @@ const Layout = () => {
           transition: 'background-color 0.3s ease',
         }}
       >
+        <Box sx={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 0,
+                overflow: 'hidden',
+                pointerEvents: 'none'
+              }}>
+                <motion.div
+                  animate={{
+                    x: [0, 100, 0],
+                    y: [0, -100, 0],
+                    scale: [1, 1.2, 1],
+                  }}
+                  transition={{
+                    duration: 20,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '10%',
+                    left: '10%',
+                    width: '500px',
+                    height: '500px',
+                    background: 'radial-gradient(circle, rgba(0,212,255,0.15) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    filter: 'blur(40px)',
+                  }}
+                />
+                <motion.div
+                  animate={{
+                    x: [0, -150, 0],
+                    y: [0, 100, 0],
+                    scale: [1, 1.3, 1],
+                  }}
+                  transition={{
+                    duration: 25,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '10%',
+                    right: '10%',
+                    width: '600px',
+                    height: '600px',
+                    background: 'radial-gradient(circle, rgba(138,43,226,0.15) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    filter: 'blur(40px)',
+                  }}
+                />
+                <motion.div
+                  animate={{
+                    x: [0, 80, 0],
+                    y: [0, -80, 0],
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    duration: 18,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: '400px',
+                    height: '400px',
+                    background: 'radial-gradient(circle, rgba(255,107,107,0.1) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    filter: 'blur(40px)',
+                  }}
+                />
+              </Box>
         {/* Navbar */}
         <AppBar
   component={motion.div}
@@ -747,6 +832,7 @@ const Layout = () => {
           )}
           <Outlet context={{ darkMode }} />
         </Container>
+        <Footer />
       </Box>
     </ThemeProvider>
   );
