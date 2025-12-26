@@ -29,7 +29,6 @@ import {
   Payment as PaymentIcon
 } from '@mui/icons-material';
 
-// Styled components for animations and styling
 const AnimatedContainer = styled(motion.div)({
   width: '100%'
 });
@@ -72,6 +71,19 @@ const StyledTab = styled(Tab)(({ theme }) => ({
 const AdminPortal = () => {
   // State for tabs
   const [activeTab, setActiveTab] = useState(0);
+
+  // State for manual and auto generate test
+  const [creationMode, setCreationMode] = useState('manual');
+
+  // State for auto generate test
+  const [autoCategory, setAutoCategory] = useState('');
+  const [numQuestions, setNumQuestions] = useState(10);
+  const [autoTitle, setAutoTitle] = useState('');
+  const [autoDescription, setAutoDescription] = useState('');
+  const [autoTimeLimit, setAutoTimeLimit] = useState(30);
+  const [autoPricingType, setAutoPricingType] = useState('free');
+  const [autoPrice, setAutoPrice] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   // State for mock test creation
   const [title, setTitle] = useState('');
@@ -363,6 +375,61 @@ const AdminPortal = () => {
 
     reader.readAsArrayBuffer(file);
   };
+  const handleAutoGenerate = async () => {
+  if (!autoTitle || !autoCategory || numQuestions < 1) {
+    showSnackbar('Please fill all required fields', 'error');
+    return;
+  }
+
+  if (autoPricingType === 'paid' && (!autoPrice || autoPrice <= 0)) {
+    showSnackbar('Enter a valid price', 'error');
+    return;
+  }
+
+  setGenerating(true);
+
+  try {
+    const token = localStorage.getItem('token');
+
+    const response = await axios.post(
+      `${backendUrl}/api/admin/generate-mock-test`,
+      {
+        title: autoTitle,
+        description: autoDescription,
+        category: autoCategory,
+        timeLimit: Number(autoTimeLimit),
+        numQuestions: Number(numQuestions),
+        pricingType: autoPricingType,
+        price: autoPricingType === 'paid' ? Number(autoPrice) : 0
+      },
+      { headers: { Authorization: token } }
+    );
+
+    showSnackbar('Mock test generated successfully!', 'success');
+
+    // Reset form
+    setAutoTitle('');
+    setAutoDescription('');
+    setAutoCategory('');
+    setAutoTimeLimit(30);
+    setNumQuestions(10);
+    setAutoPricingType('free');
+    setAutoPrice('');
+
+    // Switch to manage tab to see it
+    setActiveTab(1);
+    setTimeout(() => fetchMockTests(), 600);
+
+  } catch (error) {
+    console.error('Error generating mock test:', error);
+    showSnackbar(
+      error.response?.data?.message || 'Failed to generate mock test. Not enough questions in this category?',
+      'error'
+    );
+  } finally {
+    setGenerating(false);
+  }
+};
 
   const handleSubmit = async () => {
     // Basic validation
@@ -618,232 +685,372 @@ const AdminPortal = () => {
 
         {/* Tab Content */}
         {activeTab === 0 && (
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-          >
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
             <StyledPaper elevation={3}>
-              <Box sx={{ p: 2 }}>
+              <Box sx={{ p: 3 }}>
                 <Typography variant="h5" color="primary" gutterBottom>
                   Create New Mock Test
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
 
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Test Title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                      variant="outlined"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <EditIcon color="primary" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Category"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      required
-                      variant="outlined"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <FilterIcon color="primary" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Time Limit (in minutes)"
-                      type="number"
-                      value={timeLimit}
-                      onChange={(e) => setTimeLimit(e.target.value)}
-                      inputProps={{ min: 1 }}
-                      required
-                      variant="outlined"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      fullWidth
-                      startIcon={<FileUploadIcon />}
-                      sx={{ height: '56px' }}
-                    >
-                      Upload Excel File
-                      <input type="file" accept=".xlsx, .xls" hidden onChange={handleFileUpload} />
-                    </Button>
-                  </Grid>
-
-                  {/* Pricing Options */}
-                  <Grid item xs={12} sm={6}>
-                    <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <PaymentIcon color="primary" sx={{ mr: 1 }} />
-                        <Typography variant="subtitle1" fontWeight="medium">
-                          Pricing Options
-                        </Typography>
-                      </Box>
-                      <RadioGroup
-                        value={pricingType}
-                        onChange={handlePricingTypeChange}
-                        sx={{ ml: 1 }}
-                      >
-                        <FormControlLabel value="free" control={<Radio />} label="Free" />
-                        <FormControlLabel value="paid" control={<Radio />} label="Paid" />
-                      </RadioGroup>
-
-                      <Collapse in={pricingType === 'paid'}>
-                        <TextField
-                          fullWidth
-                          label="Price (₹)"
-                          type="number"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                          sx={{ mt: 1 }}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">₹</InputAdornment>
-                            ),
-                            inputProps: { min: 1 }
-                          }}
-                          placeholder="Enter amount in rupees"
-                          required={pricingType === 'paid'}
-                        />
-                      </Collapse>
-                    </Paper>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      multiline
-                      rows={6}
-                      variant="outlined"
-                    />
-                  </Grid>
-                </Grid>
-
-                <Box sx={{ mt: 4 }}>
-                  <Typography variant="h6" color="primary" gutterBottom>
-                    Questions
+                {/* Mode Switch */}
+                <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    Creation Mode
                   </Typography>
+                  <RadioGroup
+                    row
+                    value={creationMode}
+                    onChange={(e) => setCreationMode(e.target.value)}
+                  >
+                    <FormControlLabel value="manual" control={<Radio />} label="Manual Entry (Add Questions)" />
+                    <FormControlLabel value="auto" control={<Radio />} label="Auto Generate (From Existing Questions)" />
+                  </RadioGroup>
+                  {creationMode === 'auto' && (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      The system will randomly select questions from existing mock tests in the selected category.
+                    </Alert>
+                  )}
+                </Paper>
 
-                  {questions.map((q, qIndex) => (
-                    <motion.div
-                      key={qIndex}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: qIndex * 0.1 }}
-                    >
-                      <QuestionCard elevation={1}>
-                        <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
-                          <IconButton
-                            color="error"
-                            size="small"
-                            onClick={() => removeQuestion(qIndex)}
-                            disabled={questions.length === 1}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-
-                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                          Question {qIndex + 1}
-                        </Typography>
-
+                {/* ====== AUTO GENERATE MODE ====== */}
+                {creationMode === 'auto' && (
+                  <Box>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
-                          label="Question Text"
-                          value={q.questionText}
-                          onChange={(e) => handleQuestionChange(qIndex, 'questionText', e.target.value)}
-                          variant="outlined"
+                          label="Test Title"
+                          value={autoTitle}
+                          onChange={(e) => setAutoTitle(e.target.value)}
                           required
-                          sx={{ mb: 2 }}
                         />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Category (Source)"
+                          value={autoCategory}
+                          onChange={(e) => setAutoCategory(e.target.value)}
+                          required
+                          helperText="Questions will be pulled from this category"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Number of Questions"
+                          type="number"
+                          value={numQuestions}
+                          onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 1))}
+                          inputProps={{ min: 1, max: 100 }}
+                          required
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Time Limit (minutes)"
+                          type="number"
+                          value={autoTimeLimit}
+                          onChange={(e) => setAutoTimeLimit(e.target.value)}
+                          inputProps={{ min: 1 }}
+                          required
+                        />
+                      </Grid>
 
-                        <Grid container spacing={2}>
-                          {q.options.map((option, oIndex) => (
-                            <Grid item xs={12} sm={6} key={oIndex}>
-                              <TextField
-                                fullWidth
-                                label={`Option ${oIndex + 1}`}
-                                value={option}
-                                onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
-                                variant="outlined"
-                                required
-                                size="small"
-                              />
-                            </Grid>
-                          ))}
+                      {/* Pricing */}
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                            Pricing Options
+                          </Typography>
+                          <RadioGroup
+                            value={autoPricingType}
+                            onChange={(e) => {
+                              setAutoPricingType(e.target.value);
+                              if (e.target.value === 'free') setAutoPrice('');
+                            }}
+                          >
+                            <FormControlLabel value="free" control={<Radio />} label="Free" />
+                            <FormControlLabel value="paid" control={<Radio />} label="Paid" />
+                          </RadioGroup>
+                          <Collapse in={autoPricingType === 'paid'}>
+                            <TextField
+                              fullWidth
+                              label="Price (₹)"
+                              type="number"
+                              value={autoPrice}
+                              onChange={(e) => setAutoPrice(e.target.value)}
+                              sx={{ mt: 2 }}
+                              InputProps={{
+                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                                inputProps: { min: 1 }
+                              }}
+                            />
+                          </Collapse>
+                        </Paper>
+                      </Grid>
 
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="Description (Optional)"
+                          multiline
+                          rows={4}
+                          value={autoDescription}
+                          onChange={(e) => setAutoDescription(e.target.value)}
+                        />
+                      </Grid>
+                    </Grid>
+
+                    <Box sx={{ mt: 4, textAlign: 'right' }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        onClick={handleAutoGenerate}
+                        disabled={generating || !autoTitle || !autoCategory || !numQuestions}
+                        startIcon={generating ? <CircularProgress size={20} /> : <AddIcon />}
+                      >
+                        {generating ? 'Generating...' : 'Generate Mock Test'}
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* ====== MANUAL MODE (Existing Form) ====== */}
+                {creationMode === 'manual' && (
+                  <motion.div
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <StyledPaper elevation={3}>
+                      <Box sx={{ p: 2 }}>
+                        <Typography variant="h5" color="primary" gutterBottom>
+                          Create New Mock Test
+                        </Typography>
+                        <Divider sx={{ mb: 3 }} />
+
+                        <Grid container spacing={3}>
                           <Grid item xs={12} sm={6}>
                             <TextField
                               fullWidth
-                              label="Correct Answer"
-                              value={q.correctAnswer}
-                              onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
-                              variant="outlined"
+                              label="Test Title"
+                              value={title}
+                              onChange={(e) => setTitle(e.target.value)}
                               required
-                              size="small"
-                              helperText="Enter exactly as written in the options"
+                              variant="outlined"
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <EditIcon color="primary" />
+                                  </InputAdornment>
+                                ),
+                              }}
                             />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              label="Category"
+                              value={category}
+                              onChange={(e) => setCategory(e.target.value)}
+                              required
+                              variant="outlined"
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <FilterIcon color="primary" />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              label="Time Limit (in minutes)"
+                              type="number"
+                              value={timeLimit}
+                              onChange={(e) => setTimeLimit(e.target.value)}
+                              inputProps={{ min: 1 }}
+                              required
+                              variant="outlined"
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Button
+                              variant="outlined"
+                              component="label"
+                              fullWidth
+                              startIcon={<FileUploadIcon />}
+                              sx={{ height: '56px' }}
+                            >
+                              Upload Excel File
+                              <input type="file" accept=".xlsx, .xls" hidden onChange={handleFileUpload} />
+                            </Button>
+                          </Grid>
+
+                          {/* Pricing Options */}
+                          <Grid item xs={12} sm={6}>
+                            <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <PaymentIcon color="primary" sx={{ mr: 1 }} />
+                                <Typography variant="subtitle1" fontWeight="medium">
+                                  Pricing Options
+                                </Typography>
+                              </Box>
+                              <RadioGroup
+                                value={pricingType}
+                                onChange={handlePricingTypeChange}
+                                sx={{ ml: 1 }}
+                              >
+                                <FormControlLabel value="free" control={<Radio />} label="Free" />
+                                <FormControlLabel value="paid" control={<Radio />} label="Paid" />
+                              </RadioGroup>
+
+                              <Collapse in={pricingType === 'paid'}>
+                                <TextField
+                                  fullWidth
+                                  label="Price (₹)"
+                                  type="number"
+                                  value={price}
+                                  onChange={(e) => setPrice(e.target.value)}
+                                  sx={{ mt: 1 }}
+                                  InputProps={{
+                                    startAdornment: (
+                                      <InputAdornment position="start">₹</InputAdornment>
+                                    ),
+                                    inputProps: { min: 1 }
+                                  }}
+                                  placeholder="Enter amount in rupees"
+                                  required={pricingType === 'paid'}
+                                />
+                              </Collapse>
+                            </Paper>
                           </Grid>
 
                           <Grid item xs={12} sm={6}>
                             <TextField
                               fullWidth
-                              label="Explanation (Optional)"
-                              value={q.explaination || ''}
-                              onChange={(e) => handleQuestionChange(qIndex, 'explaination', e.target.value)}
+                              label="Description"
+                              value={description}
+                              onChange={(e) => setDescription(e.target.value)}
+                              multiline
+                              rows={6}
                               variant="outlined"
-                              size="small"
                             />
                           </Grid>
                         </Grid>
-                      </QuestionCard>
-                    </motion.div>
-                  ))}
 
-                  <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={addQuestion}
-                      startIcon={<AddIcon />}
-                    >
-                      Add Question
-                    </Button>
+                        <Box sx={{ mt: 4 }}>
+                          <Typography variant="h6" color="primary" gutterBottom>
+                            Questions
+                          </Typography>
 
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleSubmit}
-                      startIcon={<SaveIcon />}
-                      disabled={isLoading}
-                      sx={{ ml: 'auto' }}
-                    >
-                      {isLoading ? <CircularProgress size={24} /> : 'Save Mock Test'}
-                    </Button>
-                  </Box>
-                </Box>
+                          {questions.map((q, qIndex) => (
+                            <motion.div
+                              key={qIndex}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: qIndex * 0.1 }}
+                            >
+                              <QuestionCard elevation={1}>
+                                <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
+                                  <IconButton
+                                    color="error"
+                                    size="small"
+                                    onClick={() => removeQuestion(qIndex)}
+                                    disabled={questions.length === 1}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Box>
+
+                                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                  Question {qIndex + 1}
+                                </Typography>
+
+                                <TextField
+                                  fullWidth
+                                  label="Question Text"
+                                  value={q.questionText}
+                                  onChange={(e) => handleQuestionChange(qIndex, 'questionText', e.target.value)}
+                                  variant="outlined"
+                                  required
+                                  sx={{ mb: 2 }}
+                                />
+
+                                <Grid container spacing={2}>
+                                  {q.options.map((option, oIndex) => (
+                                    <Grid item xs={12} sm={6} key={oIndex}>
+                                      <TextField
+                                        fullWidth
+                                        label={`Option ${oIndex + 1}`}
+                                        value={option}
+                                        onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
+                                        variant="outlined"
+                                        required
+                                        size="small"
+                                      />
+                                    </Grid>
+                                  ))}
+
+                                  <Grid item xs={12} sm={6}>
+                                    <TextField
+                                      fullWidth
+                                      label="Correct Answer"
+                                      value={q.correctAnswer}
+                                      onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
+                                      variant="outlined"
+                                      required
+                                      size="small"
+                                      helperText="Enter exactly as written in the options"
+                                    />
+                                  </Grid>
+
+                                  <Grid item xs={12} sm={6}>
+                                    <TextField
+                                      fullWidth
+                                      label="Explanation (Optional)"
+                                      value={q.explaination || ''}
+                                      onChange={(e) => handleQuestionChange(qIndex, 'explaination', e.target.value)}
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                  </Grid>
+                                </Grid>
+                              </QuestionCard>
+                            </motion.div>
+                          ))}
+
+                          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                            <Button
+                              variant="outlined"
+                              onClick={addQuestion}
+                              startIcon={<AddIcon />}
+                            >
+                              Add Question
+                            </Button>
+
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={handleSubmit}
+                              startIcon={<SaveIcon />}
+                              disabled={isLoading}
+                              sx={{ ml: 'auto' }}
+                            >
+                              {isLoading ? <CircularProgress size={24} /> : 'Save Mock Test'}
+                            </Button>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </StyledPaper>
+                  </motion.div>
+                )}
               </Box>
             </StyledPaper>
           </motion.div>

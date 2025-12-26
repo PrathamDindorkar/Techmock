@@ -1292,6 +1292,101 @@ app.get('/api/user/rank', verifyUser, async (req, res) => {
   }
 });
 
+// Generate Mock Test Automatically
+app.post('/api/admin/generate-mock-test', verifyUser, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+
+  const { title, description, category, timeLimit, numQuestions, pricingType, price } = req.body;
+
+  // Basic validation
+  if (!title || !category || !timeLimit || !numQuestions || numQuestions < 1) {
+    return res.status(400).json({ message: 'Missing or invalid required fields' });
+  }
+
+  try {
+    // Fetch all mock tests in the same category
+    const { data: existingTests, error: fetchError } = await supabase
+      .from('mock_tests')
+      .select('questions')
+      .eq('category', category)
+      // Optional: exclude a test with same title to avoid self-duplication during edits
+      .neq('title', title);
+
+    if (fetchError) throw fetchError;
+
+    if (!existingTests || existingTests.length === 0) {
+      return res.status(400).json({
+        message: `No existing mock tests found in category "${category}"`
+      });
+    }
+
+    // Collect and deduplicate questions using questionText as unique key
+    const questionMap = new Map(); // key: questionText (normalized), value: question object
+
+    existingTests.forEach(test => {
+      if (test.questions && Array.isArray(test.questions)) {
+        test.questions.forEach(q => {
+          if (q && q.questionText) {
+            // Normalize question text: trim and lowercase for better matching
+            const key = q.questionText.trim().toLowerCase();
+
+            // Only add if not already present (keeps first occurrence)
+            if (!questionMap.has(key)) {
+              questionMap.set(key, q);
+            }
+          }
+        });
+      }
+    });
+
+    const uniqueQuestions = Array.from(questionMap.values());
+
+    if (uniqueQuestions.length < numQuestions) {
+      return res.status(400).json({
+        message: `Only ${uniqueQuestions.length} unique questions available in "${category}". Requested: ${numQuestions}.`,
+        available: uniqueQuestions.length,
+        requested: numQuestions
+      });
+    }
+
+    // Shuffle and select N unique questions
+    const shuffled = [...uniqueQuestions].sort(() => 0.5 - Math.random());
+    const selectedQuestions = shuffled.slice(0, numQuestions);
+
+    // Insert the new mock test
+    const { data, error: insertError } = await supabase
+      .from('mock_tests')
+      .insert({
+        title,
+        description: description || null,
+        category,
+        time_limit: Number(timeLimit),
+        questions: selectedQuestions,
+        pricing_type: pricingType || 'free',
+        price: pricingType === 'paid' ? Number(price) || 0 : 0,
+        created_by: req.user.id,
+        active: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      if (insertError.code === '23505') { // Unique violation (e.g., title already exists)
+        return res.status(409).json({ message: 'A mock test with this title already exists.' });
+      }
+      throw insertError;
+    }
+
+    res.json({
+      message: 'Mock test generated successfully with unique questions!',
+      test: data
+    });
+
+  } catch (err) {
+    console.error('Error generating mock test:', err);
+    res.status(500).json({ message: 'Failed to generate mock test. Please try again.' });
+  }
+});
 
 // Start the server
 const PORT = process.env.PORT || 5000;
