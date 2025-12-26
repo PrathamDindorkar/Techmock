@@ -81,7 +81,7 @@ const Layout = () => {
     });
 
     if (!token) {
-      navigate('/login');
+      navigate('/home');
       return;
     }
 
@@ -131,7 +131,7 @@ const Layout = () => {
 
   const handleLogout = () => {
     localStorage.clear();
-    navigate('/login');
+    navigate('/home');
     handleProfileMenuClose();
     if (isMobile) setMobileOpen(false);
   };
