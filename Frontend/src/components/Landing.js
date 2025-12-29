@@ -57,12 +57,6 @@ const Landing = ({ toggleColorMode }) => {
       color: "#00d4ff"
     },
     {
-      icon: <Speed fontSize="large" />,
-      title: "Real-Time Feedback",
-      description: "Get instant results and explanations to learn from mistakes.",
-      color: "#ff6b6b"
-    },
-    {
       icon: <Analytics fontSize="large" />,
       title: "Performance Analytics",
       description: "Track progress with detailed analytics and personalized insights.",
@@ -74,18 +68,6 @@ const Landing = ({ toggleColorMode }) => {
       description: "Motivational certificates based on your mock exam scores.",
       color: "#ffd93d"
     },
-    {
-      icon: <WorkOutline fontSize="large" />,
-      title: "Career Advancement",
-      description: "95% of users report increased confidence in technical interviews.",
-      color: "#a8e6cf"
-    },
-    {
-      icon: <TrendingUp fontSize="large" />,
-      title: "Customized Practice",
-      description: "Tailor sessions by difficulty, topic, or exam type.",
-      color: "#ff8b94"
-    }
   ];
 
   const glassStyle = {
@@ -156,7 +138,7 @@ const Landing = ({ toggleColorMode }) => {
                 color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
               }}
             >
-              Realistic mock exams for AWS, Azure, GCP, Cisco, CompTIA, and more. 
+              Realistic mock exams for AWS, Azure, Opentext VIM, SAP, CompTIA, and more. 
               Practice with confidence and ace your certifications.
             </Typography>
           </motion.div>
@@ -332,13 +314,13 @@ const Landing = ({ toggleColorMode }) => {
                 gradient: "linear-gradient(135deg, rgba(0,212,255,0.2) 0%, rgba(138,43,226,0.2) 100%)"
               },
               {
-                title: "Security & Networking",
-                items: ["CompTIA Security+", "Cisco CCNA", "Ethical Hacker (CEH)", "Network Security"],
+                title: "Enterprise Softwares",
+                items: ["SAP ERP", "Microsoft Novasion", "Salesforce", "ServiceNow"],
                 gradient: "linear-gradient(135deg, rgba(255,107,107,0.2) 0%, rgba(255,139,148,0.2) 100%)"
               },
               {
-                title: "Developer & Interview Prep",
-                items: ["System Design", "Java / Spring Boot", "React / Frontend", "Python / Data Science"],
+                title: "Interview Prep",
+                items: ["JavaScript", "Java / Spring Boot", "React / Frontend", "Python / Data Science"],
                 gradient: "linear-gradient(135deg, rgba(78,205,196,0.2) 0%, rgba(168,230,207,0.2) 100%)"
               }
             ].map((category, index) => (
