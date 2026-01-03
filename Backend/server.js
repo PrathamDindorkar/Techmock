@@ -10,10 +10,10 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app', 'https://www.techmocks.com'], 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app', 'https://www.techmocks.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, 
+  credentials: true,
 }));
 
 // Initialize Supabase client
@@ -1171,16 +1171,22 @@ const awardBadge = async (userId, badgeName, badgeDescription, badgeIcon) => {
   }
 };
 
-// Update submission endpoint to award badges and points
+// Test Submission, Badges and Awards, Email Notification after Submission
 app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
   const { id } = req.params;
   const { answers } = req.body;
   const userId = req.user.id;
 
+  let correctAnswers = 0;
+  let totalQuestions = 0;
+  let accuracy = 0;
+  let pointsEarned = 0;
+
   try {
+    // Fetch mock test with title included
     const { data: mockTest, error: mockTestError } = await supabase
       .from('mock_tests')
-      .select('id, questions')
+      .select('id, title, questions')
       .eq('id', id)
       .single();
 
@@ -1188,18 +1194,21 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
       return res.status(404).json({ message: 'Mock test not found' });
     }
 
+    totalQuestions = mockTest.questions.length;
+
     // Calculate score
-    let correctAnswers = 0;
     mockTest.questions.forEach((question, index) => {
       const userAnswer = answers[index.toString()];
       if (userAnswer && userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase()) {
         correctAnswers++;
       }
     });
-    const accuracy = Math.round((correctAnswers / mockTest.questions.length) * 100);
+
+    accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+    pointsEarned = correctAnswers * 10;
 
     // Save submission
-    const { data: existingSubmission, error: existingError } = await supabase
+    const { data: existingSubmission } = await supabase
       .from('submissions')
       .select('id')
       .eq('user_id', userId)
@@ -1226,16 +1235,16 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
       submission = data;
     }
 
-    // Award badges based on performance
-    const pointsEarned = correctAnswers * 10; // 10 points per correct answer
+    // Award points and badges
     await updateUserRank(userId, pointsEarned);
 
     if (accuracy >= 80) {
       await awardBadge(userId, 'High Achiever', 'Scored 80% or above on a mock test', '🏆');
     }
-    if (correctAnswers === mockTest.questions.length) {
+    if (correctAnswers === totalQuestions) {
       await awardBadge(userId, 'Perfect Score', 'Achieved 100% on a mock test', '🌟');
     }
+
     const { count, error: countError } = await supabase
       .from('submissions')
       .select('id', { count: 'exact' })
@@ -1245,10 +1254,88 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
       await awardBadge(userId, 'Dedicated Learner', 'Completed 5 mock tests', '📚');
     }
 
-    res.status(201).json({ message: 'Submission successful', submission });
+    // ====================== SEND EMAIL ======================
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', userId)
+      .single();
+
+    if (!userError && user?.email) {
+      const userName = user.name;
+      const testTitle = mockTest.title;
+
+      const mailOptions = {
+        from: `"TechMocks" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `Your Results: ${testTitle}`,
+        text: `Hello ${userName},
+
+You've successfully completed the mock test: ${testTitle}
+
+Your Performance:
+• Correct Answers: ${correctAnswers} out of ${totalQuestions}
+• Accuracy: ${accuracy}%
+• Points Earned: ${pointsEarned}
+
+Keep practicing and improving! 🚀
+
+Best regards,
+The TechMocks Team
+https://www.techmocks.com`.trim(),
+
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #ffffff;">
+            <h2 style="color: #2c3e50;">Hello ${userName},</h2>
+            <p>You've successfully completed the mock test:</p>
+            <h3 style="color: #3498db;">${testTitle}</h3>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <p style="margin: 10px 0; font-size: 16px;"><strong>Correct Answers:</strong> ${correctAnswers} / ${totalQuestions}</p>
+              <p style="margin: 10px 0; font-size: 18px; color: #27ae60;"><strong>Accuracy: ${accuracy}%</strong></p>
+              <p style="margin: 10px 0; font-size: 16px;"><strong>Points Earned:</strong> ${pointsEarned}</p>
+            </div>
+
+            <p>Keep up the great work! You're doing amazing. 💪</p>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+
+            <p style="color: #7f8c8d; font-size: 14px; text-align: center;">
+              Best regards,<br>
+              <strong>The TechMocks Team</strong><br>
+              <a href="https://www.techmocks.com" style="color: #3498db; text-decoration: none;">www.techmocks.com</a>
+            </p>
+          </div>
+        `.trim(),
+      };
+
+      // Separate try-catch so email failure NEVER breaks submission
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Score email sent Successfully`);
+      } catch (emailError) {
+        console.error('Failed to Send Email', emailError);
+      }
+    }
+
+    // ====================== SUCCESS RESPONSE ======================
+    res.status(201).json({
+      message: 'Submission successful',
+      score: {
+        correctAnswers,
+        totalQuestions,
+        accuracy,
+        pointsEarned,
+      },
+      submission,
+    });
+
   } catch (error) {
-    console.error('Error saving submission:', error);
-    res.status(500).json({ message: 'Failed to submit test', error: error.message });
+    console.error('Error during submission:', error);
+    res.status(500).json({
+      message: 'Failed to submit test',
+      error: error.message,
+    });
   }
 });
 

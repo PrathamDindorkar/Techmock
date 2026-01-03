@@ -17,7 +17,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 
 const ReviewMockPage = () => {
-  const { id } = useParams();
+ const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [test, setTest] = useState(null);
@@ -56,103 +56,140 @@ const ReviewMockPage = () => {
     );
   }
 
-  if (!test || !submission) return null;
+  if (!test || !submission) {
+    return (
+      <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+        <Typography variant="h5" color="error">
+          Unable to load test review data
+        </Typography>
+      </Container>
+    );
+  }
 
   const userAnswers = submission.answers || {};
-  const score = test.questions.reduce(
-    (acc, q, idx) => acc + (userAnswers[idx.toString()] === q.correctAnswer ? 1 : 0),
-    0
-  );
+
+  // Calculate score & collect only wrong questions
+  const wrongQuestions = [];
+  let correctCount = 0;
+
+  test.questions.forEach((question, index) => {
+    const userAnswer = userAnswers[index.toString()];
+    const isCorrect = userAnswer && 
+      userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase();
+
+    if (isCorrect) {
+      correctCount++;
+    } else {
+      wrongQuestions.push({ question, index, userAnswer });
+    }
+  });
+
+  const totalQuestions = test.questions.length;
+  const score = correctCount;
+  const percentage = Math.round((score / totalQuestions) * 100);
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      {/* Animated Header */}
       <motion.div
-        initial={{ opacity: 0, y: -50 }}
+        initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{ duration: 0.7 }}
       >
-        <Typography variant="h3" align="center" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+        <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
           Review: {test.title}
         </Typography>
-        <Typography variant="h6" align="center" sx={{ color: '#555', mb: 3 }}>
-          Your Score: {score} / {test.questions.length}
-        </Typography>
+
+        <Box sx={{ textAlign: 'center', mb: 5 }}>
+          <Typography variant="h5" color="primary" gutterBottom>
+            Your Score: {score} / {totalQuestions} ({percentage}%)
+          </Typography>
+          
+          <Typography variant="body1" color="text.secondary">
+            {wrongQuestions.length === 0 
+              ? "Perfect! You answered everything correctly 🎉" 
+              : `You got ${wrongQuestions.length} question${wrongQuestions.length !== 1 ? 's' : ''} wrong`}
+          </Typography>
+        </Box>
       </motion.div>
 
-      {/* Questions Review */}
-      <Box sx={{ mt: 4 }}>
-        {test.questions.map((question, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Paper
-              elevation={3}
-              sx={{
-                p: 3,
-                mb: 3,
-                borderRadius: '12px',
-                background: userAnswers[index.toString()] === question.correctAnswer ? '#d4edd6ff' : '#ddbcc1ff',
-                transition: 'all 0.3s ease-in-out',
-                '&:hover': { transform: 'scale(1.02)', boxShadow: 6 },
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
-                Q{index + 1}: {question.questionText}
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Your Answer:</strong> {userAnswers[index.toString()] || 'Not answered'}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                <strong>Correct Answer:</strong> {question.correctAnswer}
-              </Typography>
-              <Chip
-                icon={
-                  userAnswers[index.toString()] === question.correctAnswer ? (
-                    <CheckCircleIcon />
-                  ) : (
-                    <CancelIcon />
-                  )
-                }
-                label={userAnswers[index.toString()] === question.correctAnswer ? 'Correct' : 'Incorrect'}
-                color={userAnswers[index.toString()] === question.correctAnswer ? 'success' : 'error'}
-                sx={{ fontWeight: 'bold' }}
-              />
-            </Paper>
-          </motion.div>
-        ))}
-      </Box>
+      {wrongQuestions.length === 0 ? (
+        <Paper 
+          elevation={3} 
+          sx={{ p: 4, textAlign: 'center', bgcolor: '#e8f5e9' }}
+        >
+          <Typography variant="h6" color="success.main" gutterBottom>
+            Congratulations! No mistakes this time.
+          </Typography>
+          <Typography color="text.secondary">
+            Keep up the great work!
+          </Typography>
+        </Paper>
+      ) : (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#d32f2f' }}>
+            Questions You Got Wrong:
+          </Typography>
 
-      {/* Back to Home Button */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.5 }}
-      >
+          {wrongQuestions.map(({ question, index, userAnswer }) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.08 }}
+            >
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 3,
+                  mb: 3,
+                  borderLeft: '6px solid #d32f2f',
+                  bgcolor: '#fff5f5',
+                  borderRadius: '8px',
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  Question {index + 1}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  {question.questionText}
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Your answer:</strong>
+                    </Typography>
+                    <Typography color="error.main">
+                      {userAnswer || '— not answered —'}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Correct answer:</strong>
+                    </Typography>
+                    <Typography color="success.main" fontWeight="medium">
+                      {question.correctAnswer}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </motion.div>
+          ))}
+        </Box>
+      )}
+
+      <Box sx={{ textAlign: 'center', mt: 6 }}>
         <Button
           variant="contained"
           color="primary"
           size="large"
           onClick={() => navigate('/hello')}
-          sx={{
-            mt: 4,
-            display: 'block',
-            mx: 'auto',
-            px: 4,
-            py: 1.5,
-            borderRadius: '30px',
-            textTransform: 'none',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
-            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
-          }}
+          sx={{ minWidth: 200, py: 1.5 }}
         >
-          Back to Home
+          Back to Dashboard
         </Button>
-      </motion.div>
+      </Box>
     </Container>
   );
 };
