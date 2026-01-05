@@ -31,6 +31,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import Lottie from 'react-lottie';
 import loadingAnimation from '../assets/animations/loading.json';
+import countryToCurrency from 'country-to-currency'; // New import
 
 const MotionContainer = motion(Container);
 const MotionCard = motion(Card);
@@ -46,6 +47,8 @@ const AllMocks = () => {
   const [expandedCategory, setExpandedCategory] = useState('');
   const [cartItems, setCartItems] = useState([]);
   const [purchasedTests, setPurchasedTests] = useState([]);
+  const [userCurrency, setUserCurrency] = useState('INR'); // Default to INR
+  const [exchangeRate, setExchangeRate] = useState(1); // Default rate (no conversion)
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -147,6 +150,44 @@ const AllMocks = () => {
     }
   };
 
+  // New: Fetch user location, currency, and exchange rate
+  useEffect(() => {
+    const getUserCurrency = async () => {
+  try {
+    // Step 1: Get country from IP
+    const geoRes = await axios.get('https://ipapi.co/json/');
+    const countryCode = geoRes.data.country_code || 'IN'; // Fallback to India
+
+    // Step 2: Map to currency (fallback to INR)
+    const currency = countryToCurrency[countryCode] || 'INR';
+    setUserCurrency(currency);
+
+    // No need for rate if INR
+    if (currency === 'INR') {
+      setExchangeRate(1);
+      return;
+    }
+
+    // Step 3: Fetch rate using frankfurter.app (very reliable)
+    const rateUrl = `https://api.frankfurter.app/latest?from=INR&to=${currency}`;
+    const rateRes = await axios.get(rateUrl);
+
+    // Safe extraction with fallback
+    const rate = rateRes.data?.rates?.[currency] || 1;
+    setExchangeRate(rate);
+
+    console.log(`Currency: ${currency}, Rate (1 INR = ${rate} ${currency})`);
+  } catch (error) {
+    console.error('Error fetching currency/rate:', error);
+    // Fallback gracefully to INR
+    setUserCurrency('INR');
+    setExchangeRate(1);
+  }
+};
+
+    getUserCurrency();
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [location.pathname]);
@@ -213,9 +254,10 @@ const AllMocks = () => {
 
     setCartLoading(true);
     try {
+      // New: Pass userCurrency to backend for cart (optional, if backend needs it for storage)
       await axios.post(
         `${backendUrl}/api/user/cart/add`,
-        { mockTestId: mockId },
+        { mockTestId: mockId, currency: userCurrency },
         { headers: { Authorization: token } }
       );
 
@@ -261,7 +303,19 @@ const AllMocks = () => {
     if (mock.pricingType === "free") {
       return <Chip icon={<MonetizationOnIcon />} label="Free" size="small" color="success" />;
     } else if (mock.pricingType === "paid" && mock.price) {
-      return <Chip icon={<MonetizationOnIcon />} label={`₹${mock.price}`} size="small" color="secondary" />;
+      // Convert price to user's currency
+      const convertedPrice = (mock.price * exchangeRate).toFixed(2);
+      
+      // Get currency symbol using Intl (handles ₹, $, €, etc.)
+      const formatter = new Intl.NumberFormat(undefined, { // 'undefined' uses browser locale
+        style: 'currency',
+        currency: userCurrency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+      const formattedPrice = formatter.format(convertedPrice);
+
+      return <Chip icon={<MonetizationOnIcon />} label={formattedPrice} size="small" color="secondary" />;
     }
     return null;
   };

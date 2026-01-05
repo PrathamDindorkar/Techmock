@@ -3,9 +3,25 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const Razorpay = require('razorpay');
+const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+
+console.log('=== STRIPE KEY DEBUG ===');
+console.log('STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
+console.log('STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 0);
+console.log('STRIPE_SECRET_KEY starts with:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 10) : 'N/A');
+console.log('Full key (hidden):', process.env.STRIPE_SECRET_KEY ? 'sk_test_...' : 'MISSING');
+console.log('=========================');
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('ERROR: STRIPE_SECRET_KEY is missing in .env file!');
+  process.exit(1);
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-06-20', // or a more recent one like '2025-12-15' if you want the latest features
+});
 
 const app = express();
 app.use(express.json());
@@ -15,6 +31,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
+// Special raw body parser for Stripe webhook ONLY
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      if (req.originalUrl.startsWith('/api/payment/webhook')) {
+        req.rawBody = buf.toString();
+      }
+    },
+  })
+);
 
 // Initialize Supabase client
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -295,75 +322,129 @@ app.post('/api/user/checkout', verifyUser, async (req, res) => {
   }
 });
 
-// Razorpay: Create Order
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Stripe: Create PaymentIntent
+// Stripe: Create PaymentIntent (UPDATED - DYNAMIC CURRENCY)
+app.post('/api/payment/create-intent', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  const { currency = 'INR' } = req.body; // Accept currency from frontend
 
-app.post('/api/payment/order', async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { data: cartItems, error } = await supabase
+      .from('cart')
+      .select('price, currency')
+      .eq('user_id', userId);
 
-    if (!amount || isNaN(amount) || amount < 1) {
-      return res.status(400).json({ error: 'Amount must be at least ₹1' });
+    if (error) throw error;
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    const amountInPaise = Math.round(amount * 100);
-    console.log('Creating order with amount (paise):', amountInPaise);
+    // Use the currency from the first cart item (all should be same)
+    const targetCurrency = (cartItems[0].currency || currency).toLowerCase();
+    const baseTotalINR = cartItems.reduce((sum, item) => sum + item.price, 0);
 
-    const options = {
-      amount: amountInPaise,
-      currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
-    };
-
-    const order = await razorpay.orders.create(options);
-    console.log('Order Created:', order);
-    res.json(order);
-  } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
-  }
-});
-
-// Razorpay: Verify Payment
-app.post('/api/payment/verify', async (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ error: 'Missing payment details' });
+    if (baseTotalINR <= 0) {
+      return res.status(400).json({ message: 'No paid items in cart' });
     }
 
-    const crypto = require('crypto');
-    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
-    hmac.update(razorpay_order_id + '|' + razorpay_payment_id);
-    const generatedSignature = hmac.digest('hex');
-
-    console.log('Generated Signature:', generatedSignature);
-    console.log('Received Signature:', razorpay_signature);
-
-    if (generatedSignature === razorpay_signature) {
-      return res.json({ success: true });
+    // Fetch live exchange rate from a free API
+    let amountInSubunits;
+    if (targetCurrency === 'inr') {
+      amountInSubunits = Math.round(baseTotalINR * 100); // INR has paise
     } else {
-      return res.status(400).json({ error: 'Invalid payment signature' });
+      const rateRes = await fetch(`https://api.exchangerate.host/latest?base=INR&symbols=${targetCurrency.toUpperCase()}`);
+      const rateData = await rateRes.json();
+      const rate = rateData.rates?.[targetCurrency.toUpperCase()] || 1;
+
+      const convertedAmount = baseTotalINR * rate;
+      // Stripe uses zero-decimal currencies differently
+      const multiplier = ['jpy', 'krw', 'vnd', 'clp'].includes(targetCurrency) ? 1 : 100;
+      amountInSubunits = Math.round(convertedAmount * multiplier);
     }
+
+    // Minimum amount check (Stripe has per-currency minimums)
+    const minAmounts = { usd: 50, eur: 50, gbp: 30, inr: 50 }; // in subunits
+    const min = minAmounts[targetCurrency] || 50;
+    if (amountInSubunits < min) {
+      return res.status(400).json({ message: `Amount too small for ${targetCurrency.toUpperCase()}` });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSubunits,
+      currency: targetCurrency,
+      automatic_payment_methods: { enabled: true },
+      metadata: { user_id: userId.toString() },
+    });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    console.error('Payment verification error:', error);
-    res.status(500).json({ error: 'Payment verification failed', details: error.message });
+    console.error('Error creating PaymentIntent:', error);
+    res.status(500).json({ message: 'Failed to create payment intent', error: error.message });
   }
 });
 
-// User: Add to Cart
+// Stripe: Webhook (fulfill order on successful payment)
+app.post('/api/payment/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object;
+    const userId = paymentIntent.metadata.user_id;
+
+    if (!userId) {
+      console.error('No user_id in metadata');
+      return res.status(200).json({ received: true });
+    }
+
+    try {
+      // Fetch cart items
+      const { data: cartItems, error: cartError } = await supabase
+        .from('cart')
+        .select('id, mock_test_id')
+        .eq('user_id', userId);
+
+      if (cartError || !cartItems || cartItems.length === 0) {
+        console.log('No cart items to fulfill for user:', userId);
+        return res.status(200).json({ received: true });
+      }
+
+      // Move to purchased_tests
+      const purchasedTests = cartItems.map(item => ({
+        user_id: userId,
+        mock_test_id: item.mock_test_id,
+      }));
+
+      await supabase.from('purchased_tests').insert(purchasedTests);
+
+      // Clear cart
+      await supabase.from('cart').delete().eq('user_id', userId);
+
+      console.log(`Order fulfilled for user ${userId}`);
+    } catch (err) {
+      console.error('Error fulfilling order:', err);
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// User: Add to Cart (UPDATED)
 app.post('/api/user/cart/add', verifyUser, async (req, res) => {
   const userId = req.user.id;
-  const { mockTestId } = req.body;
+  const { mockTestId, currency = 'INR' } = req.body; // Accept currency from frontend
 
   try {
     const { data: mockTest, error: mockTestError } = await supabase
       .from('mock_tests')
-      .select('id, price')
+      .select('id, price, pricing_type')
       .eq('id', mockTestId)
       .single();
 
@@ -371,7 +452,11 @@ app.post('/api/user/cart/add', verifyUser, async (req, res) => {
       return res.status(404).json({ message: 'Mock test not found' });
     }
 
-    const { data: existingItem, error: cartError } = await supabase
+    if (mockTest.pricing_type !== 'paid') {
+      return res.status(400).json({ message: 'This test is free and cannot be added to cart' });
+    }
+
+    const { data: existingItem } = await supabase
       .from('cart')
       .select('id')
       .eq('user_id', userId)
@@ -381,13 +466,15 @@ app.post('/api/user/cart/add', verifyUser, async (req, res) => {
     if (existingItem) {
       return res.status(400).json({ message: 'Item already in cart' });
     }
-    if (cartError && cartError.code !== 'PGRST116') {
-      throw cartError;
-    }
 
     const { data, error } = await supabase
       .from('cart')
-      .insert([{ user_id: userId, mock_test_id: mockTestId, price: mockTest.price }])
+      .insert([{
+        user_id: userId,
+        mock_test_id: mockTestId,
+        price: mockTest.price,           // Base price in INR
+        currency: currency.toUpperCase() // Store user's selected currency
+      }])
       .select()
       .single();
 
@@ -421,14 +508,14 @@ app.delete('/api/user/cart/remove/:mockTestId', verifyUser, async (req, res) => 
   }
 });
 
-// User: Get Cart
+// User: Get Cart (UPDATED - include currency)
 app.get('/api/user/cart', verifyUser, async (req, res) => {
   const userId = req.user.id;
 
   try {
     const { data, error } = await supabase
       .from('cart')
-      .select('id, mock_test_id, price, mock_tests(title, description, pricing_type, price)')
+      .select('id, mock_test_id, price, currency, mock_tests(title, description, pricing_type, price)')
       .eq('user_id', userId);
 
     if (error) throw error;
@@ -1407,7 +1494,6 @@ app.post('/api/admin/generate-mock-test', verifyUser, async (req, res) => {
       });
     }
 
-    // Collect and deduplicate questions using questionText as unique key
     const questionMap = new Map(); // key: questionText (normalized), value: question object
 
     existingTests.forEach(test => {
