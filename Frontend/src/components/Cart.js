@@ -27,6 +27,7 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info';
 
 // Stripe imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -43,7 +44,14 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 const MotionContainer = motion(Container);
 const MotionPaper = motion(Paper);
 
-const CheckoutForm = ({ total, userCurrency, onBack, onSuccess }) => {
+const CheckoutForm = ({
+  displayTotal,
+  userCurrency,
+  gbpTotal,
+  gbpRate,
+  onBack,
+  onSuccess,
+}) => {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -78,6 +86,7 @@ const CheckoutForm = ({ total, userCurrency, onBack, onSuccess }) => {
       setMessage('Payment successful! Finalizing your purchase...');
       setMessageType('success');
 
+      // Call the success handler to finalize purchase
       await onSuccess();
 
       setMessage('Payment complete! Your mock tests are now unlocked. 🎉');
@@ -86,14 +95,23 @@ const CheckoutForm = ({ total, userCurrency, onBack, onSuccess }) => {
     setProcessing(false);
   };
 
-  // Format total with user's currency
-  const formatter = new Intl.NumberFormat(undefined, {
+  // Format display total in user's local currency
+  const localFormatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: userCurrency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
-  const formattedTotal = formatter.format(total);
+  const formattedDisplayTotal = localFormatter.format(displayTotal);
+
+  // Format GBP total
+  const gbpFormatter = new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const formattedGbpTotal = gbpFormatter.format(gbpTotal);
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
@@ -104,16 +122,27 @@ const CheckoutForm = ({ total, userCurrency, onBack, onSuccess }) => {
         }}
       />
 
+      <Box sx={{ mt: 3, mb: 2, p: 2, backgroundColor: 'info.light', borderRadius: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <InfoIcon fontSize="small" />
+          Your total is <strong>{formattedDisplayTotal}</strong> ({userCurrency}) in your local currency.
+          This will be charged as approximately <strong>{formattedGbpTotal}</strong> in <strong>GBP</strong>.
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+          Your bank or card may apply additional conversion fees. Exchange rate used: 1 INR ≈ {gbpRate.toFixed(4)} GBP.
+        </Typography>
+      </Box>
+
       <Button
         type="submit"
         variant="contained"
         color="primary"
         fullWidth
         disabled={processing || !stripe || !elements}
-        sx={{ mt: 3, py: 1.5, fontSize: '1.1rem' }}
+        sx={{ mt: 2, py: 1.5, fontSize: '1.1rem' }}
         startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <PaymentIcon />}
       >
-        {processing ? 'Processing Payment...' : `Pay ${formattedTotal}`}
+        {processing ? 'Processing Payment...' : 'Complete Payment'}
       </Button>
 
       <Button
@@ -144,58 +173,56 @@ const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
-  const [alertOpen, setAlertOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertSeverity, setAlertSeverity] = useState('info');
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('info');
 
   const [clientSecret, setClientSecret] = useState('');
   const [paymentMode, setPaymentMode] = useState(false);
+
   const [userCurrency, setUserCurrency] = useState('INR');
-  const [exchangeRate, setExchangeRate] = useState(1);
-  const [convertedTotal, setConvertedTotal] = useState(0);
+  const [displayRate, setDisplayRate] = useState(1);
+  const [gbpRate, setGbpRate] = useState(0.0082);
 
   const location = useLocation();
   const theme = useTheme();
-
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-  // Fetch user currency and rate (same as AllMocks)
   useEffect(() => {
-    const getUserCurrency = async () => {
+    const getCurrencyAndRates = async () => {
       try {
         const geoRes = await axios.get('https://ipapi.co/json/');
         const countryCode = geoRes.data.country_code || 'IN';
-
         const currency = countryToCurrency[countryCode] || 'INR';
         setUserCurrency(currency);
 
-        if (currency === 'INR') {
-          setExchangeRate(1);
-          return;
+        if (currency !== 'INR') {
+          const displayRes = await axios.get(`https://api.frankfurter.app/latest?from=INR&to=${currency}`);
+          setDisplayRate(displayRes.data?.rates?.[currency] || 1);
+        } else {
+          setDisplayRate(1);
         }
 
-        // Reliable API
-        const rateRes = await axios.get(`https://api.frankfurter.app/latest?from=INR&to=${currency}`);
-        const rate = rateRes.data?.rates?.[currency] || 1;
-        setExchangeRate(rate);
+        const gbpRes = await axios.get('https://api.frankfurter.app/latest?from=INR&to=GBP');
+        const rate = gbpRes.data?.rates?.GBP || 0.0082;
+        setGbpRate(rate);
       } catch (error) {
-        console.error('Error fetching currency/rate:', error);
+        console.error('Error fetching currency/rates:', error);
         setUserCurrency('INR');
-        setExchangeRate(1);
+        setDisplayRate(1);
+        setGbpRate(0.0082);
       }
     };
 
-    getUserCurrency();
+    getCurrencyAndRates();
   }, []);
 
-  // Fetch cart
   useEffect(() => {
     const fetchCart = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        setAlertMessage('Please log in to view your cart');
-        setAlertSeverity('warning');
-        setAlertOpen(true);
+        showSnackbar('Please log in to view your cart', 'warning');
         setLoading(false);
         return;
       }
@@ -209,18 +236,14 @@ const Cart = () => {
           id: item.mock_test_id,
           title: item.mock_tests.title,
           description: item.mock_tests.description || 'No description available',
-          price: item.price, // Base INR price
+          price: item.price,
           pricingType: item.mock_tests.pricing_type,
-          currency: item.currency || 'INR', // From DB (added column)
         }));
 
         setCartItems(formattedItems);
       } catch (error) {
         console.error('Error fetching cart:', error);
-        const msg = error.response?.data?.message || 'Failed to load cart';
-        setAlertMessage(msg);
-        setAlertSeverity('error');
-        setAlertOpen(true);
+        showSnackbar(error.response?.data?.message || 'Failed to load cart', 'error');
       } finally {
         setLoading(false);
       }
@@ -229,33 +252,25 @@ const Cart = () => {
     fetchCart();
   }, [backendUrl]);
 
-  // Calculate converted total for display
-  useEffect(() => {
-    const baseTotalINR = cartItems
-      .filter((item) => item.pricingType === 'paid')
-      .reduce((sum, item) => sum + item.price, 0);
-
-    setConvertedTotal(baseTotalINR * exchangeRate);
-  }, [cartItems, exchangeRate]);
-
-  // Handle redirects
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const redirectStatus = params.get('redirect_status');
 
     if (redirectStatus === 'succeeded' && paymentMode) {
-      setAlertMessage('Payment successful! Your purchase has been completed.');
-      setAlertSeverity('success');
-      setAlertOpen(true);
+      showSnackbar('Payment successful! Your mock tests have been unlocked. 🎉', 'success');
       handleFulfillment();
       window.history.replaceState({}, '', window.location.pathname);
     } else if (redirectStatus === 'failed' && paymentMode) {
-      setAlertMessage('Payment failed or was cancelled.');
-      setAlertSeverity('error');
-      setAlertOpen(true);
+      showSnackbar('Payment failed or was cancelled. Please try again.', 'error');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [location.search, paymentMode]);
+
+  const showSnackbar = (message, severity = 'info') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
 
   const handleRemoveItem = async (mockTestId) => {
     const token = localStorage.getItem('token');
@@ -268,13 +283,9 @@ const Cart = () => {
       });
 
       setCartItems((prev) => prev.filter((item) => item.id !== mockTestId));
-      setAlertMessage('Item removed from cart');
-      setAlertSeverity('success');
-      setAlertOpen(true);
+      showSnackbar('Item removed from cart', 'success');
     } catch (error) {
-      setAlertMessage(error.response?.data?.message || 'Failed to remove item');
-      setAlertSeverity('error');
-      setAlertOpen(true);
+      showSnackbar(error.response?.data?.message || 'Failed to remove item', 'error');
     } finally {
       setOperationLoading(false);
     }
@@ -284,31 +295,27 @@ const Cart = () => {
     const token = localStorage.getItem('token');
     if (!token || cartItems.length === 0) return;
 
-    const paidItemsExist = cartItems.some((item) => item.pricingType === 'paid');
-    if (!paidItemsExist) {
-      setAlertMessage('No paid items in your cart');
-      setAlertSeverity('info');
-      setAlertOpen(true);
+    const paidItems = cartItems.filter((item) => item.pricingType === 'paid');
+    if (paidItems.length === 0) {
+      showSnackbar('No paid items in your cart', 'info');
       return;
     }
 
     setOperationLoading(true);
     try {
-      // Send detected currency to backend
       const response = await axios.post(
         `${backendUrl}/api/payment/create-intent`,
-        { currency: userCurrency },
+        { currency: 'gbp' },
         { headers: { Authorization: token } }
       );
 
       setClientSecret(response.data.clientSecret);
       setPaymentMode(true);
     } catch (error) {
-      setAlertMessage(
-        error.response?.data?.message || 'Failed to start payment. Please try again.'
+      showSnackbar(
+        error.response?.data?.message || 'Failed to start payment. Please try again.',
+        'error'
       );
-      setAlertSeverity('error');
-      setAlertOpen(true);
     } finally {
       setOperationLoading(false);
     }
@@ -327,15 +334,12 @@ const Cart = () => {
       setClientSecret('');
     } catch (error) {
       console.error('Fulfillment error:', error);
-      setAlertMessage('Failed to finalize purchase. Please refresh and try again.');
-      setAlertSeverity('error');
-      setAlertOpen(true);
+      showSnackbar('Failed to finalize purchase. Please refresh.', 'error');
     }
   };
 
-  // Format prices with detected currency
   const formatPrice = (basePriceINR) => {
-    const converted = basePriceINR * exchangeRate;
+    const converted = basePriceINR * displayRate;
     const formatter = new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: userCurrency,
@@ -345,11 +349,13 @@ const Cart = () => {
     return formatter.format(converted);
   };
 
-  const formattedTotal = formatPrice(
-    cartItems
-      .filter((item) => item.pricingType === 'paid')
-      .reduce((sum, item) => sum + item.price, 0)
-  );
+  const baseTotalINR = cartItems
+    .filter((item) => item.pricingType === 'paid')
+    .reduce((sum, item) => sum + item.price, 0);
+
+  const displayTotal = baseTotalINR * displayRate;
+  const gbpTotal = baseTotalINR * gbpRate;
+  const formattedTotal = formatPrice(baseTotalINR);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -400,13 +406,10 @@ const Cart = () => {
           <Typography variant="h5" color="text.secondary" gutterBottom>
             Your cart is empty
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            All paid mock tests have been successfully purchased!
-          </Typography>
           <Button
             variant="contained"
             size="large"
-            onClick={() => window.location.href = '/all-mocks'}
+            onClick={() => window.location.href = '/mocks'}
             sx={{ mt: 2 }}
           >
             Browse More Mock Tests
@@ -465,7 +468,7 @@ const Cart = () => {
 
               <Box sx={{ p: 4, backgroundColor: theme.palette.background.default }}>
                 <Typography variant="h5" align="right" gutterBottom>
-                  Total to Pay: <strong>{formattedTotal}</strong>
+                  Total: <strong>{formattedTotal}</strong>
                 </Typography>
 
                 <Button
@@ -474,7 +477,7 @@ const Cart = () => {
                   size="large"
                   fullWidth
                   onClick={handleProceedToPayment}
-                  disabled={operationLoading || convertedTotal === 0}
+                  disabled={operationLoading || baseTotalINR === 0}
                   startIcon={<PaymentIcon />}
                   sx={{ py: 1.8, fontSize: '1.1rem' }}
                 >
@@ -490,8 +493,10 @@ const Cart = () => {
             <Elements stripe={stripePromise} options={{ clientSecret }}>
               <Box sx={{ p: 4 }}>
                 <CheckoutForm
-                  total={convertedTotal}
+                  displayTotal={displayTotal}
                   userCurrency={userCurrency}
+                  gbpTotal={gbpTotal}
+                  gbpRate={gbpRate}
                   onBack={() => {
                     setPaymentMode(false);
                     setClientSecret('');
@@ -505,13 +510,19 @@ const Cart = () => {
       )}
 
       <Snackbar
-        open={alertOpen}
+        open={snackbarOpen}
         autoHideDuration={6000}
-        onClose={() => setAlertOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ mb: 2 }}
       >
-        <Alert onClose={() => setAlertOpen(false)} severity={alertSeverity} variant="filled">
-          {alertMessage}
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: '100%', fontSize: '1rem' }}
+        >
+          {snackbarMessage}
         </Alert>
       </Snackbar>
     </MotionContainer>

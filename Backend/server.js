@@ -26,7 +26,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app', 'https://www.techmocks.com'],
+  origin: ['http://localhost:3000', 'https://techmock-dva6.vercel.app', 'https://www.techmocks.com', 'https://mindi-polyangular-gunnar.ngrok-free.dev'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -324,14 +324,14 @@ app.post('/api/user/checkout', verifyUser, async (req, res) => {
 
 // Stripe: Create PaymentIntent
 // Stripe: Create PaymentIntent (UPDATED - DYNAMIC CURRENCY)
+// Stripe: Create PaymentIntent (Fixed to GBP for PayPal support)
 app.post('/api/payment/create-intent', verifyUser, async (req, res) => {
   const userId = req.user.id;
-  const { currency = 'INR' } = req.body; // Accept currency from frontend
 
   try {
     const { data: cartItems, error } = await supabase
       .from('cart')
-      .select('price, currency')
+      .select('price')  // Only need price (base INR)
       .eq('user_id', userId);
 
     if (error) throw error;
@@ -339,39 +339,29 @@ app.post('/api/payment/create-intent', verifyUser, async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Use the currency from the first cart item (all should be same)
-    const targetCurrency = (cartItems[0].currency || currency).toLowerCase();
     const baseTotalINR = cartItems.reduce((sum, item) => sum + item.price, 0);
 
     if (baseTotalINR <= 0) {
       return res.status(400).json({ message: 'No paid items in cart' });
     }
 
-    // Fetch live exchange rate from a free API
-    let amountInSubunits;
-    if (targetCurrency === 'inr') {
-      amountInSubunits = Math.round(baseTotalINR * 100); // INR has paise
-    } else {
-      const rateRes = await fetch(`https://api.exchangerate.host/latest?base=INR&symbols=${targetCurrency.toUpperCase()}`);
-      const rateData = await rateRes.json();
-      const rate = rateData.rates?.[targetCurrency.toUpperCase()] || 1;
+    // Convert INR → GBP using a reliable rate source
+    // Using exchangerate.host (free, no key needed)
+    const rateRes = await fetch('https://api.exchangerate.host/latest?base=INR&symbols=GBP');
+    const rateData = await rateRes.json();
+    const inrToGbpRate = rateData.rates?.GBP || 0.0095; // fallback rate ~ Jan 2026
 
-      const convertedAmount = baseTotalINR * rate;
-      // Stripe uses zero-decimal currencies differently
-      const multiplier = ['jpy', 'krw', 'vnd', 'clp'].includes(targetCurrency) ? 1 : 100;
-      amountInSubunits = Math.round(convertedAmount * multiplier);
-    }
+    const amountGBP = baseTotalINR * inrToGbpRate;
+    const amountInPence = Math.round(amountGBP * 100); // Stripe uses subunits
 
-    // Minimum amount check (Stripe has per-currency minimums)
-    const minAmounts = { usd: 50, eur: 50, gbp: 30, inr: 50 }; // in subunits
-    const min = minAmounts[targetCurrency] || 50;
-    if (amountInSubunits < min) {
-      return res.status(400).json({ message: `Amount too small for ${targetCurrency.toUpperCase()}` });
+    // Stripe minimum for GBP is £0.30 (~30 pence)
+    if (amountInPence < 30) {
+      return res.status(400).json({ message: 'Amount too small for payment' });
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInSubunits,
-      currency: targetCurrency,
+      amount: amountInPence,
+      currency: 'gbp',  // Fixed to GBP → enables PayPal
       automatic_payment_methods: { enabled: true },
       metadata: { user_id: userId.toString() },
     });
