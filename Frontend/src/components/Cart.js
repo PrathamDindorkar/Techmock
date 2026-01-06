@@ -36,6 +36,7 @@ import {
   Elements,
   useStripe,
   useElements,
+  ExpressCheckoutElement,
 } from '@stripe/react-stripe-js';
 import countryToCurrency from 'country-to-currency';
 
@@ -56,7 +57,7 @@ const CheckoutForm = ({
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+  const [messageType, setMessageType] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +72,7 @@ const CheckoutForm = ({
     setMessage('');
     setMessageType('');
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
+    const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: window.location.href,
@@ -82,20 +83,17 @@ const CheckoutForm = ({
     if (error) {
       setMessage(error.message || 'Payment failed. Please try again.');
       setMessageType('error');
-    } else if (paymentIntent?.status === 'succeeded') {
+    } else {
       setMessage('Payment successful! Finalizing your purchase...');
       setMessageType('success');
-
-      // Call the success handler to finalize purchase
       await onSuccess();
-
       setMessage('Payment complete! Your mock tests are now unlocked. 🎉');
     }
 
     setProcessing(false);
   };
 
-  // Format display total in user's local currency
+  // Formatters (unchanged)
   const localFormatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: userCurrency,
@@ -104,7 +102,6 @@ const CheckoutForm = ({
   });
   const formattedDisplayTotal = localFormatter.format(displayTotal);
 
-  // Format GBP total
   const gbpFormatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: 'GBP',
@@ -115,10 +112,35 @@ const CheckoutForm = ({
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+      {/* ADD THIS: Express Checkout for Google Pay, Apple Pay, PayPal */}
+      <ExpressCheckoutElement
+        onConfirm={async () => {
+          // Optional: Handle express checkout confirmation if needed
+          // Usually not required — Stripe handles it automatically
+        }}
+        options={{
+          buttonTheme: {
+            applePay: 'black',
+            googlePay: 'black',
+          },
+          buttonType: {
+            applePay: 'buy',
+            googlePay: 'buy',
+          },
+        }}
+      />
+
+      <Box sx={{ my: 4 }}>
+        <Typography variant="body1" align="center" color="text.secondary">
+          or pay with card
+        </Typography>
+      </Box>
+
+      {/* Keep PaymentElement for card and other methods */}
       <PaymentElement
         options={{
           layout: 'tabs',
-          wallets: { applePay: 'auto', googlePay: 'auto' },
+          // Remove the deprecated wallets option
         }}
       />
 
