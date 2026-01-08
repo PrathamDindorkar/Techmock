@@ -6,13 +6,18 @@ const nodemailer = require('nodemailer');
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+const Razorpay = require('razorpay');
 
-console.log('=== STRIPE KEY DEBUG ===');
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+/*console.log('=== STRIPE KEY DEBUG ===');
 console.log('STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
 console.log('STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 0);
 console.log('STRIPE_SECRET_KEY starts with:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 10) : 'N/A');
 console.log('Full key (hidden):', process.env.STRIPE_SECRET_KEY ? 'sk_test_...' : 'MISSING');
-console.log('=========================');
+console.log('=========================');*/
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.error('ERROR: STRIPE_SECRET_KEY is missing in .env file!');
@@ -373,59 +378,301 @@ app.post('/api/payment/create-intent', verifyUser, async (req, res) => {
   }
 });
 
-// Stripe: Webhook (fulfill order on successful payment)
+// Stripe: Webhook (fulfill order on successful payment + send confirmation email)
+// Stripe: Webhook (fulfill order on successful payment + send confirmation email)
 app.post('/api/payment/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_PUBLISHABLE_KEY);
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+// Acknowledge receipt immediately with 200
+  res.json({ received: true });
+
+  // Now process asynchronously (no risk of timeout)
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object;
     const userId = paymentIntent.metadata.user_id;
 
     if (!userId) {
       console.error('No user_id in metadata');
-      return res.status(200).json({ received: true });
+      return;
     }
-
     try {
-      // Fetch cart items
-      const { data: cartItems, error: cartError } = await supabase
-        .from('cart')
-        .select('id, mock_test_id')
-        .eq('user_id', userId);
+      // 1. Fetch user details
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', userId)
+        .single();
 
-      if (cartError || !cartItems || cartItems.length === 0) {
-        console.log('No cart items to fulfill for user:', userId);
+      if (!userError && userData) {
+        userName = userData.name || 'User';
+        userEmail = userData.email || '';
+      }
+
+      // 2. Fetch purchased items (primary source after fulfillment)
+      const { data: purchased, error: purchasedError } = await supabase
+        .from('purchased_tests')
+        .select('mock_test_id, mock_tests(title, price)')
+        .eq('user_id', userId)
+        .order('id', { ascending: false }) // Get recent ones
+        .limit(10); // Safety limit
+
+      cartItems = purchased || [];
+
+      // Fallback to cart if no purchased yet (rare, but for timing issues)
+      if (cartItems.length === 0) {
+        const { data: fallbackCart, error: fallbackError } = await supabase
+          .from('cart')
+          .select('mock_test_id, mock_tests(title, price)')
+          .eq('user_id', userId);
+
+        if (!fallbackError && fallbackCart) cartItems = fallbackCart;
+      }
+
+      if (cartItems.length === 0) {
+        console.log('No items to fulfill for user:', userId);
         return res.status(200).json({ received: true });
       }
 
-      // Move to purchased_tests
+      // Extract details
+      purchasedTestTitles = cartItems.map(item => item.mock_tests?.title || 'Untitled Test');
+      totalAmountINR = cartItems.reduce((sum, item) => sum + (item.mock_tests?.price || 0), 0);
+
+      // 3. Fulfill (idempotent - upsert to avoid duplicates)
       const purchasedTests = cartItems.map(item => ({
         user_id: userId,
         mock_test_id: item.mock_test_id,
       }));
 
-      await supabase.from('purchased_tests').insert(purchasedTests);
+      await supabase.from('purchased_tests').upsert(purchasedTests, {
+        onConflict: 'user_id, mock_test_id',
+        ignoreDuplicates: true,
+      });
 
-      // Clear cart
+      // 4. Always clear cart (safe)
       await supabase.from('cart').delete().eq('user_id', userId);
 
-      console.log(`Order fulfilled for user ${userId}`);
+      console.log(`Order fulfilled for user ${userId} (${userEmail})`);
+
+      // 5. Send email if possible
+      if (userEmail) {
+        const amountGBP = (paymentIntent.amount_received / 100).toFixed(2);
+        const amountDisplay = totalAmountINR.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+
+        const mailOptions = {
+          from: `"TechMocks" <${process.env.EMAIL_USER}>`,
+          to: userEmail,
+          subject: 'Payment Successful – Your Mock Tests are Unlocked! 🎉',
+          text: `Hello ${userName},
+
+Thank you for your purchase on TechMocks!
+
+Your payment of approximately ${amountDisplay} (₹${totalAmountINR}) has been successfully processed via card/wallet.
+
+The following mock tests are now unlocked in your account:
+${purchasedTestTitles.map(t => `• ${t}`).join('\n')}
+
+You can access them anytime from your profile.
+
+Keep practicing and ace your interviews!
+
+Best regards,
+The TechMocks Team
+https://www.techmocks.com`,
+
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #ffffff;">
+              <h2 style="color: #27ae60; text-align: center;">Payment Successful! 🎉</h2>
+              <p>Hello <strong>${userName}</strong>,</p>
+              <p>Thank you for your purchase on <strong>TechMocks</strong>!</p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 8px 0;"><strong>Amount Paid:</strong> ~${amountDisplay} (charged as £${amountGBP} GBP)</p>
+                <p style="margin: 8px 0;"><strong>Payment Method:</strong> Card / Wallet (via Stripe)</p>
+              </div>
+
+              <p><strong>Your purchased mock tests:</strong></p>
+              <ul style="background: #f0f8ff; padding: 15px; border-radius: 8px;">
+                ${purchasedTestTitles.map(title => `<li style="margin: 8px 0;">${title}</li>`).join('')}
+              </ul>
+
+              <p>All tests are now <strong>unlocked</strong> and ready in your dashboard.</p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://www.techmocks.com" style="background: #3399cc; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to My Dashboard</a>
+              </div>
+
+              <p>Keep up the amazing work! 💪</p>
+
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+              <p style="color: #7f8c8d; font-size: 14px; text-align: center;">
+                Best regards,<br>
+                <strong>The TechMocks Team</strong><br>
+                <a href="https://www.techmocks.com" style="color: #3498db; text-decoration: none;">www.techmocks.com</a>
+              </p>
+            </div>
+          `,
+        };
+
+        try {
+          await transporter.sendMail(mailOptions);
+          console.log(`Success email sent to ${userEmail}`);
+        } catch (emailErr) {
+          console.error('Failed to send Stripe success email:', emailErr);
+        }
+      }
+
     } catch (err) {
-      console.error('Error fulfilling order:', err);
+      console.error('Error fulfilling Stripe order:', err);
     }
   }
 
   res.json({ received: true });
 });
 
+// ||||||||||||||||| RAZORPAY ENDPOINT |||||||||||||||||||||||
+// Razorpay: Create Order
+// Razorpay: Create Order (FIXED receipt length)
+app.post('/api/payment/razorpay/create-order', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  const { amount } = req.body;
+
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ message: 'Invalid amount' });
+  }
+
+  try {
+    const { data: cartItems, error } = await supabase
+      .from('cart')
+      .select('price')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    const totalINR = cartItems.reduce((sum, item) => sum + item.price, 0);
+    if (totalINR !== amount) {
+      return res.status(400).json({ message: 'Amount mismatch' });
+    }
+
+    // SAFE SHORT RECEIPT (max ~30 chars, works with UUIDs too)
+    const shortId = Math.random().toString(36).substring(2, 10); // e.g., "a1b2c3d4"
+    const receipt = `rec_${shortId}_${Date.now().toString().slice(-8)}`; 
+    // Example: rec_a1b2c3d4_00000000 → ~25 chars
+
+    const order = await razorpay.orders.create({
+      amount: amount * 100,
+      currency: 'INR',
+      receipt: receipt, // Now guaranteed < 40 chars
+    });
+
+    res.json({ order });
+  } catch (error) {
+    console.error('Razorpay order creation error:', error);
+    res.status(500).json({ message: 'Failed to create Razorpay order', error: error.message });
+  }
+});
+
+// Razorpay: Verify Payment & Fulfill
+app.post('/api/payment/razorpay/verify', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+  const crypto = require('crypto');
+  const generated_signature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(razorpay_order_id + '|' + razorpay_payment_id)
+    .digest('hex');
+
+  if (generated_signature !== razorpay_signature) {
+    return res.status(400).json({ message: 'Invalid signature' });
+  }
+
+  try {
+    // Fetch user email for receipt email
+    const { data: user } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', userId)
+      .single();
+
+    // Move cart to purchased_tests and clear cart
+    const { data: cartItems } = await supabase
+      .from('cart')
+      .select('mock_test_id')
+      .eq('user_id', userId);
+
+    if (cartItems && cartItems.length > 0) {
+      await supabase
+        .from('purchased_tests')
+        .insert(cartItems.map((item) => ({ user_id: userId, mock_test_id: item.mock_test_id })));
+
+      await supabase.from('cart').delete().eq('user_id', userId);
+    }
+
+    // Send success email
+    if (user?.email) {
+      const mailOptions = {
+        from: `"TechMocks" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'Payment Successful – Your Mock Tests are Unlocked! 🎉',
+        text: `Hello ${user.name || 'User'},
+
+Thank you for your purchase on TechMocks!
+
+Your payment of ₹${(
+          cartItems.reduce((s, i) => s + i.price, 0) || 0
+        ).toFixed(2)} via UPI has been successfully processed.
+
+All mock tests in your cart are now unlocked and available in your profile.
+
+Keep practicing and ace your interviews!
+
+Best regards,
+The TechMocks Team
+https://www.techmocks.com`,
+
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+            <h2 style="color: #27ae60;">Payment Successful! 🎉</h2>
+            <p>Hello <strong>${user.name || 'User'}</strong>,</p>
+            <p>Thank you for your purchase on <strong>TechMocks</strong>!</p>
+            <p>Your UPI payment of <strong>₹${(
+              cartItems.reduce((s, i) => s + i.price, 0) || 0
+            ).toFixed(2)}</strong> has been successfully processed.</p>
+            <p>All mock tests in your cart are now <strong>unlocked</strong> and ready to attempt.</p>
+            <div style="text-align:center; margin:30px 0;">
+              <a href="https://www.techmocks.com" style="background:#3399cc; color:white; padding:12px 24px; text-decoration:none; border-radius:6px;">Go to Dashboard</a>
+            </div>
+            <p>Keep up the great work!</p>
+            <hr style="border-top:1px solid #eee; margin:30px 0;" />
+            <p style="color:#7f8c8d; font-size:14px; text-align:center;">
+              Best regards,<br><strong>TechMocks Team</strong>
+            </p>
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log('Razorpay success email sent');
+      } catch (emailErr) {
+        console.error('Failed to send Razorpay success email:', emailErr);
+      }
+    }
+
+    res.json({ message: 'Payment verified and order fulfilled' });
+  } catch (error) {
+    console.error('Razorpay verification error:', error);
+    res.status(500).json({ message: 'Payment verification failed' });
+  }
+});
 // User: Add to Cart (UPDATED)
 app.post('/api/user/cart/add', verifyUser, async (req, res) => {
   const userId = req.user.id;

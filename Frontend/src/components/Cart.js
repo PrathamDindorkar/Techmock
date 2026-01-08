@@ -52,6 +52,7 @@ const CheckoutForm = ({
   gbpRate,
   onBack,
   onSuccess,
+  showSnackbar, // <-- Receive from parent
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -72,10 +73,10 @@ const CheckoutForm = ({
     setMessage('');
     setMessageType('');
 
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: window.location.href,
+        return_url: window.location.origin + window.location.pathname + '?stripe_redirect=1',
       },
       redirect: 'if_required',
     });
@@ -83,17 +84,22 @@ const CheckoutForm = ({
     if (error) {
       setMessage(error.message || 'Payment failed. Please try again.');
       setMessageType('error');
-    } else {
-      setMessage('Payment successful! Finalizing your purchase...');
+    } else if (paymentIntent?.status === 'succeeded') {
+      // Immediate success (no redirect needed)
+      setMessage('Payment successful! Unlocking your tests...');
       setMessageType('success');
-      await onSuccess();
+
+      await onSuccess(); // Calls handleFulfillment()
+
+      showSnackbar('Payment complete! Your mock tests are now unlocked. 🎉', 'success');
+
       setMessage('Payment complete! Your mock tests are now unlocked. 🎉');
     }
+    // If redirected, success will be handled by useEffect in parent
 
     setProcessing(false);
   };
 
-  // Formatters (unchanged)
   const localFormatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: userCurrency,
@@ -112,21 +118,10 @@ const CheckoutForm = ({
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-      {/* ADD THIS: Express Checkout for Google Pay, Apple Pay, PayPal */}
       <ExpressCheckoutElement
-        onConfirm={async () => {
-          // Optional: Handle express checkout confirmation if needed
-          // Usually not required — Stripe handles it automatically
-        }}
         options={{
-          buttonTheme: {
-            applePay: 'black',
-            googlePay: 'black',
-          },
-          buttonType: {
-            applePay: 'buy',
-            googlePay: 'buy',
-          },
+          buttonTheme: { applePay: 'black', googlePay: 'black' },
+          buttonType: { applePay: 'buy', googlePay: 'buy' },
         }}
       />
 
@@ -136,13 +131,7 @@ const CheckoutForm = ({
         </Typography>
       </Box>
 
-      {/* Keep PaymentElement for card and other methods */}
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          // Remove the deprecated wallets option
-        }}
-      />
+      <PaymentElement options={{ layout: 'tabs' }} />
 
       <Box sx={{ mt: 3, mb: 2, p: 2, backgroundColor: 'info.light', borderRadius: 1 }}>
         <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -207,9 +196,31 @@ const Cart = () => {
   const [displayRate, setDisplayRate] = useState(1);
   const [gbpRate, setGbpRate] = useState(0.0082);
 
+  const [razorpayLoading, setRazorpayLoading] = useState(false);
+
   const location = useLocation();
   const theme = useTheme();
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+  // Unified Stripe redirect & success handler
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const redirectStatus = params.get('redirect_status');
+    const stripeRedirect = params.get('stripe_redirect'); // Our custom marker
+
+    // Trigger only if coming from Stripe (either redirect_status or our marker)
+    if (redirectStatus || stripeRedirect) {
+      if (redirectStatus === 'succeeded' || stripeRedirect === '1') {
+        showSnackbar('Payment successful! Your mock tests are now unlocked. 🎉', 'success');
+        handleFulfillment(); // Safe to call — backend is idempotent
+      } else if (redirectStatus === 'failed') {
+        showSnackbar('Payment failed or was cancelled. Please try again.', 'error');
+      }
+
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const getCurrencyAndRates = async () => {
@@ -273,20 +284,6 @@ const Cart = () => {
 
     fetchCart();
   }, [backendUrl]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const redirectStatus = params.get('redirect_status');
-
-    if (redirectStatus === 'succeeded' && paymentMode) {
-      showSnackbar('Payment successful! Your mock tests have been unlocked. 🎉', 'success');
-      handleFulfillment();
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (redirectStatus === 'failed' && paymentMode) {
-      showSnackbar('Payment failed or was cancelled. Please try again.', 'error');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [location.search, paymentMode]);
 
   const showSnackbar = (message, severity = 'info') => {
     setSnackbarMessage(message);
@@ -378,6 +375,115 @@ const Cart = () => {
   const displayTotal = baseTotalINR * displayRate;
   const gbpTotal = baseTotalINR * gbpRate;
   const formattedTotal = formatPrice(baseTotalINR);
+
+  // Razorpay logic remains unchanged (already working well)
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (document.getElementById('razorpay-script')) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async () => {
+    if (baseTotalINR === 0) {
+      showSnackbar('No paid items in cart', 'info');
+      return;
+    }
+
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      showSnackbar('Failed to load payment gateway. Check your internet connection.', 'error');
+      return;
+    }
+
+    setRazorpayLoading(true);
+    showSnackbar('Initializing UPI payment...', 'info');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${backendUrl}/api/payment/razorpay/create-order`,
+        { amount: baseTotalINR },
+        { headers: { Authorization: token } }
+      );
+
+      const { order } = response.data;
+
+      const options = {
+        key: process.env.REACT_APP_RZP_KEY,
+        amount: order.amount,
+        currency: 'INR',
+        name: 'TechMocks',
+        description: 'Purchase Mock Tests',
+        order_id: order.id,
+        handler: async (response) => {
+          try {
+            await axios.post(
+              `${backendUrl}/api/payment/razorpay/verify`,
+              {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { Authorization: token } }
+            );
+
+            showSnackbar('Payment successful! Your mock tests are now unlocked. 🎉', 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+          } catch (err) {
+            console.error('Verification failed:', err);
+            showSnackbar('Payment verification failed. Contact support if charged.', 'error');
+          }
+        },
+        prefill: {},
+        theme: { color: '#3399cc' },
+        modal: {
+          ondismiss: () => {
+            showSnackbar('Payment cancelled.', 'info');
+            setRazorpayLoading(false);
+          },
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay using UPI',
+                instruments: [{ method: 'upi' }],
+              },
+            },
+            sequence: ['block.upi'],
+            preferences: { show_default_blocks: false },
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response) => {
+        let errorMsg = 'Payment failed.';
+        if (response.error?.description) {
+          errorMsg += ` ${response.error.description}`;
+        }
+        showSnackbar(errorMsg, 'error');
+        setRazorpayLoading(false);
+      });
+
+      rzp.open();
+    } catch (error) {
+      console.error('Razorpay init error:', error);
+      showSnackbar(error.response?.data?.message || 'Failed to start UPI payment.', 'error');
+      setRazorpayLoading(false);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -501,14 +607,29 @@ const Cart = () => {
                   onClick={handleProceedToPayment}
                   disabled={operationLoading || baseTotalINR === 0}
                   startIcon={<PaymentIcon />}
-                  sx={{ py: 1.8, fontSize: '1.1rem' }}
+                  sx={{ py: 1.8, fontSize: '1.1rem', mb: 2 }}
                 >
                   {operationLoading ? (
                     <CircularProgress size={28} color="inherit" />
                   ) : (
-                    'Proceed to Secure Payment'
+                    'Pay with Card / Wallet (Stripe)'
                   )}
                 </Button>
+
+                {userCurrency === 'INR' && baseTotalINR > 0 && (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    fullWidth
+                    onClick={handleRazorpayPayment}
+                    disabled={razorpayLoading || operationLoading}
+                    startIcon={razorpayLoading ? <CircularProgress size={28} color="inherit" /> : <PaymentIcon />}
+                    sx={{ py: 1.8, fontSize: '1.1rem' }}
+                  >
+                    {razorpayLoading ? 'Opening UPI...' : 'Pay with UPI (Fast & Secure)'}
+                  </Button>
+                )}
               </Box>
             </>
           ) : (
@@ -524,6 +645,7 @@ const Cart = () => {
                     setClientSecret('');
                   }}
                   onSuccess={handleFulfillment}
+                  showSnackbar={showSnackbar} // Pass it down
                 />
               </Box>
             </Elements>
