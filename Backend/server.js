@@ -331,25 +331,119 @@ app.post('/api/user/checkout', verifyUser, async (req, res) => {
 app.post('/api/user/apply-coupon', verifyUser, async (req, res) => {
   const { code } = req.body;
 
-  if (!code) {
-    return res.status(400).json({ message: 'Coupon code is required' });
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ message: 'Valid coupon code is required' });
   }
 
   try {
     const { data: coupon, error } = await supabase
       .from('coupons')
       .select('code, discount')
-      .eq('code', code.toUpperCase())
-      .single();
+      .eq('code', code.trim().toUpperCase())
+      .maybeSingle();  // Use maybeSingle instead of single to avoid error on no rows
 
-    if (error || !coupon) {
-      return res.status(404).json({ message: 'Invalid or expired coupon' });
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ message: 'Server error while validating coupon' });
     }
 
-    res.json({ coupon: { code: coupon.code, discount: coupon.discount } });
+    if (!coupon) {
+      return res.status(404).json({ message: 'Invalid or expired coupon code' });
+    }
+
+    // You can add more checks here in future (expiry date, usage limit, etc.)
+    // For now - just return the discount value
+
+    res.json({
+      success: true,
+      coupon: {
+        code: coupon.code,
+        discount: coupon.discount
+      }
+    });
   } catch (err) {
     console.error('Coupon validation error:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ==================== COUPON MANAGEMENT (ADMIN) ====================
+
+// GET all coupons (for admin list)
+app.get('/api/admin/coupons', verifyAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('Error fetching coupons:', err);
+    res.status(500).json({ message: 'Failed to fetch coupons' });
+  }
+});
+
+// POST - Create new coupon
+app.post('/api/admin/coupons', verifyAdmin, async (req, res) => {
+  const { code, discount } = req.body;
+
+  if (!code || !discount) {
+    return res.status(400).json({ message: 'Code and discount percentage are required' });
+  }
+
+  const discountNum = Number(discount);
+  if (isNaN(discountNum) || discountNum <= 0 || discountNum > 100) {
+    return res.status(400).json({ message: 'Discount must be a number between 1 and 100' });
+  }
+
+  try {
+    // Check if code already exists (case-insensitive)
+    const { data: existing } = await supabase
+      .from('coupons')
+      .select('id')
+      .eq('code', code.toUpperCase())
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(409).json({ message: 'This coupon code already exists' });
+    }
+
+    const { error } = await supabase
+      .from('coupons')
+      .insert({
+        code: code.toUpperCase(),
+        discount: discountNum,
+        created_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
+    res.status(201).json({ message: 'Coupon created successfully' });
+  } catch (err) {
+    console.error('Error creating coupon:', err);
+    res.status(500).json({ message: 'Failed to create coupon' });
+  }
+});
+
+// DELETE - Remove coupon
+app.delete('/api/admin/coupons/:id', verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('coupons')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ message: 'Coupon deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting coupon:', err);
+    res.status(500).json({ message: 'Failed to delete coupon' });
   }
 });
 

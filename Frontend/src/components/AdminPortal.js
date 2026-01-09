@@ -26,7 +26,8 @@ import {
   NavigateBefore as NavigateBeforeIcon,
   Refresh as RefreshIcon,
   Help as HelpIcon,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  LocalOffer as LocalOfferIcon
 } from '@mui/icons-material';
 
 const AnimatedContainer = styled(motion.div)({
@@ -116,6 +117,13 @@ const AdminPortal = () => {
   const [userEditDialogOpen, setUserEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // State for Coupons
+  const [coupons, setCoupons] = useState([]);
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
   // Notifications
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
@@ -130,6 +138,8 @@ const AdminPortal = () => {
         fetchMockTests();
       } else if (activeTab === 2) {
         fetchUsers();
+      } else if (activeTab === 3) {           // ← NEW
+        fetchCoupons();
       }
     }
   }, [role, activeTab]);
@@ -376,60 +386,60 @@ const AdminPortal = () => {
     reader.readAsArrayBuffer(file);
   };
   const handleAutoGenerate = async () => {
-  if (!autoTitle || !autoCategory || numQuestions < 1) {
-    showSnackbar('Please fill all required fields', 'error');
-    return;
-  }
+    if (!autoTitle || !autoCategory || numQuestions < 1) {
+      showSnackbar('Please fill all required fields', 'error');
+      return;
+    }
 
-  if (autoPricingType === 'paid' && (!autoPrice || autoPrice <= 0)) {
-    showSnackbar('Enter a valid price', 'error');
-    return;
-  }
+    if (autoPricingType === 'paid' && (!autoPrice || autoPrice <= 0)) {
+      showSnackbar('Enter a valid price', 'error');
+      return;
+    }
 
-  setGenerating(true);
+    setGenerating(true);
 
-  try {
-    const token = localStorage.getItem('token');
+    try {
+      const token = localStorage.getItem('token');
 
-    const response = await axios.post(
-      `${backendUrl}/api/admin/generate-mock-test`,
-      {
-        title: autoTitle,
-        description: autoDescription,
-        category: autoCategory,
-        timeLimit: Number(autoTimeLimit),
-        numQuestions: Number(numQuestions),
-        pricingType: autoPricingType,
-        price: autoPricingType === 'paid' ? Number(autoPrice) : 0
-      },
-      { headers: { Authorization: token } }
-    );
+      const response = await axios.post(
+        `${backendUrl}/api/admin/generate-mock-test`,
+        {
+          title: autoTitle,
+          description: autoDescription,
+          category: autoCategory,
+          timeLimit: Number(autoTimeLimit),
+          numQuestions: Number(numQuestions),
+          pricingType: autoPricingType,
+          price: autoPricingType === 'paid' ? Number(autoPrice) : 0
+        },
+        { headers: { Authorization: token } }
+      );
 
-    showSnackbar('Mock test generated successfully!', 'success');
+      showSnackbar('Mock test generated successfully!', 'success');
 
-    // Reset form
-    setAutoTitle('');
-    setAutoDescription('');
-    setAutoCategory('');
-    setAutoTimeLimit(30);
-    setNumQuestions(10);
-    setAutoPricingType('free');
-    setAutoPrice('');
+      // Reset form
+      setAutoTitle('');
+      setAutoDescription('');
+      setAutoCategory('');
+      setAutoTimeLimit(30);
+      setNumQuestions(10);
+      setAutoPricingType('free');
+      setAutoPrice('');
 
-    // Switch to manage tab to see it
-    setActiveTab(1);
-    setTimeout(() => fetchMockTests(), 600);
+      // Switch to manage tab to see it
+      setActiveTab(1);
+      setTimeout(() => fetchMockTests(), 600);
 
-  } catch (error) {
-    console.error('Error generating mock test:', error);
-    showSnackbar(
-      error.response?.data?.message || 'Failed to generate mock test. Not enough questions in this category?',
-      'error'
-    );
-  } finally {
-    setGenerating(false);
-  }
-};
+    } catch (error) {
+      console.error('Error generating mock test:', error);
+      showSnackbar(
+        error.response?.data?.message || 'Failed to generate mock test. Not enough questions in this category?',
+        'error'
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSubmit = async () => {
     // Basic validation
@@ -585,6 +595,78 @@ const AdminPortal = () => {
     }
   };
 
+  const fetchCoupons = async () => {
+    setCouponLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${backendUrl}/api/admin/coupons`, {
+        headers: { Authorization: token },
+      });
+      setCoupons(response.data);
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      showSnackbar('Failed to load coupon codes', 'error');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleCreateCoupon = async () => {
+    if (!newCouponCode.trim()) {
+      showSnackbar('Coupon code is required', 'error');
+      return;
+    }
+
+    const discountNum = Number(newCouponDiscount);
+    if (isNaN(discountNum) || discountNum <= 0 || discountNum > 100) {
+      showSnackbar('Please enter valid discount percentage (1-100)', 'error');
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${backendUrl}/api/admin/coupons`,
+        {
+          code: newCouponCode.trim().toUpperCase(),
+          discount: discountNum
+        },
+        { headers: { Authorization: token } }
+      );
+
+      showSnackbar('Coupon created successfully!', 'success');
+      setNewCouponCode('');
+      setNewCouponDiscount('');
+      fetchCoupons(); // refresh list
+    } catch (error) {
+      console.error('Error creating coupon:', error);
+      showSnackbar(
+        error.response?.data?.message || 'Failed to create coupon',
+        'error'
+      );
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleDeleteCoupon = async (couponId) => {
+    if (!window.confirm('Are you sure you want to delete this coupon?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${backendUrl}/api/admin/coupons/${couponId}`, {
+        headers: { Authorization: token }
+      });
+
+      showSnackbar('Coupon deleted successfully!', 'success');
+      setCoupons(prev => prev.filter(c => c.id !== couponId));
+    } catch (error) {
+      console.error('Error deleting coupon:', error);
+      showSnackbar('Failed to delete coupon', 'error');
+    }
+  };
+
   const filteredMockTests = mockTests.filter(test => {
     const matchesSearch = test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       test.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -680,6 +762,7 @@ const AdminPortal = () => {
             <StyledTab label="Create Mock Test" icon={<AddIcon />} iconPosition="start" />
             <StyledTab label="Manage Mock Tests" icon={<SearchIcon />} iconPosition="start" />
             <StyledTab label="User Management" icon={<PersonIcon />} iconPosition="start" />
+            <StyledTab label="Coupon Codes" icon={<LocalOfferIcon />} iconPosition="start" />
           </Tabs>
         </Paper>
 
@@ -1607,6 +1690,137 @@ const AdminPortal = () => {
                 </>
               )}
             </Dialog>
+          </motion.div>
+        )}
+        {activeTab === 3 && (
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <StyledPaper elevation={3}>
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h5" color="primary" gutterBottom>
+                  Coupon Code Management
+                </Typography>
+                <Divider sx={{ mb: 3 }} />
+
+                {/* Create New Coupon Form */}
+                <Paper sx={{ p: 3, mb: 4, bgcolor: 'background.paper' }}>
+                  <Typography variant="h6" gutterBottom>
+                    Create New Coupon
+                  </Typography>
+
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={5}>
+                      <TextField
+                        fullWidth
+                        label="Coupon Code"
+                        value={newCouponCode}
+                        onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                        placeholder="SUMMER2025"
+                        helperText="Will be converted to uppercase automatically"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">CODE:</InputAdornment>,
+                        }}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Discount (%)"
+                        type="number"
+                        value={newCouponDiscount}
+                        onChange={(e) => setNewCouponDiscount(e.target.value)}
+                        InputProps={{
+                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          inputProps: { min: 1, max: 100 }
+                        }}
+                        placeholder="20"
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'flex-end' }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        onClick={handleCreateCoupon}
+                        disabled={couponLoading}
+                        startIcon={couponLoading ? <CircularProgress size={20} /> : <AddIcon />}
+                        sx={{ height: '56px' }}
+                      >
+                        Create Coupon
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Paper>
+
+                {/* Coupon List */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+                  Existing Coupons
+                </Typography>
+
+                {couponLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 6 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : coupons.length === 0 ? (
+                  <Alert severity="info">
+                    No coupon codes created yet.
+                  </Alert>
+                ) : (
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Code</strong></TableCell>
+                          <TableCell align="center"><strong>Discount</strong></TableCell>
+                          <TableCell><strong>Created At</strong></TableCell>
+                          <TableCell align="center"><strong>Actions</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {coupons.map((coupon) => (
+                          <TableRow key={coupon.id} hover>
+                            <TableCell>
+                              <Chip
+                                label={coupon.code}
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontWeight: 'bold' }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip
+                                label={`${coupon.discount}%`}
+                                color="success"
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {new Date(coupon.created_at).toLocaleString()}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Delete Coupon">
+                                <IconButton
+                                  color="error"
+                                  size="small"
+                                  onClick={() => handleDeleteCoupon(coupon.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Box>
+            </StyledPaper>
           </motion.div>
         )}
       </AnimatedContainer>
