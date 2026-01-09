@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  TextField,
   useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
@@ -28,6 +29,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 // Stripe imports
 import { loadStripe } from '@stripe/stripe-js';
@@ -52,7 +54,7 @@ const CheckoutForm = ({
   gbpRate,
   onBack,
   onSuccess,
-  showSnackbar, // <-- Receive from parent
+  showSnackbar,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -85,17 +87,12 @@ const CheckoutForm = ({
       setMessage(error.message || 'Payment failed. Please try again.');
       setMessageType('error');
     } else if (paymentIntent?.status === 'succeeded') {
-      // Immediate success (no redirect needed)
       setMessage('Payment successful! Unlocking your tests...');
       setMessageType('success');
-
-      await onSuccess(); // Calls handleFulfillment()
-
+      await onSuccess();
       showSnackbar('Payment complete! Your mock tests are now unlocked. 🎉', 'success');
-
       setMessage('Payment complete! Your mock tests are now unlocked. 🎉');
     }
-    // If redirected, success will be handled by useEffect in parent
 
     setProcessing(false);
   };
@@ -198,30 +195,33 @@ const Cart = () => {
 
   const [razorpayLoading, setRazorpayLoading] = useState(false);
 
+  // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount }
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
   const location = useLocation();
   const theme = useTheme();
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-  // Unified Stripe redirect & success handler
+  // Stripe redirect handler
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const redirectStatus = params.get('redirect_status');
-    const stripeRedirect = params.get('stripe_redirect'); // Our custom marker
+    const stripeRedirect = params.get('stripe_redirect');
 
-    // Trigger only if coming from Stripe (either redirect_status or our marker)
     if (redirectStatus || stripeRedirect) {
       if (redirectStatus === 'succeeded' || stripeRedirect === '1') {
         showSnackbar('Payment successful! Your mock tests are now unlocked. 🎉', 'success');
-        handleFulfillment(); // Safe to call — backend is idempotent
+        handleFulfillment();
       } else if (redirectStatus === 'failed') {
         showSnackbar('Payment failed or was cancelled. Please try again.', 'error');
       }
-
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [location.search]);
 
+  // Fetch currency rates
   useEffect(() => {
     const getCurrencyAndRates = async () => {
       try {
@@ -251,6 +251,7 @@ const Cart = () => {
     getCurrencyAndRates();
   }, []);
 
+  // Fetch cart
   useEffect(() => {
     const fetchCart = async () => {
       const token = localStorage.getItem('token');
@@ -291,6 +292,38 @@ const Cart = () => {
     setSnackbarOpen(true);
   };
 
+  // Apply coupon
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      showSnackbar('Please enter a coupon code', 'warning');
+      return;
+    }
+
+    setApplyingCoupon(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/user/apply-coupon`,
+        { code: couponCode.trim().toUpperCase() },
+        { headers: { Authorization: token } }
+      );
+
+      setAppliedCoupon(response.data.coupon);
+      showSnackbar(`Coupon ${response.data.coupon.code} applied! ${response.data.coupon.discount}% off`, 'success');
+      setCouponCode('');
+    } catch (error) {
+      showSnackbar(error.response?.data?.message || 'Invalid or expired coupon', 'error');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    showSnackbar('Coupon removed', 'info');
+  };
+
   const handleRemoveItem = async (mockTestId) => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -324,7 +357,10 @@ const Cart = () => {
     try {
       const response = await axios.post(
         `${backendUrl}/api/payment/create-intent`,
-        { currency: 'gbp' },
+        {
+          currency: 'gbp',
+          coupon_code: appliedCoupon?.code || null,
+        },
         { headers: { Authorization: token } }
       );
 
@@ -345,12 +381,15 @@ const Cart = () => {
     if (!token) return;
 
     try {
-      await axios.post(`${backendUrl}/api/user/checkout`, {}, {
-        headers: { Authorization: token },
-      });
+      await axios.post(
+        `${backendUrl}/api/user/checkout`,
+        { coupon_code: appliedCoupon?.code || null },
+        { headers: { Authorization: token } }
+      );
       setCartItems([]);
       setPaymentMode(false);
       setClientSecret('');
+      setAppliedCoupon(null);
     } catch (error) {
       console.error('Fulfillment error:', error);
       showSnackbar('Failed to finalize purchase. Please refresh.', 'error');
@@ -368,39 +407,32 @@ const Cart = () => {
     return formatter.format(converted);
   };
 
+  // Calculate totals
   const baseTotalINR = cartItems
     .filter((item) => item.pricingType === 'paid')
     .reduce((sum, item) => sum + item.price, 0);
 
-  const displayTotal = baseTotalINR * displayRate;
-  const gbpTotal = baseTotalINR * gbpRate;
-  const formattedTotal = formatPrice(baseTotalINR);
+  const discountedTotalINR = appliedCoupon
+    ? baseTotalINR * (1 - appliedCoupon.discount / 100)
+    : baseTotalINR;
 
-  // Razorpay logic remains unchanged (already working well)
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (document.getElementById('razorpay-script')) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.id = 'razorpay-script';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+  const finalAmountINR = Math.max(0, Math.round(discountedTotalINR)); // Round to nearest rupee
 
+  const displayTotal = finalAmountINR * displayRate;
+  const gbpTotal = finalAmountINR * gbpRate;
+  const formattedTotal = formatPrice(finalAmountINR);
+  const formattedOriginalTotal = formatPrice(baseTotalINR);
+
+  // Razorpay payment with discount
   const handleRazorpayPayment = async () => {
-    if (baseTotalINR === 0) {
-      showSnackbar('No paid items in cart', 'info');
+    if (finalAmountINR === 0) {
+      showSnackbar('No amount to pay after discount!', 'info');
       return;
     }
 
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
-      showSnackbar('Failed to load payment gateway. Check your internet connection.', 'error');
+      showSnackbar('Failed to load payment gateway.', 'error');
       return;
     }
 
@@ -411,7 +443,10 @@ const Cart = () => {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${backendUrl}/api/payment/razorpay/create-order`,
-        { amount: baseTotalINR },
+        {
+          amount: finalAmountINR,
+          coupon_code: appliedCoupon?.code || null,
+        },
         { headers: { Authorization: token } }
       );
 
@@ -432,35 +467,26 @@ const Cart = () => {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_signature: response.razorpay_signature,
+                coupon_code: appliedCoupon?.code || null,
               },
               { headers: { Authorization: token } }
             );
 
             showSnackbar('Payment successful! Your mock tests are now unlocked. 🎉', 'success');
-            setTimeout(() => {
-              window.location.reload();
-            }, 2000);
+            setTimeout(() => window.location.reload(), 2000);
           } catch (err) {
-            console.error('Verification failed:', err);
-            showSnackbar('Payment verification failed. Contact support if charged.', 'error');
+            showSnackbar('Payment verification failed.', 'error');
           }
         },
         prefill: {},
         theme: { color: '#3399cc' },
-        modal: {
-          ondismiss: () => {
-            showSnackbar('Payment cancelled.', 'info');
-            setRazorpayLoading(false);
-          },
-        },
+        modal: { ondismiss: () => {
+          showSnackbar('Payment cancelled.', 'info');
+          setRazorpayLoading(false);
+        }},
         config: {
           display: {
-            blocks: {
-              upi: {
-                name: 'Pay using UPI',
-                instruments: [{ method: 'upi' }],
-              },
-            },
+            blocks: { upi: { name: 'Pay using UPI', instruments: [{ method: 'upi' }] } },
             sequence: ['block.upi'],
             preferences: { show_default_blocks: false },
           },
@@ -469,33 +495,26 @@ const Cart = () => {
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (response) => {
-        let errorMsg = 'Payment failed.';
-        if (response.error?.description) {
-          errorMsg += ` ${response.error.description}`;
-        }
-        showSnackbar(errorMsg, 'error');
+        showSnackbar(response.error?.description || 'Payment failed.', 'error');
         setRazorpayLoading(false);
       });
-
       rzp.open();
     } catch (error) {
-      console.error('Razorpay init error:', error);
-      showSnackbar(error.response?.data?.message || 'Failed to start UPI payment.', 'error');
+      showSnackbar(error.response?.data?.message || 'Failed to start payment.', 'error');
       setRazorpayLoading(false);
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { when: 'beforeChildren', staggerChildren: 0.2 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } },
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (document.getElementById('razorpay-script')) return resolve(true);
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
   if (loading) {
@@ -507,44 +526,21 @@ const Cart = () => {
   }
 
   return (
-    <MotionContainer
-      maxWidth="md"
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      sx={{ py: 6 }}
-    >
-      <Typography
-        variant="h4"
-        sx={{
-          mb: 5,
-          textAlign: 'center',
-          fontWeight: 700,
-          background: 'linear-gradient(90deg, #4b6cb7 0%, #182848 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}
-      >
+    <MotionContainer maxWidth="md" sx={{ py: 6 }}>
+      <Typography variant="h4" align="center" sx={{ mb: 5, fontWeight: 700, background: 'linear-gradient(90deg, #4b6cb7 0%, #182848 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
         {paymentMode ? 'Complete Your Payment' : 'Your Shopping Cart'}
       </Typography>
 
       {cartItems.length === 0 ? (
-        <MotionPaper elevation={6} variants={itemVariants} sx={{ p: 6, textAlign: 'center' }}>
+        <MotionPaper elevation={6} sx={{ p: 6, textAlign: 'center' }}>
           <ShoppingCartIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
-          <Typography variant="h5" color="text.secondary" gutterBottom>
-            Your cart is empty
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => window.location.href = '/mocks'}
-            sx={{ mt: 2 }}
-          >
+          <Typography variant="h5" color="text.secondary" gutterBottom>Your cart is empty</Typography>
+          <Button variant="contained" size="large" onClick={() => window.location.href = '/mocks'} sx={{ mt: 2 }}>
             Browse More Mock Tests
           </Button>
         </MotionPaper>
       ) : (
-        <MotionPaper elevation={6} variants={itemVariants} sx={{ overflow: 'hidden' }}>
+        <MotionPaper elevation={6} sx={{ overflow: 'hidden' }}>
           {!paymentMode ? (
             <>
               <List>
@@ -552,39 +548,22 @@ const Cart = () => {
                   <React.Fragment key={item.id}>
                     <ListItem>
                       <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                          <AssignmentIcon />
-                        </Avatar>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}><AssignmentIcon /></Avatar>
                       </ListItemAvatar>
                       <ListItemText
-                        primary={
-                          <Typography variant="subtitle1" fontWeight="medium">
-                            {item.title}
-                          </Typography>
-                        }
+                        primary={<Typography variant="subtitle1" fontWeight="medium">{item.title}</Typography>}
                         secondary={
                           <>
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
+                            <Typography component="span" variant="body2" color="text.secondary">{item.description}</Typography>
                             <br />
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color={item.pricingType === 'free' ? 'success.main' : 'text.primary'}
-                              fontWeight="bold"
-                            >
+                            <Typography component="span" variant="body1" color={item.pricingType === 'free' ? 'success.main' : 'text.primary'} fontWeight="bold">
                               {item.pricingType === 'free' ? 'FREE' : formatPrice(item.price)}
                             </Typography>
                           </>
                         }
                       />
                       <ListItemSecondaryAction>
-                        <IconButton
-                          edge="end"
-                          onClick={() => handleRemoveItem(item.id)}
-                          disabled={operationLoading}
-                        >
+                        <IconButton edge="end" onClick={() => handleRemoveItem(item.id)} disabled={operationLoading}>
                           {operationLoading ? <CircularProgress size={24} /> : <DeleteIcon />}
                         </IconButton>
                       </ListItemSecondaryAction>
@@ -595,28 +574,69 @@ const Cart = () => {
               </List>
 
               <Box sx={{ p: 4, backgroundColor: theme.palette.background.default }}>
-                <Typography variant="h5" align="right" gutterBottom>
-                  Total: <strong>{formattedTotal}</strong>
-                </Typography>
+                {/* Coupon Section */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <LocalOfferIcon fontSize="small" /> Have a coupon?
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      size="small"
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      disabled={applyingCoupon || !!appliedCoupon}
+                      sx={{ flexGrow: 1 }}
+                    />
+                    {appliedCoupon ? (
+                      <Button variant="outlined" color="error" onClick={handleRemoveCoupon}>
+                        Remove
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        onClick={handleApplyCoupon}
+                        disabled={applyingCoupon || !couponCode.trim()}
+                      >
+                        {applyingCoupon ? <CircularProgress size={20} /> : 'Apply'}
+                      </Button>
+                    )}
+                  </Box>
 
+                  {appliedCoupon && (
+                    <Typography variant="body2" color="success.main" sx={{ mt: 1, fontWeight: 'bold' }}>
+                      ✓ {appliedCoupon.code} applied — {appliedCoupon.discount}% off!
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* Totals */}
+                <Box sx={{ mb: 3 }}>
+                  {appliedCoupon && (
+                    <Typography variant="body1" align="right" sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
+                      Original: {formattedOriginalTotal}
+                    </Typography>
+                  )}
+                  <Typography variant="h5" align="right" gutterBottom>
+                    Total: <strong>{formattedTotal}</strong>
+                  </Typography>
+                </Box>
+
+                {/* Payment Buttons */}
                 <Button
                   variant="contained"
                   color="primary"
                   size="large"
                   fullWidth
                   onClick={handleProceedToPayment}
-                  disabled={operationLoading || baseTotalINR === 0}
+                  disabled={operationLoading || finalAmountINR === 0}
                   startIcon={<PaymentIcon />}
                   sx={{ py: 1.8, fontSize: '1.1rem', mb: 2 }}
                 >
-                  {operationLoading ? (
-                    <CircularProgress size={28} color="inherit" />
-                  ) : (
-                    'Pay with Card / Wallet (Stripe)'
-                  )}
+                  {operationLoading ? <CircularProgress size={28} color="inherit" /> : 'Pay with Card / Wallet (Stripe)'}
                 </Button>
 
-                {userCurrency === 'INR' && baseTotalINR > 0 && (
+                {userCurrency === 'INR' && finalAmountINR > 0 && (
                   <Button
                     variant="contained"
                     color="success"
@@ -645,7 +665,7 @@ const Cart = () => {
                     setClientSecret('');
                   }}
                   onSuccess={handleFulfillment}
-                  showSnackbar={showSnackbar} // Pass it down
+                  showSnackbar={showSnackbar}
                 />
               </Box>
             </Elements>
@@ -653,19 +673,8 @@ const Cart = () => {
         </MotionPaper>
       )}
 
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ mb: 2 }}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: '100%', fontSize: '1rem' }}
-        >
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} variant="filled" sx={{ width: '100%', fontSize: '1rem' }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
