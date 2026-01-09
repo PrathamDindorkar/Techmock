@@ -138,8 +138,8 @@ const Landing = ({ toggleColorMode }) => {
                 color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
               }}
             >
-              Realistic mock exams for AWS, Azure, Opentext VIM, SAP, CompTIA, and more. 
-              Practice with confidence and ace your certifications.
+              Realistic mock exams for AWS, Azure, Opentext VIM, SAP, OpenText VIM, and more. 
+              Practice with confidence, ace your certifications & interviews.
             </Typography>
           </motion.div>
 
@@ -257,7 +257,7 @@ const Landing = ({ toggleColorMode }) => {
             justifyContent="center" 
             sx={{ mt: 8, flexWrap: "wrap", gap: 2 }}
           >
-            {['AWS', 'Azure', 'GCP', 'Cisco', 'Python', 'React'].map((tech, index) => (
+            {['Amazon Web Services', 'Azure', 'Data Structures & Algorithms', 'Software Application Program (SAP)', 'SAP Fiori', 'OpenText Vendor Invoice Management'].map((tech, index) => (
               <motion.div
                 key={tech}
                 initial={{ opacity: 0, y: 20 }}
