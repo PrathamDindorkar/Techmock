@@ -12,28 +12,26 @@ import {
   ListItemText,
   Paper,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Tooltip
 } from "@mui/material";
 import {
   ArrowDownward,
   School,
-  WorkOutline,
-  TrendingUp,
-  Speed,
   EmojiEvents,
-  Analytics
+  Analytics,
+  LocalOffer,
+  ContentCopy,
+  Done
 } from "@mui/icons-material";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
-const Landing = ({ toggleColorMode }) => {
+const Landing = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [scrolled, setScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
-  const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const [copied, setCopied] = useState(false);
 
   // Check if user is logged in
   useEffect(() => {
@@ -41,13 +39,22 @@ const Landing = ({ toggleColorMode }) => {
     setIsLoggedIn(!!token);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText("TECH25");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const glassStyle = {
+    background: isDarkMode
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(20px)',
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)'}`,
+    boxShadow: isDarkMode
+      ? '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+      : '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+  };
 
   const benefits = [
     {
@@ -70,17 +77,6 @@ const Landing = ({ toggleColorMode }) => {
     },
   ];
 
-  const glassStyle = {
-    background: isDarkMode 
-      ? 'rgba(255, 255, 255, 0.05)' 
-      : 'rgba(255, 255, 255, 0.7)',
-    backdropFilter: 'blur(20px)',
-    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)'}`,
-    boxShadow: isDarkMode 
-      ? '0 8px 32px 0 rgba(0, 0, 0, 0.37)' 
-      : '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-  };
-
   return (
     <Box sx={{
       bgcolor: 'transparent',
@@ -89,15 +85,53 @@ const Landing = ({ toggleColorMode }) => {
       position: "relative",
       minHeight: "100vh"
     }}>
+      
+      {/* 1. ANIMATED TOP PROMO BAR */}
+      <motion.div
+        initial={{ y: -50 }}
+        animate={{ y: 0 }}
+        transition={{ delay: 0.5, type: 'spring', stiffness: 120 }}
+      >
+        <Box sx={{
+          background: "linear-gradient(90deg, #ec4899, #a855f7, #00d4ff)",
+          py: 1,
+          borderRadius: 50,
+          textAlign: "center",
+          color: "white",
+          fontWeight: 700,
+          fontSize: "0.9rem",
+          letterSpacing: 1,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <LocalOffer fontSize="small" />
+          LIMITED TIME: 25% OFF ALL PAID EXAMS
+          <motion.span
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            style={{ 
+              backgroundColor: 'rgba(255,255,255,0.2)', 
+              padding: '2px 8px', 
+              borderRadius: '4px',
+              border: '1px dashed white'
+            }}
+          >
+            CODE: TECH25
+          </motion.span>
+        </Box>
+      </motion.div>
+
       {/* Hero Section */}
       <Box
         sx={{
-          minHeight: "100vh",
+          minHeight: "90vh",
           display: "flex",
           alignItems: "center",
           position: "relative",
           zIndex: 1,
-          pt: 8
+          pt: 4
         }}
       >
         <Container maxWidth="lg" sx={{ textAlign: "center" }}>
@@ -106,21 +140,47 @@ const Landing = ({ toggleColorMode }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Typography
-              variant="h1"
-              sx={{
-                fontSize: { xs: "2.5rem", md: "5rem" },
-                fontWeight: 900,
-                mb: 3,
-                lineHeight: 1.1,
-                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              Master Your Tech Journey
-            </Typography>
+            {/* 2. FLOATING BADGE NEAR TITILE */}
+            <Box sx={{ display: 'inline-block', position: 'relative' }}>
+                <motion.div
+                    animate={{ 
+                        rotate: [0, 10, -10, 0],
+                        scale: [1, 1.1, 1]
+                    }}
+                    transition={{ repeat: Infinity, duration: 4 }}
+                    style={{
+                        position: 'absolute',
+                        right: isMobile ? '-20px' : '-60px',
+                        top: '-30px',
+                        background: '#ffd93d',
+                        color: '#000',
+                        padding: '8px 15px',
+                        borderRadius: '50px',
+                        fontWeight: 900,
+                        fontSize: '0.8rem',
+                        boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
+                        zIndex: 2,
+                        border: '2px solid white'
+                    }}
+                >
+                    SAVE 25% 🚀
+                </motion.div>
+                <Typography
+                variant="h1"
+                sx={{
+                    fontSize: { xs: "2.8rem", md: "5rem" },
+                    fontWeight: 900,
+                    mb: 3,
+                    lineHeight: 1.1,
+                    background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 50%, #ec4899 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                }}
+                >
+                Master Your Tech Journey
+                </Typography>
+            </Box>
           </motion.div>
 
           <motion.div
@@ -130,15 +190,15 @@ const Landing = ({ toggleColorMode }) => {
           >
             <Typography
               variant="h5"
-              sx={{ 
-                maxWidth: "760px", 
-                mx: "auto", 
-                mb: 5, 
+              sx={{
+                maxWidth: "760px",
+                mx: "auto",
+                mb: 5,
                 fontWeight: 400,
                 color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
               }}
             >
-              Realistic mock exams for AWS, Azure, Opentext VIM, SAP, OpenText VIM, and more. 
+              Realistic mock exams for AWS, Azure, SAP, and OpenText.
               Practice with confidence, ace your certifications & interviews.
             </Typography>
           </motion.div>
@@ -149,7 +209,7 @@ const Landing = ({ toggleColorMode }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
             >
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={3} justifyContent="center">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={3} justifyContent="center" alignItems="center">
                 <Button
                   component={motion.button}
                   whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0, 212, 255, 0.4)' }}
@@ -157,8 +217,8 @@ const Landing = ({ toggleColorMode }) => {
                   variant="contained"
                   size="large"
                   sx={{
-                    px: 5, 
-                    py: 2, 
+                    px: 5,
+                    py: 2,
                     fontSize: "1.1rem",
                     background: "linear-gradient(135deg, #00d4ff 0%, #0077b6 100%)",
                     borderRadius: "50px",
@@ -167,18 +227,15 @@ const Landing = ({ toggleColorMode }) => {
                     fontWeight: 600
                   }}
                 >
-                  Start Free Trial • No Credit Card
+                  Start Free Trial
                 </Button>
 
                 <Button
-                  component={motion.button}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.97 }}
                   variant="outlined"
                   size="large"
                   sx={{
-                    px: 5, 
-                    py: 2, 
+                    px: 5,
+                    py: 2,
                     fontSize: "1.1rem",
                     borderRadius: "50px",
                     borderWidth: 2,
@@ -192,34 +249,6 @@ const Landing = ({ toggleColorMode }) => {
                   Browse Certifications
                 </Button>
               </Stack>
-            </motion.div>
-          )}
-
-          {isLoggedIn && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-            >
-              <Button
-                component={motion.button}
-                whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0, 212, 255, 0.4)' }}
-                whileTap={{ scale: 0.97 }}
-                variant="contained"
-                size="large"
-                sx={{
-                  px: 6, 
-                  py: 2, 
-                  fontSize: "1.2rem",
-                  background: "linear-gradient(135deg, #00d4ff 0%, #0077b6 100%)",
-                  borderRadius: "50px",
-                  boxShadow: "0 10px 30px rgba(0, 212, 255, 0.3)",
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
-              >
-                Continue to Dashboard
-              </Button>
             </motion.div>
           )}
 
@@ -239,7 +268,7 @@ const Landing = ({ toggleColorMode }) => {
                   behavior: "smooth"
                 });
               }}
-              sx={{ 
+              sx={{
                 color: isDarkMode ? 'white' : 'black',
                 ...glassStyle,
                 width: 56,
@@ -248,13 +277,10 @@ const Landing = ({ toggleColorMode }) => {
             >
               <ArrowDownward />
             </IconButton>
-          </motion.div>
-
-          {/* Floating Tech Logos */}
-          <Stack 
-            direction="row" 
-            spacing={4} 
-            justifyContent="center" 
+            <Stack
+            direction="row"
+            spacing={4}
+            justifyContent="center"
             sx={{ mt: 8, flexWrap: "wrap", gap: 2 }}
           >
             {['Amazon Web Services', 'Azure', 'Data Structures & Algorithms', 'Software Application Program (SAP)', 'SAP Fiori', 'OpenText Vendor Invoice Management'].map((tech, index) => (
@@ -278,11 +304,84 @@ const Landing = ({ toggleColorMode }) => {
               </motion.div>
             ))}
           </Stack>
+          </motion.div>
         </Container>
       </Box>
 
+      {/* 3. ENHANCED FLASH SALE SECTION */}
+      <Container maxWidth="md" sx={{ mt: -4, mb: 8, position: 'relative', zIndex: 10 }}>
+        <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+        >
+            <Box
+                sx={{
+                borderRadius: "24px",
+                p: 1,
+                background: "linear-gradient(90deg, #00d4ff, #a855f7, #ec4899)",
+                position: "relative",
+                overflow: "hidden",
+                boxShadow: "0 15px 40px rgba(168, 85, 247, 0.4)",
+                }}
+            >
+                <Box sx={{
+                    bgcolor: isDarkMode ? "#0f172a" : "#fff",
+                    borderRadius: "20px",
+                    p: { xs: 3, md: 4 },
+                    display: "flex",
+                    flexDirection: { xs: "column", md: "row" },
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 3,
+                    textAlign: { xs: "center", md: "left" }
+                }}>
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
+                           Special Launch Offer 🎊
+                        </Typography>
+                        <Typography variant="body1" sx={{ opacity: 0.8 }}>
+                            Use the code at checkout to unlock your 25% discount.
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box 
+                            onClick={copyToClipboard}
+                            sx={{
+                                border: '2px dashed #a855f7',
+                                px: 4,
+                                py: 1.5,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                bgcolor: isDarkMode ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+                                transition: '0.3s',
+                                '&:hover': { bgcolor: 'rgba(168, 85, 247, 0.2)' }
+                            }}
+                        >
+                            <Typography variant="h4" sx={{ 
+                                fontWeight: 900, 
+                                letterSpacing: 4, 
+                                color: "#a855f7",
+                                fontFamily: 'monospace'
+                            }}>
+                                TECH25
+                            </Typography>
+                            <Tooltip title={copied ? "Copied!" : "Click to copy"}>
+                                <Box sx={{ position: 'absolute', top: -10, right: -10, bgcolor: '#a855f7', borderRadius: '50%', p: 0.5, color: 'white', display: 'flex' }}>
+                                    {copied ? <Done fontSize="small" /> : <ContentCopy fontSize="small" />}
+                                </Box>
+                            </Tooltip>
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+        </motion.div>
+      </Container>
+
       {/* Certification Categories Section */}
-      <Box sx={{ py: 12, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ py: 8, position: 'relative', zIndex: 1 }}>
         <Container maxWidth="lg">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -290,11 +389,11 @@ const Landing = ({ toggleColorMode }) => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <Typography 
-              variant="h3" 
-              align="center" 
-              sx={{ 
-                mb: 8, 
+            <Typography
+              variant="h3"
+              align="center"
+              sx={{
+                mb: 8,
                 fontWeight: 800,
                 background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
                 backgroundClip: 'text',
@@ -349,28 +448,23 @@ const Landing = ({ toggleColorMode }) => {
                     <List dense>
                       {category.items.map((item, idx) => (
                         <ListItem key={idx} sx={{ px: 0 }}>
-                          <ListItemText 
+                          <ListItemText
                             primary={item}
-                            primaryTypographyProps={{
-                              fontWeight: 500
-                            }}
+                            primaryTypographyProps={{ fontWeight: 500 }}
                           />
                         </ListItem>
                       ))}
                     </List>
-                    <Button 
-                      variant="outlined" 
-                      fullWidth 
-                      sx={{ 
-                        mt: 3, 
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      sx={{
+                        mt: 3,
                         borderRadius: "20px",
                         borderWidth: 2,
                         fontWeight: 600,
                         textTransform: 'none'
                       }}
-                      component={motion.button}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
                     >
                       Explore Exams
                     </Button>
@@ -384,11 +478,7 @@ const Landing = ({ toggleColorMode }) => {
 
       {/* Features Section */}
       <Container maxWidth="lg" sx={{ py: 12, position: 'relative', zIndex: 1 }}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-        >
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
           <Typography
             variant="h3"
             sx={{
@@ -413,13 +503,9 @@ const Landing = ({ toggleColorMode }) => {
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                whileHover={{
-                  y: -10,
-                  transition: { duration: 0.2 }
-                }}
+                whileHover={{ y: -10 }}
               >
-                <Box
-                  sx={{
+                <Box sx={{
                     p: 4,
                     borderRadius: "20px",
                     textAlign: "center",
@@ -438,25 +524,11 @@ const Landing = ({ toggleColorMode }) => {
                     }
                   }}
                 >
-                  <Box
-                    sx={{
-                      color: benefit.color,
-                      mb: 2,
-                      display: "flex",
-                      justifyContent: "center",
-                      '& svg': {
-                        fontSize: '3rem'
-                      }
-                    }}
-                  >
+                  <Box sx={{ color: benefit.color, mb: 2, display: "flex", justifyContent: "center", '& svg': { fontSize: '3rem' } }}>
                     {benefit.icon}
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                    {benefit.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    {benefit.description}
-                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{benefit.title}</Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>{benefit.description}</Typography>
                 </Box>
               </motion.div>
             </Grid>
@@ -464,7 +536,7 @@ const Landing = ({ toggleColorMode }) => {
         </Grid>
       </Container>
 
-      {/* CTA Section */}
+      {/* Final CTA Section */}
       {!isLoggedIn && (
         <Box sx={{ pb: 12, position: 'relative', zIndex: 1 }}>
           <Container maxWidth="md">
@@ -485,17 +557,18 @@ const Landing = ({ toggleColorMode }) => {
                   boxShadow: "0 20px 60px rgba(102, 126, 234, 0.4)",
                 }}
               >
-                <Typography variant="h3" sx={{ mb: 3, fontWeight: 800, color: 'white' }}>
+                <Typography variant="h3" sx={{ mb: 2, fontWeight: 800, color: 'white' }}>
                   Ready to Excel?
                 </Typography>
-
-                <Typography variant="h6" sx={{ mb: 5, color: 'rgba(255,255,255,0.9)', fontWeight: 400 }}>
-                  Join thousands of professionals accelerating their tech careers
+                
+                {/* 4. REINFORCE COUPON IN FINAL CTA */}
+                <Typography variant="h6" sx={{ mb: 4, color: 'rgba(255,255,255,0.9)', fontWeight: 400 }}>
+                  Join thousands of professionals. Use code <strong style={{ color: '#ffd93d' }}>TECH25</strong> for instant savings!
                 </Typography>
 
                 <Button
                   component={motion.button}
-                  whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(255,255,255,0.3)' }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.97 }}
                   variant="contained"
                   size="large"
@@ -508,12 +581,10 @@ const Landing = ({ toggleColorMode }) => {
                     fontSize: "1.2rem",
                     fontWeight: 700,
                     textTransform: "none",
-                    "&:hover": {
-                      bgcolor: "rgba(255,255,255,0.95)"
-                    }
+                    "&:hover": { bgcolor: "white" }
                   }}
                 >
-                  Start Your Free Trial
+                  Get Started with 25% Off
                 </Button>
               </Box>
             </motion.div>
