@@ -192,7 +192,7 @@ const Register = () => {
                   mb: 2
                 }}
               >
-                TechMock
+                TechMocks
               </Typography>
               
               <Typography 

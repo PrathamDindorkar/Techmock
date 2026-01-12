@@ -256,7 +256,7 @@ const Layout = () => {
   const drawer = (
     <Box sx={{ height: '100%', backgroundColor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>TechMock</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>TechMocks</Typography>
         <IconButton onClick={handleDrawerToggle}><CloseIcon /></IconButton>
       </Box>
       <Divider />
@@ -391,7 +391,7 @@ const Layout = () => {
                     letterSpacing: '0.5px',
                   }}
                 >
-                  TechMock
+                  TechMocks
                 </Typography>
               </Link>
             </Box>

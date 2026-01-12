@@ -221,7 +221,7 @@ const Login = () => {
                     mb: 2,
                   }}
                 >
-                  TechMock
+                  TechMocks
                 </Typography>
                 <Typography
                   variant="h6"

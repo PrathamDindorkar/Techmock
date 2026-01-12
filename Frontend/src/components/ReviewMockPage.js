@@ -6,25 +6,23 @@ import {
   Button,
   Box,
   Paper,
-  Divider,
-  Chip,
   CircularProgress,
-  Fade,
+  Divider,
+  useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
+import InfoIcon from '@mui/icons-material/Info';
 
 const ReviewMockPage = () => {
- const { id } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const [test, setTest] = useState(null);
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const backendUrl = process.env.REACT_APP_BACKEND_URL
+  const theme = useTheme();
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     const fetchReviewData = async () => {
@@ -46,7 +44,7 @@ const ReviewMockPage = () => {
       }
     };
     fetchReviewData();
-  }, [id, token]);
+  }, [id, token, backendUrl]);
 
   if (loading) {
     return (
@@ -68,12 +66,14 @@ const ReviewMockPage = () => {
 
   const userAnswers = submission.answers || {};
 
-  // Calculate score & collect only wrong questions
+  // Logic: Filter ONLY wrong questions
   const wrongQuestions = [];
   let correctCount = 0;
 
   test.questions.forEach((question, index) => {
     const userAnswer = userAnswers[index.toString()];
+    
+    // Normalize comparison to match backend logic
     const isCorrect = userAnswer && 
       userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase();
 
@@ -85,8 +85,7 @@ const ReviewMockPage = () => {
   });
 
   const totalQuestions = test.questions.length;
-  const score = correctCount;
-  const percentage = Math.round((score / totalQuestions) * 100);
+  const percentage = Math.round((correctCount / totalQuestions) * 100);
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -101,75 +100,89 @@ const ReviewMockPage = () => {
 
         <Box sx={{ textAlign: 'center', mb: 5 }}>
           <Typography variant="h5" color="primary" gutterBottom>
-            Your Score: {score} / {totalQuestions} ({percentage}%)
+            Your Score: {correctCount} / {totalQuestions} ({percentage}%)
           </Typography>
-          
           <Typography variant="body1" color="text.secondary">
             {wrongQuestions.length === 0 
               ? "Perfect! You answered everything correctly 🎉" 
-              : `You got ${wrongQuestions.length} question${wrongQuestions.length !== 1 ? 's' : ''} wrong`}
+              : `Reviewing ${wrongQuestions.length} incorrect response${wrongQuestions.length !== 1 ? 's' : ''}`}
           </Typography>
         </Box>
       </motion.div>
 
       {wrongQuestions.length === 0 ? (
-        <Paper 
-          elevation={3} 
-          sx={{ p: 4, textAlign: 'center', bgcolor: '#e8f5e9' }}
-        >
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: '12px' }}>
           <Typography variant="h6" color="success.main" gutterBottom>
-            Congratulations! No mistakes this time.
+            Excellent Work!
           </Typography>
           <Typography color="text.secondary">
-            Keep up the great work!
+            You've mastered this test. No mistakes found.
           </Typography>
         </Paper>
       ) : (
         <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#d32f2f' }}>
-            Questions You Got Wrong:
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#d32f2f', display: 'flex', alignItems: 'center', gap: 1 }}>
+            Questions You Got Wrong!
           </Typography>
 
           {wrongQuestions.map(({ question, index, userAnswer }) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.08 }}
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
             >
               <Paper
-                elevation={2}
+                elevation={0}
                 sx={{
                   p: 3,
-                  mb: 3,
-                  borderLeft: '6px solid #d32f2f',
-                  bgcolor: '#fff5f5',
-                  borderRadius: '8px',
+                  mb: 4,
+                  border: '1px solid #ffcdd2',
+                  bgcolor: theme.palette.background.default,
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                 }}
               >
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                <Typography variant="subtitle1" fontWeight="bold" color="error.main" gutterBottom>
                   Question {index + 1}
                 </Typography>
-                <Typography variant="body1" sx={{ mb: 2 }}>
+                
+                <Typography variant="body1" sx={{ mb: 3, fontWeight: 500 }}>
                   {question.questionText}
                 </Typography>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Your answer:</strong>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+                  <Box sx={{ p: 1.5, bgcolor: '#ffebee', borderRadius: '8px' }}>
+                    <Typography variant="caption" color="error.dark" sx={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
+                      Your Answer
                     </Typography>
-                    <Typography color="error.main">
-                      {userAnswer || '— not answered —'}
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>
+                      {userAnswer || 'Not Attempted'}
                     </Typography>
                   </Box>
 
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Correct answer:</strong>
+                  <Box sx={{ p: 1.5, bgcolor: '#e8f5e9', borderRadius: '8px' }}>
+                    <Typography variant="caption" color="success.dark" sx={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
+                      Correct Answer
                     </Typography>
-                    <Typography color="success.main" fontWeight="medium">
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>
                       {question.correctAnswer}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ mb: 2 }} />
+
+                {/* EXPLANATION SECTION */}
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  <InfoIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+                  <Box>
+                    <Typography variant="subtitle2" color="primary.main" fontWeight="bold">
+                      Explanation:
+                    </Typography>
+                    <Typography variant="body2" color="text.primary" sx={{ lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                      {question.explaination || "No specific explanation provided for this question."}
                     </Typography>
                   </Box>
                 </Box>
@@ -181,13 +194,13 @@ const ReviewMockPage = () => {
 
       <Box sx={{ textAlign: 'center', mt: 6 }}>
         <Button
-          variant="contained"
+          variant="outlined"
           color="primary"
           size="large"
           onClick={() => navigate('/hello')}
-          sx={{ minWidth: 200, py: 1.5 }}
+          sx={{ minWidth: 200, borderRadius: '8px', textTransform: 'none' }}
         >
-          Back to Dashboard
+          Return to Dashboard
         </Button>
       </Box>
     </Container>
