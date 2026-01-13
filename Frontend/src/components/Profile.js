@@ -186,24 +186,11 @@ const Profile = ({ darkMode }) => {
     }
   };
 
-  const handleSavePayment = async () => {
-    try {
-      await axios.put(`${backendUrl}/api/user/payment`, paymentData, {
-        headers: { Authorization: token }
-      });
-      setIsEditingPayment(false);
-      alert('Payment information saved!');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save payment info.');
-    }
-  };
-
   const navigationItems = [
     'My Profile',
     'Badges & Achievements',
     'Change Password',
     'Purchased Tests',
-    'Payment Information',
   ];
 
   if (loading) {
@@ -524,56 +511,6 @@ const Profile = ({ darkMode }) => {
                             You haven't purchased any tests yet. Explore the store!
                           </Typography>
                         )}
-                      </>
-                    )}
-
-                    {/* Payment Information */}
-                    {activeSection === 'Payment Information' && (
-                      <>
-                        <Typography variant="h5" fontWeight="bold" gutterBottom>
-                          Payment Information
-                        </Typography>
-
-                        <Stack spacing={3} mt={4}>
-                          <TextField
-                            label="Card Number"
-                            name="cardNumber"
-                            value={paymentData.cardNumber}
-                            onChange={handlePaymentInputChange}
-                            disabled={!isEditingPayment}
-                            placeholder="1234 5678 9012 3456"
-                            fullWidth
-                          />
-                          <TextField
-                            label="Expiry Date (MM/YY)"
-                            name="expiryDate"
-                            value={paymentData.expiryDate}
-                            onChange={handlePaymentInputChange}
-                            disabled={!isEditingPayment}
-                            placeholder="12/28"
-                            fullWidth
-                          />
-                          <TextField
-                            label="CVV"
-                            name="cvv"
-                            value={paymentData.cvv}
-                            onChange={handlePaymentInputChange}
-                            disabled={!isEditingPayment}
-                            placeholder="123"
-                            fullWidth
-                          />
-                        </Stack>
-
-                        <Box mt={5} display="flex" gap={2}>
-                          <Button variant="contained" size="large" onClick={isEditingPayment ? handleSavePayment : handleEditPaymentToggle}>
-                            {isEditingPayment ? 'Save Card' : 'Add / Update Card'}
-                          </Button>
-                          {isEditingPayment && (
-                            <Button variant="outlined" size="large" onClick={handleEditPaymentToggle}>
-                              Cancel
-                            </Button>
-                          )}
-                        </Box>
                       </>
                     )}
 

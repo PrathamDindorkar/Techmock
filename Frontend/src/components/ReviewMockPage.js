@@ -8,7 +8,6 @@ import {
   Paper,
   CircularProgress,
   Divider,
-  useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -21,35 +20,38 @@ const ReviewMockPage = () => {
   const [test, setTest] = useState(null);
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
-  const theme = useTheme();
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     const fetchReviewData = async () => {
       try {
         setLoading(true);
-        const testResponse = await axios.get(`${backendUrl}/api/mock-test/${id}`, {
-          headers: { Authorization: token },
-        });
-        setTest(testResponse.data);
 
-        const submissionResponse = await axios.get(`${backendUrl}/api/mock-test/${id}/submission`, {
-          headers: { Authorization: token },
-        });
-        setSubmission(submissionResponse.data);
+        const [testRes, submissionRes] = await Promise.all([
+          axios.get(`${backendUrl}/api/mock-test/${id}`, {
+            headers: { Authorization: token },
+          }),
+          axios.get(`${backendUrl}/api/mock-test/${id}/submission`, {
+            headers: { Authorization: token },
+          }),
+        ]);
+
+        setTest(testRes.data);
+        setSubmission(submissionRes.data);
       } catch (error) {
         console.error('Error fetching review data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchReviewData();
+
+    if (token) fetchReviewData();
   }, [id, token, backendUrl]);
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress size={60} sx={{ color: '#1976d2' }} />
+      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '70vh' }}>
+        <CircularProgress size={60} />
       </Container>
     );
   }
@@ -58,7 +60,7 @@ const ReviewMockPage = () => {
     return (
       <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
         <Typography variant="h5" color="error">
-          Unable to load test review data
+          Unable to load review data. Please try again later.
         </Typography>
       </Container>
     );
@@ -66,141 +68,177 @@ const ReviewMockPage = () => {
 
   const userAnswers = submission.answers || {};
 
-  // Logic: Filter ONLY wrong questions
-  const wrongQuestions = [];
-  let correctCount = 0;
+  // Only collect questions that were attempted AND answered WRONG
+  const wrongAttemptedQuestions = [];
 
+  let correctCount = 0;
+  let attemptedCount = 0;
+
+  // test.questions comes from the JSONB column in your mock_tests table
   test.questions.forEach((question, index) => {
     const userAnswer = userAnswers[index.toString()];
-    
-    // Normalize comparison to match backend logic
-    const isCorrect = userAnswer && 
-      userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase();
+
+    // Skip if not attempted
+    if (userAnswer === undefined || userAnswer === null || userAnswer === "") return;
+
+    attemptedCount++;
+
+    const isCorrect =
+      String(userAnswer).trim().toLowerCase() ===
+      String(question.correctAnswer).trim().toLowerCase();
 
     if (isCorrect) {
       correctCount++;
     } else {
-      wrongQuestions.push({ question, index, userAnswer });
+      wrongAttemptedQuestions.push({
+        question,
+        index,
+        userAnswer,
+      });
     }
   });
 
   const totalQuestions = test.questions.length;
-  const percentage = Math.round((correctCount / totalQuestions) * 100);
+  const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <motion.div
-        initial={{ opacity: 0, y: -40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7 }}
-      >
-        <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
+      <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+        <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>
           Review: {test.title}
         </Typography>
 
-        <Box sx={{ textAlign: 'center', mb: 5 }}>
-          <Typography variant="h5" color="primary" gutterBottom>
-            Your Score: {correctCount} / {totalQuestions} ({percentage}%)
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            mb: 5,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e9fd 100%)',
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h5" color="primary.dark" gutterBottom>
+            Score: {correctCount} / {totalQuestions} ({percentage}%)
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            {wrongQuestions.length === 0 
-              ? "Perfect! You answered everything correctly 🎉" 
-              : `Reviewing ${wrongQuestions.length} incorrect response${wrongQuestions.length !== 1 ? 's' : ''}`}
+            Attempted: {attemptedCount} • Correct: {correctCount} • Wrong: {wrongAttemptedQuestions.length}
           </Typography>
-        </Box>
+        </Paper>
       </motion.div>
 
-      {wrongQuestions.length === 0 ? (
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: '12px' }}>
-          <Typography variant="h6" color="success.main" gutterBottom>
-            Excellent Work!
+      {wrongAttemptedQuestions.length === 0 ? (
+        <Paper
+          elevation={4}
+          sx={{
+            p: 5,
+            textAlign: 'center',
+            bgcolor: '#e8f5e9',
+            borderRadius: '16px',
+            border: '2px dashed #81c784',
+          }}
+        >
+          <Typography variant="h5" color="success.dark" gutterBottom>
+            Great Job! 🎉
           </Typography>
-          <Typography color="text.secondary">
-            You've mastered this test. No mistakes found.
+          <Typography variant="body1" color="text.secondary">
+            You didn't get any questions wrong among the ones you attempted!
           </Typography>
         </Paper>
       ) : (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#d32f2f', display: 'flex', alignItems: 'center', gap: 1 }}>
-            Questions You Got Wrong!
+        <>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              mb: 4,
+              color: 'error.main',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+            }}
+          >
+            Questions You Got Wrong
           </Typography>
 
-          {wrongQuestions.map(({ question, index, userAnswer }) => (
+          {wrongAttemptedQuestions.map(({ question, index, userAnswer }) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
             >
               <Paper
-                elevation={0}
                 sx={{
                   p: 3,
                   mb: 4,
-                  border: '1px solid #ffcdd2',
-                  bgcolor: theme.palette.background.default,
                   borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                  border: '1px solid #ffcccb',
+                  bgcolor: '#fff8f8',
                 }}
               >
-                <Typography variant="subtitle1" fontWeight="bold" color="error.main" gutterBottom>
+                <Typography variant="subtitle1" fontWeight="bold" color="error.dark" gutterBottom>
                   Question {index + 1}
                 </Typography>
-                
+
                 <Typography variant="body1" sx={{ mb: 3, fontWeight: 500 }}>
                   {question.questionText}
                 </Typography>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
-                  <Box sx={{ p: 1.5, bgcolor: '#ffebee', borderRadius: '8px' }}>
-                    <Typography variant="caption" color="error.dark" sx={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                      Your Answer
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, mb: 3 }}>
+                  <Box sx={{ p: 2, bgcolor: '#ffebee', borderRadius: '10px', border: '1px solid #ef9a9a' }}>
+                    <Typography variant="caption" color="error.main" fontWeight="bold" sx={{ mb: 1, display: 'block' }}>
+                      YOUR ANSWER
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>
-                      {userAnswer || 'Not Attempted'}
+                    <Typography variant="body1" fontWeight={600}>
+                      {userAnswer}
                     </Typography>
                   </Box>
 
-                  <Box sx={{ p: 1.5, bgcolor: '#e8f5e9', borderRadius: '8px' }}>
-                    <Typography variant="caption" color="success.dark" sx={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                      Correct Answer
+                  <Box sx={{ p: 2, bgcolor: '#e8f5e9', borderRadius: '10px', border: '1px solid #a5d6a7' }}>
+                    <Typography variant="caption" color="success.main" fontWeight="bold" sx={{ mb: 1, display: 'block' }}>
+                      CORRECT ANSWER
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>
+                    <Typography variant="body1" fontWeight={600}>
                       {question.correctAnswer}
                     </Typography>
                   </Box>
                 </Box>
 
-                <Divider sx={{ mb: 2 }} />
-
-                {/* EXPLANATION SECTION */}
-                <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  <InfoIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-                  <Box>
-                    <Typography variant="subtitle2" color="primary.main" fontWeight="bold">
-                      Explanation:
-                    </Typography>
-                    <Typography variant="body2" color="text.primary" sx={{ lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                      {question.explaination || "No specific explanation provided for this question."}
-                    </Typography>
-                  </Box>
-                </Box>
+                {/* This section displays the explanation from the JSONB questions column */}
+                {(question.explaination || question.explanation) && (
+                  <>
+                    <Divider sx={{ my: 2.5 }} />
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', bgcolor: '#f0f7ff', p: 2, borderRadius: '8px' }}>
+                      <InfoIcon color="primary" fontSize="small" sx={{ mt: 0.4 }} />
+                      <Box>
+                        <Typography variant="subtitle2" color="primary.main" fontWeight="bold" gutterBottom>
+                          Explanation:
+                        </Typography>
+                        <Typography variant="body2" sx={{ lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                          {question.explaination || question.explanation}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </>
+                )}
               </Paper>
             </motion.div>
           ))}
-        </Box>
+        </>
       )}
 
-      <Box sx={{ textAlign: 'center', mt: 6 }}>
+      <Box sx={{ textAlign: 'center', mt: 7 }}>
         <Button
-          variant="outlined"
+          variant="contained"
           color="primary"
           size="large"
           onClick={() => navigate('/hello')}
-          sx={{ minWidth: 200, borderRadius: '8px', textTransform: 'none' }}
+          sx={{ minWidth: 220, py: 1.5, borderRadius: '12px' }}
         >
-          Return to Dashboard
+          Back to Dashboard
         </Button>
       </Box>
     </Container>

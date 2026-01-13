@@ -31,6 +31,7 @@ import { motion } from 'framer-motion';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import QuizIcon from '@mui/icons-material/Quiz'; // Added this
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import LockIcon from '@mui/icons-material/Lock';
@@ -197,8 +198,6 @@ const AllMocks = () => {
 
   if (typeParam === "free") {
     setPriceFilter("free");
-    // Optional: reset other filters if needed
-    // setCategoryFilter("all");
   }
 }, [location.search]);
 
@@ -213,7 +212,6 @@ const AllMocks = () => {
     const result = {};
 
     Object.entries(mockTests).forEach(([category, tests]) => {
-      // Category filter
       if (categoryFilter !== 'all' && category !== categoryFilter) return;
 
       if (category === 'Languages') {
@@ -235,7 +233,6 @@ const AllMocks = () => {
           result[category] = filteredSub;
         }
       } else {
-        // Normal categories
         const filteredMocks = tests.filter(mock => {
           if (priceFilter === 'all') return true;
           if (priceFilter === 'free') return mock.pricingType === 'free';
@@ -331,10 +328,6 @@ const AllMocks = () => {
       setAlertMessage(err.response?.data?.message || 'Failed to add to cart');
       setAlertSeverity('error');
       setAlertOpen(true);
-      if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/login');
-      }
     } finally {
       setCartLoading(false);
     }
@@ -451,7 +444,6 @@ const AllMocks = () => {
               label="Category"
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
-                // Optional: auto expand selected category
                 if (e.target.value !== 'all') {
                   setExpandedCategory(e.target.value);
                 }
@@ -513,7 +505,7 @@ const AllMocks = () => {
                 <Chip
                   label={`${totalTests} Tests`}
                   size="small"
-                  sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white' }}
+                  sx={{ bgcolor: 'rgba(122, 122, 122, 0.52)', color: theme.palette.default, fontWeight: 'bold'}}
                 />
               </AccordionSummary>
 
@@ -585,12 +577,21 @@ const AllMocks = () => {
                                       {getPriceDisplay(mock)}
                                     </Box>
 
-                                    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                                      <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                      <Typography variant="body2" color="text.secondary">
-                                        {mock.timeLimit} minutes
-                                      </Typography>
-                                    </Box>
+                                    {/* Updated Section to show Time and Question count */}
+                                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                                        <Typography variant="body2" color="text.secondary">
+                                          {mock.timeLimit} mins
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <QuizIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                                        <Typography variant="body2" color="text.secondary">
+                                          {mock.questions ? mock.questions.length : 0} Questions
+                                        </Typography>
+                                      </Box>
+                                    </Stack>
                                   </CardContent>
                                 </CardActionArea>
                               </MotionCard>
@@ -622,7 +623,6 @@ const AllMocks = () => {
                             onClick={() => handleCardClick(mock._id || mock.id)}
                             sx={{ flexGrow: 1 }}
                           >
-                            {/* same card content as above */}
                             <CardMedia
                               sx={{
                                 height: 140,
@@ -661,12 +661,21 @@ const AllMocks = () => {
                                 {getPriceDisplay(mock)}
                               </Box>
 
-                              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                                <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  {mock.timeLimit} minutes
-                                </Typography>
-                              </Box>
+                              {/* Updated Section to show Time and Question count */}
+                              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    {mock.timeLimit} mins
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <QuizIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    {mock.questions ? mock.questions.length : 0} Questions
+                                  </Typography>
+                                </Box>
+                              </Stack>
                             </CardContent>
                           </CardActionArea>
                         </MotionCard>

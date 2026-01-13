@@ -74,42 +74,30 @@ const Layout = () => {
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
 
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: 'smooth',
-    });
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
 
-    if (!token) {
-      // Not logged in → redirect to home if trying to access protected page
-      if (location.pathname !== '/home' && location.pathname !== '/login' && location.pathname !== '/register') {
-        navigate('/home');
-      }
-      return;
+    // Only fetch user-specific data if logged in
+    if (token) {
+      const fetchUserData = async () => {
+        try {
+          const [rankRes, badgesRes] = await Promise.all([
+            axios.get(`${backendUrl}/api/user/rank`, { headers: { Authorization: token } }),
+            axios.get(`${backendUrl}/api/user/badges`, { headers: { Authorization: token } }),
+          ]);
+
+          setUserRank(rankRes.data || { rank: 'Beginner', points: 0 });
+          setBadges(Array.isArray(badgesRes.data) ? badgesRes.data : []);
+        } catch (err) {
+          console.error('Failed to load user data:', err);
+          setError('Failed to load profile data. Please log in again.');
+          // Optional: localStorage.clear(); navigate('/login');
+          // ^^^ Comment out if you don't want auto-logout on fetch fail
+        }
+      };
+
+      fetchUserData();
     }
-
-    const fetchData = async () => {
-      try {
-        const [rankResponse, badgesResponse] = await Promise.all([
-          axios.get(`${backendUrl}/api/user/rank`, {
-            headers: { Authorization: token },
-          }),
-          axios.get(`${backendUrl}/api/user/badges`, {
-            headers: { Authorization: token },
-          }),
-        ]);
-        setUserRank(rankResponse.data || { rank: 'Beginner', points: 0 });
-        setBadges(Array.isArray(badgesResponse.data) ? badgesResponse.data : []);
-      } catch (err) {
-        console.error('Error fetching rank/badges:', err);
-        setError('Failed to load user data. Please log in again.');
-        localStorage.clear();
-        navigate('/login');
-      }
-    };
-
-    fetchData();
-  }, [token, navigate, location.pathname]);
+  }, [token, backendUrl]);
 
   // Handle scroll effects
   useEffect(() => {
@@ -188,12 +176,16 @@ const Layout = () => {
     }
   };
 
-  // Navigation items (only for logged-in users)
+  // ── Navigation Items ──
   const navItems = [
     { text: 'Home', icon: <HomeIcon />, onClick: handleHome, path: '/hello' },
     { text: 'All Mocks', icon: <AssignmentIcon />, onClick: handleAllMocks, path: '/mocks' },
-    { text: 'Cart', icon: <ShoppingCartIcon />, onClick: handleCartClick, path: '/cart' },
   ];
+
+  // Add Cart only for logged-in users
+  if (token) {
+    navItems.push({ text: 'Cart', icon: <ShoppingCartIcon />, onClick: handleCartClick, path: '/cart' });
+  }
 
   if (role === 'admin') {
     navItems.push({
@@ -254,48 +246,52 @@ const Layout = () => {
 
   // Mobile drawer content (only shown when logged in)
   const drawer = (
-    <Box sx={{ height: '100%', backgroundColor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>TechMocks</Typography>
+    <Box sx={{ height: '100%', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" fontWeight={700}>TechMocks</Typography>
         <IconButton onClick={handleDrawerToggle}><CloseIcon /></IconButton>
       </Box>
+
       <Divider />
 
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Badge
-          overlap="circular"
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          badgeContent={<StarIcon sx={{ fontSize: 16, color: getRankColor(userRank.rank) }} />}
-        >
-          <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 40, height: 40, fontWeight: 'bold' }}>
-            {getRankNumber(userRank.rank)}
-          </Avatar>
-        </Badge>
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{username} ({userRank.rank})</Typography>
-          <Typography variant="body2" color="text.secondary">{role || 'user'} | {userRank.points} points</Typography>
-        </Box>
-      </Box>
-
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Your Badges</Typography>
-        {badges.length > 0 ? (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {badges.slice(0, 3).map((badge, index) => (
-              <Badge key={index} badgeContent={badge.icon} color="primary">
-                <Typography variant="caption" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: 1, px: 1, py: 0.5 }}>
-                  {badge.name}
-                </Typography>
-              </Badge>
-            ))}
-            {badges.length > 3 && <Typography variant="caption" color="text.secondary">+{badges.length - 3} more</Typography>}
+      {token && (
+        <>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Badge
+              overlap="circular"
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              badgeContent={<StarIcon sx={{ fontSize: 16, color: '#FFD700' }} />}
+            >
+              <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 48, height: 48 }}>
+                {getRankNumber(userRank.rank)}
+              </Avatar>
+            </Badge>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600}>{username}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {userRank.rank} • {userRank.points} pts
+              </Typography>
+            </Box>
           </Box>
-        ) : (
-          <Typography variant="caption" color="text.secondary">No badges earned yet</Typography>
-        )}
-      </Box>
 
-      <Divider />
+          <Box sx={{ px: 2, pb: 2 }}>
+            <Typography variant="body2" fontWeight="bold" mb={1}>Badges</Typography>
+            {badges.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {badges.slice(0, 3).map((b, i) => (
+                  <Typography key={i} variant="caption" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.15), borderRadius: 1, px: 1, py: 0.3 }}>
+                    {b.name}
+                  </Typography>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="caption" color="text.secondary">No badges yet</Typography>
+            )}
+          </Box>
+
+          <Divider />
+        </>
+      )}
 
       <List sx={{ flexGrow: 1 }}>
         {navItems.map((item) => (
@@ -303,33 +299,36 @@ const Layout = () => {
             button
             key={item.text}
             onClick={item.onClick}
-            sx={{
-              py: 1.5,
-              backgroundColor: location.pathname === item.path ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-              borderLeft: location.pathname === item.path ? `4px solid ${theme.palette.primary.main}` : '4px solid transparent',
-              '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.05) },
-            }}
+            selected={location.pathname === item.path}
           >
-            <ListItemIcon sx={{ color: location.pathname === item.path ? theme.palette.primary.main : 'inherit', minWidth: '40px' }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: location.pathname === item.path ? 600 : 400 }} />
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.text} />
           </ListItem>
         ))}
-        <ListItem button onClick={handleProfileClick} sx={{ py: 1.5 }}>
-          <ListItemIcon sx={{ minWidth: '40px' }}><AccountCircleIcon /></ListItemIcon>
-          <ListItemText primary="My Profile" />
-        </ListItem>
-        <ListItem button onClick={handleLogout} sx={{ py: 1.5, color: theme.palette.error.main }}>
-          <ListItemIcon sx={{ minWidth: '40px', color: theme.palette.error.main }}><LogoutIcon /></ListItemIcon>
-          <ListItemText primary="Logout" />
-        </ListItem>
+
+        {token ? (
+          <>
+            <ListItem button onClick={handleProfileClick}>
+              <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+              <ListItemText primary="Profile" />
+            </ListItem>
+            <ListItem button onClick={handleLogout} sx={{ color: 'error.main' }}>
+              <ListItemIcon sx={{ color: 'error.main' }}><LogoutIcon /></ListItemIcon>
+              <ListItemText primary="Logout" />
+            </ListItem>
+          </>
+        ) : (
+          <ListItem button onClick={() => navigate('/login')}>
+            <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+            <ListItemText primary="Login" />
+          </ListItem>
+        )}
       </List>
 
       <Box sx={{ p: 2, mt: 'auto' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, backgroundColor: alpha(theme.palette.primary.main, 0.1) }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.08) }}>
           <Typography variant="body2">{darkMode ? 'Dark Mode' : 'Light Mode'}</Typography>
-          <IconButton onClick={handleDarkModeToggle} sx={{ bgcolor: alpha(theme.palette.background.default, 0.2), '&:hover': { bgcolor: alpha(theme.palette.background.default, 0.3) } }}>
+          <IconButton onClick={handleDarkModeToggle}>
             {darkMode ? <WbSunnyIcon /> : <NightsStayIcon />}
           </IconButton>
         </Box>

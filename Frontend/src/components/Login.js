@@ -277,7 +277,7 @@ const Login = () => {
                       mb: 1,
                     }}
                   >
-                    TechMock
+                    TechMocks
                   </Typography>
                   <Typography
                     variant="subtitle1"
@@ -514,7 +514,7 @@ const Login = () => {
                         textAlign: 'center',
                       }}
                     >
-                      New to TechMock? Register Here
+                      New to TechMocks? Register Here
                       <ArrowForward fontSize="small" />
                     </Typography>
                   </Box>

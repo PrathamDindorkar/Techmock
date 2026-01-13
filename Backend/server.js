@@ -605,7 +605,8 @@ Best regards,
 The TechMocks Team
 https://www.techmocks.com`,
 
-          html: `... (your existing HTML template) ...`,
+          html: `Hello,
+          Thanks for Purchasing the Test. The Mock Test has been unlocked`,
         };
 
         await transporter.sendMail(mailOptions);
@@ -613,7 +614,6 @@ https://www.techmocks.com`,
       }
     } catch (err) {
       console.error('Error processing Stripe webhook:', err);
-      // Don't fail webhook — already acknowledged
     }
   }
 });
@@ -741,7 +741,8 @@ Keep practicing!
 
 Best regards,
 The TechMocks Team`,
-        html: `... (your existing HTML with updated amount) ...`,
+        html: `Hello,
+        Thanks for purchasing the mock test. The Test has been Unlocked for you.`,
       };
 
       try {
@@ -1141,7 +1142,7 @@ app.get('/api/admin/get-all-mocks', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('mock_tests')
-      .select('id, title, description, category, pricing_type, price, time_limit');
+      .select('id, title, description, category, pricing_type, price, time_limit, questions');
 
     if (error) throw error;
 
@@ -1156,6 +1157,7 @@ app.get('/api/admin/get-all-mocks', async (req, res) => {
         pricingType: test.pricing_type,
         price: test.price,
         timeLimit: test.time_limit,
+        questions: test.questions,
       });
       return acc;
     }, {});
@@ -1584,7 +1586,7 @@ const awardBadge = async (userId, badgeName, badgeDescription, badgeIcon) => {
 // Test Submission, Badges and Awards, Email Notification after Submission
 app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
   const { id } = req.params;
-  const { answers } = req.body;
+  const { answers, autoSubmitted, reason } = req.body;
   const userId = req.user.id;
 
   let correctAnswers = 0;
@@ -1601,6 +1603,7 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
       .single();
 
     if (mockTestError || !mockTest) {
+      console.error('Mock test fetch error:', mockTestError);
       return res.status(404).json({ message: 'Mock test not found' });
     }
 
@@ -1617,76 +1620,129 @@ app.post('/api/mock-test/:id/submit', verifyUser, async (req, res) => {
     accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
     pointsEarned = correctAnswers * 10;
 
-    // Save submission
-    const { data: existingSubmission } = await supabase
+    // Save submission - check existing first
+    const { data: existingSubmission, error: existingError } = await supabase
       .from('submissions')
       .select('id')
       .eq('user_id', userId)
       .eq('mock_test_id', id)
-      .single();
+      .maybeSingle();
+
+    console.log('Existing submission check:', { existingSubmission, existingError });
 
     let submission;
+    
+    // Store metadata about auto-submission in the answers JSON itself
+    const submissionAnswers = {
+      ...answers,
+      _meta: {
+        autoSubmitted: autoSubmitted || false,
+        reason: reason || null,
+        submittedAt: new Date().toISOString()
+      }
+    };
+
     if (existingSubmission) {
+      console.log('Updating existing submission:', existingSubmission.id);
       const { data, error } = await supabase
         .from('submissions')
-        .update({ answers, created_at: new Date() })
+        .update({ 
+          answers: submissionAnswers,
+          created_at: new Date().toISOString()
+        })
         .eq('id', existingSubmission.id)
         .select()
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Update submission error:', error);
+        throw error;
+      }
       submission = data;
     } else {
+      console.log('Creating new submission');
       const { data, error } = await supabase
         .from('submissions')
-        .insert([{ user_id: userId, mock_test_id: id, answers }])
+        .insert([{ 
+          user_id: userId, 
+          mock_test_id: id, 
+          answers: submissionAnswers
+        }])
         .select()
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Insert submission error:', error);
+        throw error;
+      }
       submission = data;
     }
 
-    // Award points and badges
-    await updateUserRank(userId, pointsEarned);
+    console.log('Submission saved successfully:', submission.id);
 
-    if (accuracy >= 80) {
-      await awardBadge(userId, 'High Achiever', 'Scored 80% or above on a mock test', '🏆');
-    }
-    if (correctAnswers === totalQuestions) {
-      await awardBadge(userId, 'Perfect Score', 'Achieved 100% on a mock test', '🌟');
+    // Award points and badges - wrap each in try-catch
+    try {
+      if (typeof updateUserRank === 'function') {
+        await updateUserRank(userId, pointsEarned);
+        console.log('User rank updated');
+      }
+    } catch (rankError) {
+      console.error('Error updating user rank:', rankError);
     }
 
-    const { count, error: countError } = await supabase
-      .from('submissions')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId);
-    if (countError) throw countError;
-    if (count >= 5) {
-      await awardBadge(userId, 'Dedicated Learner', 'Completed 5 mock tests', '📚');
+    try {
+      if (typeof awardBadge === 'function') {
+        if (accuracy >= 80) {
+          await awardBadge(userId, 'High Achiever', 'Scored 80% or above on a mock test', '🏆');
+        }
+        if (correctAnswers === totalQuestions) {
+          await awardBadge(userId, 'Perfect Score', 'Achieved 100% on a mock test', '🌟');
+        }
+        console.log('Badges awarded based on performance');
+      }
+    } catch (badgeError) {
+      console.error('Error awarding badges:', badgeError);
+    }
+
+    try {
+      const { count, error: countError } = await supabase
+        .from('submissions')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId);
+      
+      if (!countError && count >= 5 && typeof awardBadge === 'function') {
+        await awardBadge(userId, 'Dedicated Learner', 'Completed 5 mock tests', '📚');
+        console.log('Dedicated Learner badge awarded');
+      }
+    } catch (countBadgeError) {
+      console.error('Error awarding count badge:', countBadgeError);
     }
 
     // ====================== SEND EMAIL ======================
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('name, email')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', userId)
+        .single();
 
-    if (!userError && user?.email) {
-      const userName = user.name;
-      const testTitle = mockTest.title;
+      if (!userError && user?.email) {
+        const userName = user.name || 'Student';
+        const testTitle = mockTest.title;
+        const submissionNote = autoSubmitted ? `\n\nNote: This test was automatically submitted due to: ${reason}` : '';
 
-      const mailOptions = {
-        from: `"TechMocks" <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject: `Your Results: ${testTitle}`,
-        text: `Hello ${userName},
+        const mailOptions = {
+          from: `"TechMocks" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: `Your Results: ${testTitle}`,
+          text: `Hello ${userName},
 
 You've successfully completed the mock test: ${testTitle}
 
 Your Performance:
 • Correct Answers: ${correctAnswers} out of ${totalQuestions}
 • Accuracy: ${accuracy}%
-• Points Earned: ${pointsEarned}
+• Points Earned: ${pointsEarned}${submissionNote}
 
 Keep practicing and improving! 🚀
 
@@ -1694,42 +1750,49 @@ Best regards,
 The TechMocks Team
 https://www.techmocks.com`.trim(),
 
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #ffffff;">
-            <h2 style="color: #2c3e50;">Hello ${userName},</h2>
-            <p>You've successfully completed the mock test:</p>
-            <h3 style="color: #3498db;">${testTitle}</h3>
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #ffffff;">
+              <h2 style="color: #2c3e50;">Hello ${userName},</h2>
+              <p>You've successfully completed the mock test:</p>
+              <h3 style="color: #3498db;">${testTitle}</h3>
 
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-              <p style="margin: 10px 0; font-size: 16px;"><strong>Correct Answers:</strong> ${correctAnswers} / ${totalQuestions}</p>
-              <p style="margin: 10px 0; font-size: 18px; color: #27ae60;"><strong>Accuracy: ${accuracy}%</strong></p>
-              <p style="margin: 10px 0; font-size: 16px;"><strong>Points Earned:</strong> ${pointsEarned}</p>
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <p style="margin: 10px 0; font-size: 16px;"><strong>Correct Answers:</strong> ${correctAnswers} / ${totalQuestions}</p>
+                <p style="margin: 10px 0; font-size: 18px; color: #27ae60;"><strong>Accuracy: ${accuracy}%</strong></p>
+                <p style="margin: 10px 0; font-size: 16px;"><strong>Points Earned:</strong> ${pointsEarned}</p>
+              </div>
+
+              ${autoSubmitted ? `<div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;"><strong>Note:</strong> This test was automatically submitted due to: ${reason}</p>
+              </div>` : ''}
+
+              <p>Keep up the great work! You're doing amazing. 💪</p>
+
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+
+              <p style="color: #7f8c8d; font-size: 14px; text-align: center;">
+                Best regards,<br>
+                <strong>The TechMocks Team</strong><br>
+                <a href="https://www.techmocks.com" style="color: #3498db; text-decoration: none;">www.techmocks.com</a>
+              </p>
             </div>
+          `.trim(),
+        };
 
-            <p>Keep up the great work! You're doing amazing. 💪</p>
-
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-
-            <p style="color: #7f8c8d; font-size: 14px; text-align: center;">
-              Best regards,<br>
-              <strong>The TechMocks Team</strong><br>
-              <a href="https://www.techmocks.com" style="color: #3498db; text-decoration: none;">www.techmocks.com</a>
-            </p>
-          </div>
-        `.trim(),
-      };
-
-      // Separate try-catch so email failure NEVER breaks submission
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Score email sent Successfully`);
-      } catch (emailError) {
-        console.error('Failed to Send Email', emailError);
+        if (typeof transporter !== 'undefined' && transporter.sendMail) {
+          await transporter.sendMail(mailOptions);
+          console.log('Score email sent successfully to:', user.email);
+        } else {
+          console.warn('Email transporter not configured - skipping email');
+        }
       }
+    } catch (emailError) {
+      console.error('Failed to send email (non-fatal):', emailError);
     }
 
     // ====================== SUCCESS RESPONSE ======================
-    res.status(201).json({
+    console.log('Sending success response');
+    return res.status(201).json({
       message: 'Submission successful',
       score: {
         correctAnswers,
@@ -1737,14 +1800,22 @@ https://www.techmocks.com`.trim(),
         accuracy,
         pointsEarned,
       },
-      submission,
+      submission: {
+        ...submission,
+        // Don't expose the _meta in the response, keep it clean
+        answers: answers
+      },
+      autoSubmitted: autoSubmitted || false,
+      reason: reason || null
     });
 
   } catch (error) {
     console.error('Error during submission:', error);
-    res.status(500).json({
+    console.error('Error stack:', error.stack);
+    return res.status(500).json({
       message: 'Failed to submit test',
       error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

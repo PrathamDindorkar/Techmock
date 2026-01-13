@@ -1,44 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Container, 
-  Typography, 
-  Button, 
-  Box, 
-  RadioGroup, 
-  FormControlLabel, 
-  Radio, 
-  Grid, 
-  Paper, 
-  LinearProgress, 
-  Card, 
-  CardContent, 
-  Alert, 
-  AlertTitle, 
-  Chip, 
-  Divider, 
-  Tooltip, 
-  Dialog, 
-  DialogActions, 
-  DialogContent, 
-  DialogContentText, 
-  DialogTitle 
+import {
+  Container,
+  Typography,
+  Button,
+  Box,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Grid,
+  Paper,
+  LinearProgress,
+  Card,
+  CardContent,
+  Alert,
+  AlertTitle,
+  Chip,
+  Tooltip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
-import { 
-  Timer, 
-  ArrowBack, 
-  ArrowForward, 
-  Check, 
-  Home, 
-  Help, 
-  AssignmentTurnedIn, 
-  School, 
-  QuestionMark 
+import {
+  Timer,
+  ArrowBack,
+  ArrowForward,
+  Check,
+  Home,
+  Help,
+  AssignmentTurnedIn,
+  School,
+  QuestionMark,
+  Warning,
+  Send
 } from '@mui/icons-material';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Animation variants
+const MAX_ALLOWED_SWITCHES = 3;
+const WARNING_SWITCH_COUNT = 2;
+
+const buttonVariants = {
+  hover: { scale: 1.05, transition: { duration: 0.2 } },
+  tap: { scale: 0.95, transition: { duration: 0.1 } }
+};
+
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -51,15 +59,11 @@ const cardVariants = {
   hover: { scale: 1.03, boxShadow: "0px 8px 25px rgba(0,0,0,0.15)", transition: { duration: 0.2 } }
 };
 
-const buttonVariants = {
-  hover: { scale: 1.05, transition: { duration: 0.2 } },
-  tap: { scale: 0.95, transition: { duration: 0.1 } }
-};
-
 const MockTestPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+
   const [test, setTest] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -70,180 +74,407 @@ const MockTestPage = () => {
   const [error, setError] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [timeWarning, setTimeWarning] = useState(false);
-  
-  // Calculate progress
-  const progress = test ? Object.keys(answers).length / test.questions.length * 100 : 0;
-  const timeProgress = test && timeLeft ? (timeLeft / (test.timeLimit * 60)) * 100 : 100;
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL
+  // Anti-cheat states
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [autoSubmitReason, setAutoSubmitReason] = useState(null);
 
-  // Check authentication
+  const lastBlurTime = useRef(Date.now());
+
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+  // Auth check
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
-    }
+    if (!token) navigate('/login');
   }, [token, navigate]);
 
-  // Fetch test data
+  // Fetch test
   useEffect(() => {
-  const fetchTest = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${backendUrl}/api/mock-test/${id}`, {
-        headers: { Authorization: token },
-      });
-      const testData = response.data;
-      setTest(testData);
-      setTimeLeft(testData.time_limit ? testData.time_limit * 60 : 600);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching test:', error);
-      setError('Failed to load the test. Please try again.');
-      setLoading(false);
-    }
-  };
-  
-  if (token) {
-    fetchTest();
-  }
-}, [id, token]);
-
-  // Timer countdown
-  useEffect(() => {
-    if (timeLeft !== null && timeLeft > 0 && !submitted) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      
-      // Set warning when less than 20% time remains
-      if (test && timeLeft < test.timeLimit * 60 * 0.2) {
-        setTimeWarning(true);
+    const fetchTest = async () => {
+      try {
+        setLoading(true);
+        const { data } = await axios.get(`${backendUrl}/api/mock-test/${id}`, {
+          headers: { Authorization: token },
+        });
+        setTest(data);
+        setTimeLeft((data.time_limit || 10) * 60);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load test. Please try again.');
+        setLoading(false);
       }
-      
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !submitted) {
-      handleSubmit();
-    }
-  }, [timeLeft, submitted, test]);
+    };
+    if (token) fetchTest();
+  }, [id, token, backendUrl]);
 
-  // Handle answer selection
-  const handleAnswerChange = (questionIndex, answer) => {
-    setAnswers({ ...answers, [questionIndex]: answer });
+  // Fullscreen handling
+  const enterFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen().catch(console.warn);
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
   };
 
-  // Navigate to previous question
-  const handlePrevQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        !!document.fullscreenElement ||
+        !!document.webkitFullscreenElement ||
+        !!document.msFullscreenElement
+      );
+    };
 
-  // Navigate to next question
-  const handleNextQuestion = () => {
-    if (currentQuestion < test.questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
-  };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
 
-  // Open confirmation dialog before submitting
-  const openConfirmDialog = () => {
-    setConfirmDialog(true);
-  };
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
-  // Submit test answers
-  const handleSubmit = async () => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+  // Tab switch / app minimize detection
+  useEffect(() => {
+    if (submitted || !test) return;
+
+    const detectSwitch = () => {
+      const now = Date.now();
+      const timeSinceLastBlur = now - lastBlurTime.current;
+
+      if (document.hidden || timeSinceLastBlur > 800) {
+        setTabSwitchCount((prev) => {
+          const newCount = prev + 1;
+
+          if (newCount === WARNING_SWITCH_COUNT) {
+            setShowWarningDialog(true);
+          }
+
+          if (newCount >= MAX_ALLOWED_SWITCHES) {
+            handleAutoSubmit('Multiple tab/app switches detected');
+          }
+
+          return newCount;
+        });
+      }
+
+      lastBlurTime.current = now;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) detectSwitch();
+    };
+
+    const handleBlur = () => {
+      lastBlurTime.current = Date.now();
+      detectSwitch();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('pagehide', detectSwitch);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('pagehide', detectSwitch);
+    };
+  }, [submitted, test]);
+
+  const handleAutoSubmit = async (reason) => {
+    if (submitted) return;
+
+    setAutoSubmitReason(reason);
+    console.log('Auto-submitting test. Reason:', reason);
+    console.log('Answers being submitted:', answers);
     
     try {
-      setConfirmDialog(false);
-      const response = await axios.post(
+      const res = await axios.post(
         `${backendUrl}/api/mock-test/${id}/submit`,
-        { answers },
+        {
+          answers,
+          autoSubmitted: true,
+          reason
+        },
         { headers: { Authorization: token } }
       );
-      
-      setScore(response.data.score || 0);
+      console.log('Auto-submit response:', res.data);
+      setScore(res.data.score);
       setSubmitted(true);
-    } catch (error) {
-      console.error('Error submitting test:', error);
-      setError('Failed to submit the test. Please try again.');
+    } catch (err) {
+      console.error('Auto-submit failed:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+      setError(`Auto-submit failed: ${errorMsg}`);
+      
+      // Still mark as submitted to prevent further attempts
+      setSubmitted(true);
     }
   };
 
-  // Handle question navigation
-  const handleQuestionClick = (index) => {
-    setCurrentQuestion(index);
-  };
+  // Timer
+  useEffect(() => {
+    if (timeLeft <= 0 || submitted) return;
 
-  // Format time display
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleAutoSubmit('Time expired');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    if (test && timeLeft < (test.time_limit || 10) * 60 * 0.2) {
+      setTimeWarning(true);
+    }
+
+    return () => clearInterval(interval);
+  }, [timeLeft, submitted, test]);
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Show loading state
+  const handleAnswerChange = (qIndex, value) => {
+    setAnswers(prev => ({ ...prev, [qIndex]: value }));
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestion < (test?.questions?.length - 1 || 0))
+      setCurrentQuestion(currentQuestion + 1);
+  };
+
+  const openConfirmDialog = () => setConfirmDialog(true);
+
+  const handleSubmit = async () => {
+    setConfirmDialog(false);
+    console.log('Submitting test manually');
+    console.log('Answers being submitted:', answers);
+    
+    try {
+      const res = await axios.post(
+        `${backendUrl}/api/mock-test/${id}/submit`,
+        { answers, autoSubmitted: false },
+        { headers: { Authorization: token } }
+      );
+      console.log('Submit response:', res.data);
+      setScore(res.data.score);
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Submit failed:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+      const errorDetails = err.response?.data?.details;
+      
+      setError(`Failed to submit test: ${errorMsg}${errorDetails ? '\n' + errorDetails : ''}`);
+    }
+  };
+
+  const handleQuestionClick = (index) => setCurrentQuestion(index);
+
+  const progress = test ? (Object.keys(answers).length / test.questions.length) * 100 : 0;
+  const timeProgress = test && timeLeft ? (timeLeft / ((test.time_limit || 10) * 60)) * 100 : 100;
+
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', flexDirection: 'column' }}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box sx={{ width: '300px', textAlign: 'center', mb: 4 }}>
-            <School sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h5" gutterBottom>Loading Your Test</Typography>
-            <LinearProgress sx={{ mt: 2 }} />
-          </Box>
-        </motion.div>
+      <Container sx={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box textAlign="center">
+          <School fontSize="large" color="primary" />
+          <Typography variant="h5" mt={2}>Loading Test...</Typography>
+          <LinearProgress sx={{ mt: 3, width: 300 }} />
+        </Box>
       </Container>
     );
   }
 
-  // Show error state
-  if (error) {
+  if (error && !test) {
     return (
-      <Container sx={{ mt: 4 }}>
+      <Container sx={{ mt: 6 }}>
+        <Alert severity="error">{error}</Alert>
+      </Container>
+    );
+  }
+
+  if (!test) return null;
+
+  if (!isFullscreen && !submitted) {
+    return (
+      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', p: 4 }}>
+        <Warning sx={{ fontSize: 90, color: 'error.main', mb: 3 }} />
+        <Typography variant="h4" color="error" gutterBottom>
+          Fullscreen Required
+        </Typography>
+        <Typography variant="h6" sx={{ maxWidth: 600, mb: 5 }}>
+          This test must be taken in fullscreen mode for security reasons.
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          onClick={enterFullscreen}
+          sx={{ px: 6, py: 2 }}
+        >
+          Enter Fullscreen & Start
+        </Button>
+      </Box>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Alert severity="error" sx={{ mb: 3 }}>
-            <AlertTitle>Error</AlertTitle>
-            {error}
-          </Alert>
-          <Button 
-            variant="outlined" 
-            onClick={() => navigate('/hello')}
-            startIcon={<Home />}
-          >
-            Back to Home
-          </Button>
+          <Card elevation={4} sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+            <Box sx={{
+              p: 2,
+              backgroundColor: autoSubmitReason ? 'warning.main' : 'success.main',
+              color: 'white',
+              textAlign: 'center'
+            }}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                {autoSubmitReason ? 'Test Auto-Submitted' : 'Test Completed!'}
+              </Typography>
+            </Box>
+            <CardContent sx={{ p: 4, textAlign: 'center' }}>
+              {autoSubmitReason && (
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                  <AlertTitle>Automatic Submission</AlertTitle>
+                  Reason: {autoSubmitReason}
+                </Alert>
+              )}
+              
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                <AssignmentTurnedIn sx={{ fontSize: 80, color: autoSubmitReason ? 'warning.main' : 'success.main' }} />
+              </Box>
+              
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+                To View Your Score, Visit the Dashboard
+              </Typography>
+              
+              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary' }}>
+                Your answers have been submitted successfully. Check your dashboard for detailed results and performance analysis.
+              </Typography>
+
+              <Button
+                component={motion.button}
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                variant="contained"
+                color="primary"
+                size="large"
+                startIcon={<Home />}
+                onClick={() => navigate('/dashboard')}
+                sx={{ px: 4, mr: 2 }}
+              >
+                Go to Dashboard
+              </Button>
+
+              <Button
+                component={motion.button}
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                variant="outlined"
+                color="primary"
+                size="large"
+                onClick={() => navigate('/hello')}
+                sx={{ px: 4 }}
+              >
+                Back to Home
+              </Button>
+            </CardContent>
+          </Card>
         </motion.div>
       </Container>
     );
   }
 
-  // If no test data is available
-  if (!test || timeLeft === null) return null;
-
   return (
-    <motion.div
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={pageVariants}
-    >
+    <>
+      {/* Warning Dialog */}
+      <Dialog open={showWarningDialog} onClose={() => setShowWarningDialog(false)}>
+        <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center' }}>
+          <Warning sx={{ mr: 1.5 }} />
+          Warning: Tab Switching Detected
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You have switched tabs or applications <strong>{tabSwitchCount}</strong> time(s).<br />
+            You are allowed only <strong>{MAX_ALLOWED_SWITCHES}</strong> switches in total.<br /><br />
+            <strong>One more switch will automatically submit your test!</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowWarningDialog(false)} variant="contained" color="primary">
+            I Understand
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Submit Dialog */}
+      <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>
+        <DialogTitle>Submit Test?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to submit your test? You have answered{' '}
+            <strong>{Object.keys(answers).length}</strong> out of{' '}
+            <strong>{test.questions.length}</strong> questions.
+            <br /><br />
+            Once submitted, you cannot change your answers.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} variant="contained" color="success" startIcon={<Send />}>
+            Submit Test
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Container maxWidth="md" sx={{ py: 4 }}>
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {/* Test Header */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            mb: 4, 
-            p: 3, 
+        <Paper
+          elevation={3}
+          sx={{
+            mb: 4,
+            p: 3,
             borderRadius: '12px',
             background: 'linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)',
             color: 'white'
@@ -257,18 +488,18 @@ const MockTestPage = () => {
               <Typography variant="body1" sx={{ mb: 1, opacity: 0.9 }}>
                 {test.description}
               </Typography>
-              <Chip 
-                icon={<School />} 
-                label={`${test.questions.length} Questions`} 
-                sx={{ mr: 1, mt: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} 
+              <Chip
+                icon={<School />}
+                label={`${test.questions.length} Questions`}
+                sx={{ mr: 1, mt: 1, backgroundColor: 'rgba(255,255,255,0.2)' }}
               />
             </Grid>
             <Grid item xs={12} md={4} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-              <Box sx={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                p: 2, 
-                borderRadius: '8px', 
+              <Box sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                p: 2,
+                borderRadius: '8px',
                 backgroundColor: timeWarning ? 'error.dark' : 'rgba(255,255,255,0.2)',
                 animation: timeWarning ? 'pulse 1.5s infinite' : 'none',
                 '@keyframes pulse': {
@@ -283,23 +514,23 @@ const MockTestPage = () => {
                 </Typography>
               </Box>
               <Box sx={{ mt: 1 }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={timeProgress} 
-                  sx={{ 
-                    height: 8, 
+                <LinearProgress
+                  variant="determinate"
+                  value={timeProgress}
+                  sx={{
+                    height: 8,
                     borderRadius: 4,
                     backgroundColor: 'rgba(255,255,255,0.2)',
                     '& .MuiLinearProgress-bar': {
                       backgroundColor: timeWarning ? 'error.light' : 'success.light'
                     }
-                  }} 
+                  }}
                 />
               </Box>
             </Grid>
           </Grid>
         </Paper>
-        
+
         {/* Progress Indicators */}
         <Box sx={{ mb: 4 }}>
           <Grid container spacing={2} alignItems="center">
@@ -307,10 +538,10 @@ const MockTestPage = () => {
               <Typography variant="body2" sx={{ mb: 1 }}>
                 Your Progress: {Math.round(progress)}% Complete
               </Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={progress} 
-                sx={{ height: 8, borderRadius: 4 }} 
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{ height: 8, borderRadius: 4 }}
               />
             </Grid>
             <Grid item xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
@@ -320,16 +551,16 @@ const MockTestPage = () => {
             </Grid>
           </Grid>
         </Box>
-        
+
         {/* Question Navigation */}
-        <Box 
-          sx={{ 
-            mb: 3, 
-            p: 2, 
-            borderRadius: '8px', 
-            backgroundColor: '#f5f7fa', 
-            overflowX: 'auto', 
-            whiteSpace: 'nowrap' 
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: '8px',
+            backgroundColor: '#f5f7fa',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap'
           }}
         >
           <Grid container spacing={1}>
@@ -337,13 +568,13 @@ const MockTestPage = () => {
               <Grid item key={index}>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
                   <Tooltip title={answers[index] ? "Answered" : "Unanswered"}>
-                    <Button 
-                      variant={currentQuestion === index ? "contained" : "outlined"} 
+                    <Button
+                      variant={currentQuestion === index ? "contained" : "outlined"}
                       color={answers[index] ? "success" : "primary"}
                       onClick={() => handleQuestionClick(index)}
-                      sx={{ 
-                        minWidth: '40px', 
-                        height: '40px', 
+                      sx={{
+                        minWidth: '40px',
+                        height: '40px',
                         borderRadius: '20px',
                         boxShadow: currentQuestion === index ? 3 : 0
                       }}
@@ -356,218 +587,135 @@ const MockTestPage = () => {
             ))}
           </Grid>
         </Box>
-        
+
         {/* Question Card */}
-        {!submitted ? (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentQuestion}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card 
-                component={motion.div}
-                variants={cardVariants}
-                whileHover="hover"
-                elevation={4} 
-                sx={{ 
-                  mb: 4, 
-                  borderRadius: '12px',
-                  overflow: 'hidden'
-                }}
-              >
-                <Box sx={{ 
-                  p: 1, 
-                  backgroundColor: 'primary.main', 
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center' 
-                }}>
-                  <QuestionMark fontSize="small" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle2">
-                    Question {currentQuestion + 1}
-                  </Typography>
-                </Box>
-                <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 500 }}>
-                    {test.questions[currentQuestion].questionText}
-                  </Typography>
-                  <RadioGroup
-                    value={answers[currentQuestion] || ''}
-                    onChange={(e) => handleAnswerChange(currentQuestion, e.target.value)}
-                  >
-                    {test.questions[currentQuestion].options.map((option, i) => (
-                      <motion.div
-                        key={i}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Paper 
-                          elevation={answers[currentQuestion] === option ? 3 : 0} 
-                          sx={{ 
-                            mb: 2, 
-                            p: 1, 
-                            borderRadius: '8px',
-                            border: '1px solid',
-                            borderColor: answers[currentQuestion] === option ? 'primary.main' : 'divider',
-                            backgroundColor: answers[currentQuestion] === option ? 'primary.light' : 'background.paper',
-                            color: answers[currentQuestion] === option ? 'primary.contrastText' : 'text.primary',
-                            transition: 'all 0.2s ease-in-out'
-                          }}
-                        >
-                          <FormControlLabel 
-                            value={option} 
-                            control={<Radio color="primary" />} 
-                            label={option} 
-                            sx={{ 
-                              width: '100%', 
-                              m: 0,
-                              '& .MuiFormControlLabel-label': {
-                                width: '100%'
-                              }
-                            }} 
-                          />
-                        </Paper>
-                      </motion.div>
-                    ))}
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </AnimatePresence>
-        ) : (
-          // Results Section
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            key={currentQuestion}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
           >
-            <Card elevation={4} sx={{ mb: 4, borderRadius: '12px', overflow: 'hidden' }}>
-              <Box sx={{ 
-                p: 2, 
-                backgroundColor: 'success.main', 
+            <Card
+              component={motion.div}
+              variants={cardVariants}
+              whileHover="hover"
+              elevation={4}
+              sx={{
+                mb: 4,
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}
+            >
+              <Box sx={{
+                p: 1,
+                backgroundColor: 'primary.main',
                 color: 'white',
-                textAlign: 'center'
+                display: 'flex',
+                alignItems: 'center'
               }}>
-                <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                  Test Completed!
+                <QuestionMark fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="subtitle2">
+                  Question {currentQuestion + 1}
                 </Typography>
               </Box>
-              <CardContent sx={{ p: 4, textAlign: 'center' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                  <AssignmentTurnedIn sx={{ fontSize: 80, color: 'success.main' }} />
-                </Box>
-                <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 700 }}>
-                  {/*Your Score: {score !== null ? score : '...'}%*/}
-                  To Get Scores Visit User Dashboard
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 500 }}>
+                  {test.questions[currentQuestion].questionText}
                 </Typography>
-                <Typography variant="body1" sx={{ mb: 3 }}>
-                  You've successfully completed the test. Thank you for your participation!
-                </Typography>
-                <Button 
-                  component={motion.button}
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  variant="contained" 
-                  color="primary" 
-                  size="large"
-                  startIcon={<Home />}
-                  onClick={() => navigate('/hello')}
-                  sx={{ px: 4 }}
+                <RadioGroup
+                  value={answers[currentQuestion] || ''}
+                  onChange={(e) => handleAnswerChange(currentQuestion, e.target.value)}
                 >
-                  Back to Home
-                </Button>
+                  {test.questions[currentQuestion].options.map((option, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Paper
+                        elevation={answers[currentQuestion] === option ? 3 : 0}
+                        sx={{
+                          mb: 2,
+                          p: 1,
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: answers[currentQuestion] === option ? 'primary.main' : 'divider',
+                          backgroundColor: answers[currentQuestion] === option ? 'primary.light' : 'background.paper',
+                          color: answers[currentQuestion] === option ? 'primary.contrastText' : 'text.primary',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                      >
+                        <FormControlLabel
+                          value={option}
+                          control={<Radio color="primary" />}
+                          label={option}
+                          sx={{
+                            width: '100%',
+                            m: 0,
+                            '& .MuiFormControlLabel-label': {
+                              width: '100%'
+                            }
+                          }}
+                        />
+                      </Paper>
+                    </motion.div>
+                  ))}
+                </RadioGroup>
               </CardContent>
             </Card>
           </motion.div>
-        )}
+        </AnimatePresence>
 
-        {/* Navigation and Submit Controls */}
-        {!submitted && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
-              <Button
-                variant="outlined"
-                startIcon={<ArrowBack />}
-                onClick={handlePrevQuestion}
-                disabled={currentQuestion === 0}
-              >
-                Previous
-              </Button>
-            </motion.div>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {currentQuestion < test.questions.length - 1 ? (
-                <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
-                  <Button
-                    variant="contained"
-                    endIcon={<ArrowForward />}
-                    onClick={handleNextQuestion}
-                  >
-                    Next
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
-                  <Button
-                    variant="contained"
-                    color="success"
-                    endIcon={<AssignmentTurnedIn />}
-                    onClick={openConfirmDialog}
-                  >
-                    Submit Test
-                  </Button>
-                </motion.div>
-              )}
-              
-              <Tooltip title="Get help">
-                <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    sx={{ minWidth: '48px', width: '48px', p: 0 }}
-                  >
-                    <Help />
-                  </Button>
-                </motion.div>
-              </Tooltip>
-            </Box>
-          </Box>
-        )}
-        
-        {/* Confirmation Dialog */}
-        <Dialog
-          open={confirmDialog}
-          onClose={() => setConfirmDialog(false)}
-          aria-labelledby="alert-dialog-title"
-          aria-describedby="alert-dialog-description"
-        >
-          <DialogTitle id="alert-dialog-title">
-            {"Submit your test?"}
-          </DialogTitle>
-          <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-              You've answered {Object.keys(answers).length} out of {test.questions.length} questions. 
-              {Object.keys(answers).length < test.questions.length && 
-                ` There are ${test.questions.length - Object.keys(answers).length} unanswered questions.`}
-              <br /><br />
-              Are you sure you want to submit your test now? You won't be able to change your answers after submission.
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setConfirmDialog(false)} color="primary">
-              Continue Working
+        {/* Navigation Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Button
+            component={motion.button}
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            onClick={handlePrevQuestion}
+            disabled={currentQuestion === 0}
+            sx={{ px: 3 }}
+          >
+            Previous
+          </Button>
+
+          {currentQuestion === test.questions.length - 1 ? (
+            <Button
+              component={motion.button}
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              variant="contained"
+              color="success"
+              size="large"
+              startIcon={<Send />}
+              onClick={openConfirmDialog}
+              sx={{ px: 4, py: 1.5, fontWeight: 600 }}
+            >
+              Submit Test
             </Button>
-            <Button onClick={handleSubmit} color="error" autoFocus>
-              Submit Now
+          ) : (
+            <Button
+              component={motion.button}
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              variant="contained"
+              endIcon={<ArrowForward />}
+              onClick={handleNextQuestion}
+              sx={{ px: 3 }}
+            >
+              Next
             </Button>
-          </DialogActions>
-        </Dialog>
+          )}
+        </Box>
       </Container>
-    </motion.div>
+    </>
   );
 };
 

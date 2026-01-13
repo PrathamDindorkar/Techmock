@@ -26,6 +26,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
+import Chip from '@mui/material/Chip';
 
 const Landing = () => {
   const theme = useTheme();
@@ -398,99 +399,148 @@ const Landing = () => {
 
       {/* Certification Categories Section */}
       <Box sx={{ py: { xs: 8, md: 12 } }}>
-        <Container maxWidth="lg">
+  <Container maxWidth="lg">
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+    >
+      <Typography
+        variant="h3"
+        align="center"
+        sx={{
+          mb: 10,
+          fontWeight: 800,
+          background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
+        Choose Your Preparation Path
+      </Typography>
+    </motion.div>
+
+    <Grid 
+      container 
+      spacing={4} 
+      justifyContent="center"           // ← Centers the cards horizontally
+      alignItems="stretch"
+    >
+      {[
+        {
+          title: "Enterprise Softwares",
+          items: [
+            { text: "SAP ERP" },
+            { text: "Opentext VIM" },
+            { text: "Salesforce", comingSoon: true },
+            { text: "Microsoft Novasion", comingSoon: true }
+          ],
+          gradient: "linear-gradient(135deg, rgba(255,107,107,0.18) 0%, rgba(255,139,148,0.18) 100%)"
+        },
+        {
+          title: "Interview Prep",
+          items: [
+            { text: "JavaScript" },
+            { text: "Node.js / Backend" },
+            { text: "React / Frontend" },
+            { text: "Python / Data Science" }
+          ],
+          gradient: "linear-gradient(135deg, rgba(78,205,196,0.18) 0%, rgba(168,230,207,0.18) 100%)"
+        }
+      ].map((category, index) => (
+        <Grid 
+          item 
+          xs={12} 
+          sm={10} 
+          md={5}                    // Slightly wider cards + centered layout
+          lg={4.5}
+          key={index}
+        >
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, delay: index * 0.2 }}
+            whileHover={{ y: -12, transition: { duration: 0.3 } }}
           >
-            <Typography
-              variant="h3"
-              align="center"
+            <Paper
+              elevation={0}
               sx={{
-                mb: 8,
-                fontWeight: 800,
-                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                p: { xs: 3, md: 4 },
+                height: "100%",
+                borderRadius: 5,
+                background: category.gradient,
+                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                transition: "all 0.4s ease",
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
+                }
               }}
             >
-              Choose Your Preparation Path
-            </Typography>
-          </motion.div>
+              <Typography 
+                variant="h5" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 700, 
+                  mb: 4,
+                  color: 'text.primary'
+                }}
+              >
+                {category.title}
+              </Typography>
 
-          <Grid container spacing={4}>
-            {[
-              {
-                title: "Cloud Certifications",
-                items: ["AWS Solutions Architect", "Azure Administrator", "GCP Cloud Architect", "AWS DevOps Engineer"],
-                gradient: "linear-gradient(135deg, rgba(0,212,255,0.2) 0%, rgba(138,43,226,0.2) 100%)"
-              },
-              {
-                title: "Enterprise Softwares",
-                items: ["SAP ERP", "Microsoft Novasion", "Salesforce", "ServiceNow"],
-                gradient: "linear-gradient(135deg, rgba(255,107,107,0.2) 0%, rgba(255,139,148,0.2) 100%)"
-              },
-              {
-                title: "Interview Prep",
-                items: ["JavaScript", "Java / Spring Boot", "React / Frontend", "Python / Data Science"],
-                gradient: "linear-gradient(135deg, rgba(78,205,196,0.2) 0%, rgba(168,230,207,0.2) 100%)"
-              }
-            ].map((category, index) => (
-              <Grid item xs={12} md={4} key={index}>
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
-                  whileHover={{ y: -10 }}
-                >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 4,
-                      height: "100%",
-                      borderRadius: 4,
-                      ...glassStyle,
-                      background: category.gradient,
-                      transition: "all 0.3s ease"
+              <List dense disablePadding>
+                {category.items.map((item, idx) => (
+                  <ListItem 
+                    key={idx} 
+                    disablePadding 
+                    sx={{ 
+                      mb: 1.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5
                     }}
                   >
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                      {category.title}
-                    </Typography>
-                    <List dense>
-                      {category.items.map((item, idx) => (
-                        <ListItem key={idx} sx={{ px: 0 }}>
-                          <ListItemText
-                            primary={item}
-                            primaryTypographyProps={{ fontWeight: 500 }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        mt: 3,
-                        borderRadius: "20px",
-                        borderWidth: 2,
-                        fontWeight: 600,
-                        textTransform: 'none'
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{ 
+                        fontWeight: 500,
+                        fontSize: '1.05rem'
                       }}
-                    >
-                      Explore Exams
-                    </Button>
-                  </Paper>
-                </motion.div>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
+                    />
+                    
+                    {item.comingSoon && (
+                      <Chip
+                        label="Coming Soon"
+                        size="small"
+                        sx={{
+                          backgroundColor: 'rgba(255, 193, 7, 0.9)',
+                          color: 'white',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          height: 24,
+                          borderRadius: '12px',
+                          px: 1,
+                          '& .MuiChip-label': {
+                            px: 1.5
+                          }
+                        }}
+                      />
+                    )}
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </motion.div>
+        </Grid>
+      ))}
+    </Grid>
+  </Container>
+</Box>
 
       {/* Features Section */}
       <Container sx={{ py: { xs: 10, md: 14 } }}>
@@ -507,7 +557,7 @@ const Landing = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            Why Choose TechMock?
+            Why Choose TechMocks?
           </Typography>
         </motion.div>
 

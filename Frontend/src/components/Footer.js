@@ -45,13 +45,13 @@ const Footer = () => {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                TechMock
+                TechMocks
               </Typography>
               <Typography variant="body2" sx={{ mb: 3 }}>
                 Empowering tech professionals with industry-leading practice exams and personalized learning paths.
               </Typography>
               <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'warning.main' }}>
-                Disclaimer: TechMock certifications are generated based on your scores purely for motivational purposes. Our platform is designed solely for exam and interview preparations. We do not promise or guarantee any specific outcomes, such as 100% pass rates, passing real certifications, or securing jobs. Results depend on individual effort.
+                Disclaimer: TechMocks certifications are generated based on your scores purely for motivational purposes. Our platform is designed solely for exam and interview preparations. We do not promise or guarantee any specific outcomes, such as 100% pass rates, passing real certifications, or securing jobs. Results depend on individual effort.
               </Typography>
             </Box>
 
