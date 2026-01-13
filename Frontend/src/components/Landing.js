@@ -24,6 +24,7 @@ import {
   ContentCopy,
   Done,
 } from "@mui/icons-material";
+import { useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 
 const Landing = () => {
@@ -31,7 +32,7 @@ const Landing = () => {
   const isDarkMode = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
+  const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -50,6 +51,9 @@ const Landing = () => {
     window.location.href = "/mocks?type=free";
   };
 
+  const handleBrowseClick = () => {
+    navigate('/mocks');
+  }
   const glassStyle = {
     background: isDarkMode
       ? "rgba(255, 255, 255, 0.07)"
@@ -60,7 +64,7 @@ const Landing = () => {
       ? "0 8px 32px rgba(0,0,0,0.38)"
       : "0 8px 32px rgba(31,38,135,0.13)",
   };
-
+  
   const benefits = [
     {
       icon: <School fontSize="large" />,
@@ -98,6 +102,7 @@ const Landing = () => {
             background: "linear-gradient(90deg, #ec4899, #a855f7, #00d4ff)",
             py: { xs: 1, md: 1.2 },
             px: 2,
+            borderRadius: 50,
             textAlign: "center",
             color: "white",
             fontSize: { xs: "0.85rem", md: "0.95rem" },
@@ -244,6 +249,7 @@ const Landing = () => {
                 <Button
                   variant="outlined"
                   size="large"
+                  onClick={handleBrowseClick}
                   sx={{
                     px: { xs: 5, sm: 6 },
                     py: 2,
@@ -253,7 +259,7 @@ const Landing = () => {
                     ...glassStyle,
                   }}
                 >
-                  Browse All Certifications
+                  Browse All Mocks
                 </Button>
               </Stack>
             </motion.div>
@@ -293,7 +299,7 @@ const Landing = () => {
                 mx: "auto",
               }}
             >
-              {["AWS", "Azure", "DSA", "SAP", "SAP Fiori", "OpenText VIM"].map((tech, i) => (
+              {["Python", "React", "Data Structure & Algorithms", "SAP", "JavaScript", "Node.js", "OpenText VIM"].map((tech, i) => (
                 <motion.div
                   key={tech}
                   initial={{ opacity: 0, y: 20 }}
