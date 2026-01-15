@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -29,7 +29,6 @@ import {
   ArrowForward,
   Check,
   Home,
-  Help,
   AssignmentTurnedIn,
   School,
   QuestionMark,
@@ -47,12 +46,6 @@ const buttonVariants = {
   tap: { scale: 0.95, transition: { duration: 0.1 } }
 };
 
-const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  exit: { opacity: 0, y: -20, transition: { duration: 0.3 } }
-};
-
 const cardVariants = {
   initial: { opacity: 0, scale: 0.9 },
   animate: { opacity: 1, scale: 1, transition: { duration: 0.4 } },
@@ -62,7 +55,7 @@ const cardVariants = {
 const MockTestPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const token = useMemo(() => localStorage.getItem('token'), []);
 
   const [test, setTest] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -82,15 +75,17 @@ const MockTestPage = () => {
   const [autoSubmitReason, setAutoSubmitReason] = useState(null);
 
   const lastBlurTime = useRef(Date.now());
+  const submitInProgress = useRef(false);
+  const timerInterval = useRef(null);
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+  const backendUrl = useMemo(() => process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000', []);
 
   // Auth check
   useEffect(() => {
     if (!token) navigate('/login');
   }, [token, navigate]);
 
-  // Fetch test
+  // Fetch test - memoized
   useEffect(() => {
     const fetchTest = async () => {
       try {
@@ -100,31 +95,55 @@ const MockTestPage = () => {
         });
         setTest(data);
         setTimeLeft((data.time_limit || 10) * 60);
-        setLoading(false);
       } catch (err) {
         console.error(err);
         setError('Failed to load test. Please try again.');
+      } finally {
         setLoading(false);
       }
     };
     if (token) fetchTest();
   }, [id, token, backendUrl]);
 
-  // Fullscreen handling
-  const enterFullscreen = () => {
+  // Optimized fullscreen handler
+  const enterFullscreen = useCallback(() => {
     const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen().catch(console.warn);
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-  };
+    
+    // Try modern API first
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(err => {
+          console.warn('Fullscreen failed:', err);
+          // Fallback: assume fullscreen for compatibility
+          setIsFullscreen(true);
+        });
+    } 
+    // Fallback for Safari
+    else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+      setIsFullscreen(true);
+    } 
+    // Fallback for IE11
+    else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+      setIsFullscreen(true);
+    }
+    // If no fullscreen API available, proceed anyway
+    else {
+      setIsFullscreen(true);
+    }
+  }, []);
 
+  // Optimized fullscreen change handler
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(
-        !!document.fullscreenElement ||
-        !!document.webkitFullscreenElement ||
-        !!document.msFullscreenElement
+      const isNowFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
       );
+      setIsFullscreen(isNowFullscreen);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -138,7 +157,36 @@ const MockTestPage = () => {
     };
   }, []);
 
-  // Tab switch / app minimize detection
+  // Optimized auto-submit handler
+  const handleAutoSubmit = useCallback(async (reason) => {
+    if (submitted || submitInProgress.current) return;
+    
+    submitInProgress.current = true;
+    setAutoSubmitReason(reason);
+    
+    try {
+      const res = await axios.post(
+        `${backendUrl}/api/mock-test/${id}/submit`,
+        {
+          answers,
+          autoSubmitted: true,
+          reason
+        },
+        { headers: { Authorization: token } }
+      );
+      setScore(res.data.score);
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Auto-submit failed:', err);
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+      setError(`Auto-submit failed: ${errorMsg}`);
+      setSubmitted(true);
+    } finally {
+      submitInProgress.current = false;
+    }
+  }, [submitted, answers, backendUrl, id, token]);
+
+  // Tab switch detection - optimized
   useEffect(() => {
     if (submitted || !test) return;
 
@@ -176,95 +224,74 @@ const MockTestPage = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
-    window.addEventListener('pagehide', detectSwitch);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('pagehide', detectSwitch);
     };
-  }, [submitted, test]);
+  }, [submitted, test, handleAutoSubmit]);
 
-  const handleAutoSubmit = async (reason) => {
-    if (submitted) return;
-
-    setAutoSubmitReason(reason);
-    console.log('Auto-submitting test. Reason:', reason);
-    console.log('Answers being submitted:', answers);
-    
-    try {
-      const res = await axios.post(
-        `${backendUrl}/api/mock-test/${id}/submit`,
-        {
-          answers,
-          autoSubmitted: true,
-          reason
-        },
-        { headers: { Authorization: token } }
-      );
-      console.log('Auto-submit response:', res.data);
-      setScore(res.data.score);
-      setSubmitted(true);
-    } catch (err) {
-      console.error('Auto-submit failed:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error status:', err.response?.status);
-      
-      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
-      setError(`Auto-submit failed: ${errorMsg}`);
-      
-      // Still mark as submitted to prevent further attempts
-      setSubmitted(true);
-    }
-  };
-
-  // Timer
+  // Timer - optimized
   useEffect(() => {
-    if (timeLeft <= 0 || submitted) return;
+    if (timeLeft === null || timeLeft <= 0 || submitted) {
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+        timerInterval.current = null;
+      }
+      return;
+    }
 
-    const interval = setInterval(() => {
+    timerInterval.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          clearInterval(timerInterval.current);
+          timerInterval.current = null;
           handleAutoSubmit('Time expired');
           return 0;
         }
+        
+        // Set warning at 20% time remaining
+        if (test && prev < (test.time_limit || 10) * 60 * 0.2 && !timeWarning) {
+          setTimeWarning(true);
+        }
+        
         return prev - 1;
       });
     }, 1000);
 
-    if (test && timeLeft < (test.time_limit || 10) * 60 * 0.2) {
-      setTimeWarning(true);
-    }
+    return () => {
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+        timerInterval.current = null;
+      }
+    };
+  }, [timeLeft, submitted, test, handleAutoSubmit, timeWarning]);
 
-    return () => clearInterval(interval);
-  }, [timeLeft, submitted, test]);
-
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
-  const handleAnswerChange = (qIndex, value) => {
+  const handleAnswerChange = useCallback((qIndex, value) => {
     setAnswers(prev => ({ ...prev, [qIndex]: value }));
-  };
+  }, []);
 
-  const handlePrevQuestion = () => {
-    if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
-  };
+  const handlePrevQuestion = useCallback(() => {
+    setCurrentQuestion(prev => Math.max(0, prev - 1));
+  }, []);
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < (test?.questions?.length - 1 || 0))
-      setCurrentQuestion(currentQuestion + 1);
-  };
+  const handleNextQuestion = useCallback(() => {
+    setCurrentQuestion(prev => Math.min((test?.questions?.length - 1 || 0), prev + 1));
+  }, [test]);
 
-  const openConfirmDialog = () => setConfirmDialog(true);
+  const openConfirmDialog = useCallback(() => setConfirmDialog(true), []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
+    if (submitInProgress.current) return;
+    
     setConfirmDialog(false);
-    console.log('Submitting test manually');
-    console.log('Answers being submitted:', answers);
+    submitInProgress.current = true;
     
     try {
       const res = await axios.post(
@@ -272,26 +299,32 @@ const MockTestPage = () => {
         { answers, autoSubmitted: false },
         { headers: { Authorization: token } }
       );
-      console.log('Submit response:', res.data);
       setScore(res.data.score);
       setSubmitted(true);
     } catch (err) {
       console.error('Submit failed:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error status:', err.response?.status);
-      
       const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
       const errorDetails = err.response?.data?.details;
-      
       setError(`Failed to submit test: ${errorMsg}${errorDetails ? '\n' + errorDetails : ''}`);
+    } finally {
+      submitInProgress.current = false;
     }
-  };
+  }, [answers, backendUrl, id, token]);
 
-  const handleQuestionClick = (index) => setCurrentQuestion(index);
+  const handleQuestionClick = useCallback((index) => setCurrentQuestion(index), []);
 
-  const progress = test ? (Object.keys(answers).length / test.questions.length) * 100 : 0;
-  const timeProgress = test && timeLeft ? (timeLeft / ((test.time_limit || 10) * 60)) * 100 : 100;
+  // Memoized calculations
+  const progress = useMemo(() => 
+    test ? (Object.keys(answers).length / test.questions.length) * 100 : 0,
+    [test, answers]
+  );
 
+  const timeProgress = useMemo(() => 
+    test && timeLeft ? (timeLeft / ((test.time_limit || 10) * 60)) * 100 : 100,
+    [test, timeLeft]
+  );
+
+  // Loading state
   if (loading) {
     return (
       <Container sx={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -304,6 +337,7 @@ const MockTestPage = () => {
     );
   }
 
+  // Error state
   if (error && !test) {
     return (
       <Container sx={{ mt: 6 }}>
@@ -314,6 +348,7 @@ const MockTestPage = () => {
 
   if (!test) return null;
 
+  // Fullscreen requirement screen
   if (!isFullscreen && !submitted) {
     return (
       <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', p: 4 }}>
@@ -337,6 +372,7 @@ const MockTestPage = () => {
     );
   }
 
+  // Submitted state
   if (submitted) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
