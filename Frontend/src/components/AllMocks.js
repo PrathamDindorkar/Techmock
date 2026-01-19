@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -19,20 +19,18 @@ import {
   CardMedia,
   useTheme,
   IconButton,
-  useMediaQuery,
+  Stack,
+  Divider,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Stack,
-  Divider,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import QuizIcon from '@mui/icons-material/Quiz'; // Added this
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import QuizIcon from '@mui/icons-material/Quiz';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import LockIcon from '@mui/icons-material/Lock';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
@@ -57,9 +55,10 @@ const AllMocks = () => {
   const [purchasedTests, setPurchasedTests] = useState([]);
   const [userCurrency, setUserCurrency] = useState('INR');
   const [exchangeRate, setExchangeRate] = useState(1);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // ── Filters ──
-  const [priceFilter, setPriceFilter] = useState('all'); // 'all' | 'free' | 'paid'
+  // Filters
+  const [priceFilter, setPriceFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const navigate = useNavigate();
@@ -71,6 +70,8 @@ const AllMocks = () => {
     'Java', 'Python', 'JavaScript', 'C++', 'React', 'Node.js', 'Go',
     'TypeScript', 'PHP', 'C#', 'Ruby', 'Swift', 'Kotlin'
   ];
+
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   const getCategoryColors = () => ({
     'Science': isDarkMode 
@@ -90,16 +91,27 @@ const AllMocks = () => {
       : 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
   });
 
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const categoryColors = getCategoryColors();
   const defaultCategoryColor = isDarkMode 
     ? 'linear-gradient(135deg, #333740 0%, #252932 100%)' 
     : 'linear-gradient(135deg, #8e9eab 0%, #eef2f3 100%)';
 
-  // Fetch all data
+  // Fetch all data + user role
   const fetchData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token');
+
+      // 1. Get user profile (includes role)
+      const profileResponse = await axios.get(`${backendUrl}/api/user/profile`, {
+        headers: { Authorization: token },
+      });
+
+      const userRole = profileResponse.data.role || 'user';
+      setIsAdmin(userRole === 'admin');
+
+      // 2. Get mock tests
       const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
       let data = mockResponse.data;
 
@@ -122,12 +134,31 @@ const AllMocks = () => {
         setExpandedCategory(Object.keys(data)[0]);
       }
 
-      const token = localStorage.getItem('token');
-      if (token) {
-        const [cartResponse, profileResponse] = await Promise.all([
-          axios.get(`${backendUrl}/api/user/cart`, { headers: { Authorization: token } }),
-          axios.get(`${backendUrl}/api/user/profile`, { headers: { Authorization: token } }),
-        ]);
+      // 3. Handle purchased tests
+      let purchasedIds = (profileResponse.data?.purchasedTests || []).map(
+        test => test._id || test.id
+      );
+
+      // Admin gets access to everything
+      if (userRole === 'admin') {
+        const allIds = [];
+        Object.values(data).forEach(category => {
+          if (Array.isArray(category)) {
+            category.forEach(t => allIds.push(t._id || t.id));
+          } else if (typeof category === 'object') {
+            Object.values(category).flat().forEach(t => allIds.push(t._id || t.id));
+          }
+        });
+        purchasedIds = allIds;
+      }
+
+      setPurchasedTests(purchasedIds);
+
+      // 4. Cart - only for normal users
+      if (userRole !== 'admin') {
+        const cartResponse = await axios.get(`${backendUrl}/api/user/cart`, {
+          headers: { Authorization: token },
+        });
 
         setCartItems(
           (cartResponse.data?.cart || []).map(item => ({
@@ -135,10 +166,6 @@ const AllMocks = () => {
             title: item.mockTestId?.title || 'Untitled',
             price: item.price || 0,
           }))
-        );
-
-        setPurchasedTests(
-          (profileResponse.data?.purchasedTests || []).map(test => test._id)
         );
       }
     } catch (error) {
@@ -176,15 +203,12 @@ const AllMocks = () => {
         const rateRes = await axios.get(
           `https://api.frankfurter.app/latest?from=INR&to=${currency}`
         );
-        const rate = rateRes.data?.rates?.[currency] || 1;
-        setExchangeRate(rate);
-      } catch (err) {
-        console.error('Currency fetch failed:', err);
+        setExchangeRate(rateRes.data?.rates?.[currency] || 1);
+      } catch {
         setUserCurrency('INR');
         setExchangeRate(1);
       }
     };
-
     getUserCurrency();
   }, []);
 
@@ -193,66 +217,22 @@ const AllMocks = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const typeParam = params.get("type");
+    const params = new URLSearchParams(location.search);
+    if (params.get("type") === "free") {
+      setPriceFilter("free");
+    }
+  }, [location.search]);
 
-  if (typeParam === "free") {
-    setPriceFilter("free");
-  }
-}, [location.search]);
-
-  // ── Available categories for filter ──
-  const availableCategories = useMemo(() => {
-    const cats = ['all', ...Object.keys(mockTests)];
-    return cats;
-  }, [mockTests]);
-
-  // ── Filtered & Prepared data for rendering ──
-  const filteredData = useMemo(() => {
-    const result = {};
-
-    Object.entries(mockTests).forEach(([category, tests]) => {
-      if (categoryFilter !== 'all' && category !== categoryFilter) return;
-
-      if (category === 'Languages') {
-        const filteredSub = {};
-        Object.entries(tests).forEach(([lang, mocks]) => {
-          const filteredMocks = mocks.filter(mock => {
-            if (priceFilter === 'all') return true;
-            if (priceFilter === 'free') return mock.pricingType === 'free';
-            if (priceFilter === 'paid') return mock.pricingType === 'paid';
-            return true;
-          });
-
-          if (filteredMocks.length > 0) {
-            filteredSub[lang] = filteredMocks;
-          }
-        });
-
-        if (Object.keys(filteredSub).length > 0) {
-          result[category] = filteredSub;
-        }
-      } else {
-        const filteredMocks = tests.filter(mock => {
-          if (priceFilter === 'all') return true;
-          if (priceFilter === 'free') return mock.pricingType === 'free';
-          if (priceFilter === 'paid') return mock.pricingType === 'paid';
-          return true;
-        });
-
-        if (filteredMocks.length > 0) {
-          result[category] = filteredMocks;
-        }
-      }
-    });
-
-    return result;
-  }, [mockTests, priceFilter, categoryFilter]);
-
-  const hasUserPurchased = (mockId) => {
-    const mock = findMockById(mockId);
-    return mock && (mock.pricingType === 'free' || purchasedTests.includes(mockId));
+  // ── Access logic ──
+  const canAccessTest = (mock) => {
+    if (isAdmin) return true;
+    if (mock?.pricingType === 'free') return true;
+    return purchasedTests.includes(mock?._id || mock?.id);
   };
+
+  const isPurchased = (mockId) => purchasedTests.includes(mockId);
+
+  const isInCart = (mockId) => cartItems.some(item => item.id === mockId);
 
   const findMockById = (mockId) => {
     for (const cat in mockTests) {
@@ -269,8 +249,6 @@ const AllMocks = () => {
     return null;
   };
 
-  const isInCart = (mockId) => cartItems.some(item => item.id === mockId);
-
   const handleCardClick = (mockId) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -280,7 +258,10 @@ const AllMocks = () => {
       return;
     }
 
-    if (hasUserPurchased(mockId)) {
+    const mock = findMockById(mockId);
+    if (!mock) return;
+
+    if (canAccessTest(mock)) {
       navigate(`/mock-test/${mockId}`);
     } else {
       setAlertMessage('Please purchase this test to access it!');
@@ -346,16 +327,21 @@ const AllMocks = () => {
 
   const getDifficultyIcon = (difficulty) => {
     const lower = (difficulty || '').toLowerCase();
-    if (lower === 'easy') return <Chip icon={<EmojiEventsIcon />} label="Easy" size="small" color="success" />;
-    if (lower === 'medium') return <Chip icon={<EmojiEventsIcon />} label="Medium" size="small" color="primary" />;
-    if (lower === 'hard') return <Chip icon={<EmojiEventsIcon />} label="Hard" size="small" color="error" />;
+    if (lower === 'easy') return <Chip label="Easy" size="small" color="success" />;
+    if (lower === 'medium') return <Chip label="Medium" size="small" color="primary" />;
+    if (lower === 'hard') return <Chip label="Hard" size="small" color="error" />;
     return null;
   };
 
   const getPriceDisplay = (mock) => {
+    if (isAdmin) {
+      return <Chip icon={<MonetizationOnIcon />} label="Free (Admin)" size="small" color="success" variant="outlined" />;
+    }
+
     if (mock.pricingType === 'free') {
       return <Chip icon={<MonetizationOnIcon />} label="Free" size="small" color="success" />;
     }
+
     if (mock.pricingType === 'paid' && mock.price) {
       const converted = (mock.price * exchangeRate).toFixed(2);
       const formatter = new Intl.NumberFormat(undefined, {
@@ -366,11 +352,16 @@ const AllMocks = () => {
       });
       return <Chip icon={<MonetizationOnIcon />} label={formatter.format(converted)} size="small" color="secondary" />;
     }
+
     return null;
   };
 
   const getAccessIndicator = (mock) => {
-    if (hasUserPurchased(mock._id || mock.id)) return null;
+    // Only show lock for paid tests that are NOT accessible
+    if (mock.pricingType !== 'paid') return null;
+    if (isAdmin) return null;
+    if (isPurchased(mock._id || mock.id)) return null;
+
     return (
       <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '50%', p: 1 }}>
         <LockIcon sx={{ color: 'white', fontSize: 20 }} />
@@ -405,7 +396,7 @@ const AllMocks = () => {
             Prepare with Our Mock Tests
           </Typography>
         </motion.div>
-        <Typography variant="h6" color="textSecondary" sx={{ mt: 2, maxWidth: 800, mx: 'auto' }}>
+        <Typography variant="h6" color="text.secondary" sx={{ mt: 2, maxWidth: 800, mx: 'auto' }}>
           Choose from our comprehensive collection of mock tests
         </Typography>
       </Box>
@@ -444,13 +435,11 @@ const AllMocks = () => {
               label="Category"
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
-                if (e.target.value !== 'all') {
-                  setExpandedCategory(e.target.value);
-                }
+                if (e.target.value !== 'all') setExpandedCategory(e.target.value);
               }}
             >
               <MenuItem value="all">All Categories</MenuItem>
-              {availableCategories.filter(c => c !== 'all').map(cat => (
+              {Object.keys(mockTests).map(cat => (
                 <MenuItem key={cat} value={cat}>{cat}</MenuItem>
               ))}
             </Select>
@@ -461,19 +450,13 @@ const AllMocks = () => {
       <Divider sx={{ mb: 4 }} />
 
       {/* Content */}
-      {Object.keys(filteredData).length === 0 ? (
+      {Object.keys(mockTests).length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 10 }}>
-          <Typography variant="h5" gutterBottom>
-            No mock tests match your filters
-          </Typography>
-          <Typography color="text.secondary">
-            Try changing the price or category filter
-          </Typography>
+          <Typography variant="h5">No mock tests found</Typography>
         </Box>
       ) : (
-        Object.entries(filteredData).map(([category, testsData]) => {
+        Object.entries(mockTests).map(([category, testsData]) => {
           const isLanguages = category === 'Languages';
-
           const totalTests = isLanguages
             ? Object.values(testsData).reduce((sum, arr) => sum + arr.length, 0)
             : testsData.length;
@@ -496,191 +479,32 @@ const AllMocks = () => {
                 sx={{
                   background: categoryColors[category] || defaultCategoryColor,
                   color: 'white',
-                  '& .MuiAccordionSummary-content': { alignItems: 'center' }
                 }}
               >
                 <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
                   {category}
                 </Typography>
-                <Chip
-                  label={`${totalTests} Tests`}
-                  size="small"
-                  sx={{ bgcolor: 'rgba(122, 122, 122, 0.52)', color: theme.palette.default, fontWeight: 'bold'}}
-                />
+                <Chip label={`${totalTests} Tests`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.25)' }} />
               </AccordionSummary>
 
               <AccordionDetails sx={{ p: 3, bgcolor: isDarkMode ? 'background.paper' : '#fafafa' }}>
                 {isLanguages ? (
                   Object.entries(testsData).map(([lang, mocks]) => (
-                    <Accordion key={lang} sx={{ mb: 3, boxShadow: 'none', '&:before': { display: 'none' } }}>
+                    <Accordion key={lang} sx={{ mb: 3, boxShadow: 'none' }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Typography variant="h6">{lang}</Typography>
                         <Chip label={`${mocks.length} Tests`} size="small" sx={{ ml: 2 }} />
                       </AccordionSummary>
                       <AccordionDetails>
                         <Grid container spacing={3}>
-                          {mocks.map(mock => (
-                            <Grid item xs={12} sm={6} md={4} key={mock._id || mock.id}>
-                              <MotionCard
-                                whileHover={{ scale: 1.04, y: -6 }}
-                                transition={{ type: "spring", stiffness: 300 }}
-                                sx={{
-                                  height: '100%',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  borderRadius: '12px',
-                                  overflow: 'hidden',
-                                  position: 'relative',
-                                  boxShadow: 3,
-                                }}
-                              >
-                                {getAccessIndicator(mock)}
-                                <CardActionArea 
-                                  onClick={() => handleCardClick(mock._id || mock.id)}
-                                  sx={{ flexGrow: 1 }}
-                                >
-                                  <CardMedia
-                                    sx={{
-                                      height: 140,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      bgcolor: 'action.hover',
-                                    }}
-                                  >
-                                    <AssignmentIcon sx={{ fontSize: 64, opacity: 0.6, color: 'primary.main' }} />
-                                  </CardMedia>
-
-                                  <CardContent sx={{ flexGrow: 1, pb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                      <Typography variant="h6" sx={{ fontWeight: 600, pr: 1 }}>
-                                        {mock.title}
-                                      </Typography>
-
-                                      {mock.pricingType === 'paid' && !hasUserPurchased(mock._id || mock.id) && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => handleAddToCart(mock._id || mock.id, e)}
-                                          disabled={isInCart(mock._id || mock.id) || cartLoading}
-                                        >
-                                          {cartLoading ? <CircularProgress size={20} /> : <AddShoppingCartIcon />}
-                                        </IconButton>
-                                      )}
-                                    </Box>
-
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 44 }}>
-                                      {mock.description || 'No description available'}
-                                    </Typography>
-
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                                      {getDifficultyIcon(mock.difficulty)}
-                                      {getPriceDisplay(mock)}
-                                    </Box>
-
-                                    {/* Updated Section to show Time and Question count */}
-                                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                        <Typography variant="body2" color="text.secondary">
-                                          {mock.timeLimit} mins
-                                        </Typography>
-                                      </Box>
-                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <QuizIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                        <Typography variant="body2" color="text.secondary">
-                                          {mock.questions ? mock.questions.length : 0} Questions
-                                        </Typography>
-                                      </Box>
-                                    </Stack>
-                                  </CardContent>
-                                </CardActionArea>
-                              </MotionCard>
-                            </Grid>
-                          ))}
+                          {mocks.map(mock => renderMockCard(mock))}
                         </Grid>
                       </AccordionDetails>
                     </Accordion>
                   ))
                 ) : (
                   <Grid container spacing={3}>
-                    {testsData.map(mock => (
-                      <Grid item xs={12} sm={6} md={4} key={mock._id || mock.id}>
-                        <MotionCard
-                          whileHover={{ scale: 1.04, y: -6 }}
-                          transition={{ type: "spring", stiffness: 300 }}
-                          sx={{
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            borderRadius: '12px',
-                            overflow: 'hidden',
-                            position: 'relative',
-                            boxShadow: 3,
-                          }}
-                        >
-                          {getAccessIndicator(mock)}
-                          <CardActionArea 
-                            onClick={() => handleCardClick(mock._id || mock.id)}
-                            sx={{ flexGrow: 1 }}
-                          >
-                            <CardMedia
-                              sx={{
-                                height: 140,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                bgcolor: 'action.hover',
-                              }}
-                            >
-                              <AssignmentIcon sx={{ fontSize: 64, opacity: 0.6, color: 'primary.main' }} />
-                            </CardMedia>
-
-                            <CardContent sx={{ flexGrow: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, pr: 1 }}>
-                                  {mock.title}
-                                </Typography>
-
-                                {mock.pricingType === 'paid' && !hasUserPurchased(mock._id || mock.id) && (
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleAddToCart(mock._id || mock.id, e)}
-                                    disabled={isInCart(mock._id || mock.id) || cartLoading}
-                                  >
-                                    {cartLoading ? <CircularProgress size={20} /> : <AddShoppingCartIcon />}
-                                  </IconButton>
-                                )}
-                              </Box>
-
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 44 }}>
-                                {mock.description || 'No description available'}
-                              </Typography>
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                                {getDifficultyIcon(mock.difficulty)}
-                                {getPriceDisplay(mock)}
-                              </Box>
-
-                              {/* Updated Section to show Time and Question count */}
-                              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                  <Typography variant="body2" color="text.secondary">
-                                    {mock.timeLimit} mins
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <QuizIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
-                                  <Typography variant="body2" color="text.secondary">
-                                    {mock.questions ? mock.questions.length : 0} Questions
-                                  </Typography>
-                                </Box>
-                              </Stack>
-                            </CardContent>
-                          </CardActionArea>
-                        </MotionCard>
-                      </Grid>
-                    ))}
+                    {testsData.map(mock => renderMockCard(mock))}
                   </Grid>
                 )}
               </AccordionDetails>
@@ -695,12 +519,97 @@ const AllMocks = () => {
         onClose={() => setAlertOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert severity={alertSeverity} onClose={() => setAlertOpen(false)} variant="filled" elevation={6}>
+        <Alert severity={alertSeverity} onClose={() => setAlertOpen(false)} variant="filled">
           {alertMessage}
         </Alert>
       </Snackbar>
     </MotionContainer>
   );
+
+  // Helper component for rendering individual mock card
+  function renderMockCard(mock) {
+    const mockId = mock._id || mock.id;
+
+    return (
+      <Grid item xs={12} sm={6} md={4} key={mockId}>
+        <MotionCard
+          whileHover={{ scale: 1.04, y: -6 }}
+          transition={{ type: "spring", stiffness: 300 }}
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            position: 'relative',
+            boxShadow: 3,
+          }}
+        >
+          {getAccessIndicator(mock)}
+          <CardActionArea 
+            onClick={() => handleCardClick(mockId)}
+            sx={{ flexGrow: 1 }}
+          >
+            <CardMedia
+              sx={{
+                height: 140,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'action.hover',
+              }}
+            >
+              <AssignmentIcon sx={{ fontSize: 64, opacity: 0.6, color: 'primary.main' }} />
+            </CardMedia>
+
+            <CardContent sx={{ flexGrow: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, pr: 1 }}>
+                  {mock.title}
+                </Typography>
+
+                {!isAdmin && 
+                 mock.pricingType === 'paid' && 
+                 !isPurchased(mockId) && (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleAddToCart(mockId, e)}
+                    disabled={isInCart(mockId) || cartLoading}
+                  >
+                    {cartLoading ? <CircularProgress size={20} /> : <AddShoppingCartIcon />}
+                  </IconButton>
+                )}
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 44 }}>
+                {mock.description || 'No description available'}
+              </Typography>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                {getDifficultyIcon(mock.difficulty)}
+                {getPriceDisplay(mock)}
+              </Box>
+
+              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AccessTimeIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {mock.timeLimit} mins
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <QuizIcon fontSize="small" sx={{ mr: 0.8, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {mock.questions?.length || 0} Questions
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </CardActionArea>
+        </MotionCard>
+      </Grid>
+    );
+  }
 };
 
 export default AllMocks;

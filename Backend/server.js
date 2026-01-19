@@ -1012,7 +1012,7 @@ app.get('/api/user/profile', verifyUser, async (req, res) => {
     // Fetch user details
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('name, email')
+      .select('name, email, role')
       .eq('id', userId)
       .single();
 
@@ -1056,6 +1056,7 @@ app.get('/api/user/profile', verifyUser, async (req, res) => {
     res.status(200).json({
       name: user.name,
       email: user.email,
+      role: user.role || 'user',
       purchasedTests: transformedPurchasedTests,
     });
   } catch (error) {
