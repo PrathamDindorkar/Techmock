@@ -74,117 +74,27 @@ const AllMocks = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   const getCategoryColors = () => ({
-    'Science': isDarkMode 
-      ? 'linear-gradient(135deg, #433773 0%, #2c2243 100%)' 
+    'Science': isDarkMode
+      ? 'linear-gradient(135deg, #433773 0%, #2c2243 100%)'
       : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'Mathematics': isDarkMode 
-      ? 'linear-gradient(135deg, #154b5c 0%, #2e758c 100%)' 
+    'Mathematics': isDarkMode
+      ? 'linear-gradient(135deg, #154b5c 0%, #2e758c 100%)'
       : 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
-    'Languages': isDarkMode 
-      ? 'linear-gradient(135deg, #94353a 0%, #7a4352 100%)' 
+    'Languages': isDarkMode
+      ? 'linear-gradient(135deg, #94353a 0%, #7a4352 100%)'
       : 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
-    'History': isDarkMode 
-      ? 'linear-gradient(135deg, #8c6b2a 0%, #8c5525 100%)' 
+    'History': isDarkMode
+      ? 'linear-gradient(135deg, #8c6b2a 0%, #8c5525 100%)'
       : 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
-    'General Knowledge': isDarkMode 
-      ? 'linear-gradient(135deg, #2c466b 0%, #315a7c 100%)' 
+    'General Knowledge': isDarkMode
+      ? 'linear-gradient(135deg, #2c466b 0%, #315a7c 100%)'
       : 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
   });
 
   const categoryColors = getCategoryColors();
-  const defaultCategoryColor = isDarkMode 
-    ? 'linear-gradient(135deg, #333740 0%, #252932 100%)' 
+  const defaultCategoryColor = isDarkMode
+    ? 'linear-gradient(135deg, #333740 0%, #252932 100%)'
     : 'linear-gradient(135deg, #8e9eab 0%, #eef2f3 100%)';
-
-  // Fetch all data + user role
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No token');
-
-      // 1. Get user profile (includes role)
-      const profileResponse = await axios.get(`${backendUrl}/api/user/profile`, {
-        headers: { Authorization: token },
-      });
-
-      const userRole = profileResponse.data.role || 'user';
-      setIsAdmin(userRole === 'admin');
-
-      // 2. Get mock tests
-      const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
-      let data = mockResponse.data;
-
-      // Group programming languages
-      const languagesGroup = {};
-      PROGRAMMING_LANGUAGES.forEach(lang => {
-        if (data[lang]) {
-          languagesGroup[lang] = data[lang];
-          delete data[lang];
-        }
-      });
-
-      if (Object.keys(languagesGroup).length > 0) {
-        data['Languages'] = languagesGroup;
-      }
-
-      setMockTests(data);
-
-      if (Object.keys(data).length > 0) {
-        setExpandedCategory(Object.keys(data)[0]);
-      }
-
-      // 3. Handle purchased tests
-      let purchasedIds = (profileResponse.data?.purchasedTests || []).map(
-        test => test._id || test.id
-      );
-
-      // Admin gets access to everything
-      if (userRole === 'admin') {
-        const allIds = [];
-        Object.values(data).forEach(category => {
-          if (Array.isArray(category)) {
-            category.forEach(t => allIds.push(t._id || t.id));
-          } else if (typeof category === 'object') {
-            Object.values(category).flat().forEach(t => allIds.push(t._id || t.id));
-          }
-        });
-        purchasedIds = allIds;
-      }
-
-      setPurchasedTests(purchasedIds);
-
-      // 4. Cart - only for normal users
-      if (userRole !== 'admin') {
-        const cartResponse = await axios.get(`${backendUrl}/api/user/cart`, {
-          headers: { Authorization: token },
-        });
-
-        setCartItems(
-          (cartResponse.data?.cart || []).map(item => ({
-            id: item.mockTestId?._id || item.mockTestId?.id,
-            title: item.mockTestId?.title || 'Untitled',
-            price: item.price || 0,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      if (error.response?.status === 401) {
-        setAlertMessage('Session expired. Please log in again.');
-        setAlertSeverity('warning');
-        setAlertOpen(true);
-        localStorage.removeItem('token');
-        navigate('/login');
-      } else {
-        setAlertMessage('Failed to load mock tests. Please try again.');
-        setAlertSeverity('error');
-        setAlertOpen(true);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Currency detection
   useEffect(() => {
@@ -213,6 +123,96 @@ const AllMocks = () => {
   }, []);
 
   useEffect(() => {
+    // Fetch all data + user role
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No token');
+
+        // 1. Get user profile (includes role)
+        const profileResponse = await axios.get(`${backendUrl}/api/user/profile`, {
+          headers: { Authorization: token },
+        });
+
+        const userRole = profileResponse.data.role || 'user';
+        setIsAdmin(userRole === 'admin');
+
+        // 2. Get mock tests
+        const mockResponse = await axios.get(`${backendUrl}/api/admin/get-all-mocks`);
+        let data = mockResponse.data;
+
+        // Group programming languages
+        const languagesGroup = {};
+        PROGRAMMING_LANGUAGES.forEach(lang => {
+          if (data[lang]) {
+            languagesGroup[lang] = data[lang];
+            delete data[lang];
+          }
+        });
+
+        if (Object.keys(languagesGroup).length > 0) {
+          data['Languages'] = languagesGroup;
+        }
+
+        setMockTests(data);
+
+        if (Object.keys(data).length > 0) {
+          setExpandedCategory(Object.keys(data)[0]);
+        }
+
+        // 3. Handle purchased tests
+        let purchasedIds = (profileResponse.data?.purchasedTests || []).map(
+          test => test._id || test.id
+        );
+
+        // Admin gets access to everything
+        if (userRole === 'admin') {
+          const allIds = [];
+          Object.values(data).forEach(category => {
+            if (Array.isArray(category)) {
+              category.forEach(t => allIds.push(t._id || t.id));
+            } else if (typeof category === 'object') {
+              Object.values(category).flat().forEach(t => allIds.push(t._id || t.id));
+            }
+          });
+          purchasedIds = allIds;
+        }
+
+        setPurchasedTests(purchasedIds);
+
+        // 4. Cart - only for normal users
+        if (userRole !== 'admin') {
+          const cartResponse = await axios.get(`${backendUrl}/api/user/cart`, {
+            headers: { Authorization: token },
+          });
+
+          setCartItems(
+            (cartResponse.data?.cart || []).map(item => ({
+              id: item.mockTestId?._id || item.mockTestId?.id,
+              title: item.mockTestId?.title || 'Untitled',
+              price: item.price || 0,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        if (error.response?.status === 401) {
+          setAlertMessage('Session expired. Please log in again.');
+          setAlertSeverity('warning');
+          setAlertOpen(true);
+          localStorage.removeItem('token');
+          navigate('/login');
+        } else {
+          setAlertMessage('Failed to load mock tests. Please try again.');
+          setAlertSeverity('error');
+          setAlertOpen(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, [location.pathname]);
 
@@ -378,8 +378,8 @@ const AllMocks = () => {
     );
   }
 
-  const headerGradient = isDarkMode 
-    ? 'linear-gradient(90deg, #4568b0 0%, #264075 100%)' 
+  const headerGradient = isDarkMode
+    ? 'linear-gradient(90deg, #4568b0 0%, #264075 100%)'
     : 'linear-gradient(90deg, #4b6cb7 0%, #182848 100%)';
 
   return (
@@ -387,7 +387,7 @@ const AllMocks = () => {
       {/* Header */}
       <Box sx={{ textAlign: 'center', mb: 5 }}>
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 100 }}>
-          <Typography variant="h3" sx={{ 
+          <Typography variant="h3" sx={{
             fontWeight: 700,
             background: headerGradient,
             WebkitBackgroundClip: 'text',
@@ -402,10 +402,10 @@ const AllMocks = () => {
       </Box>
 
       {/* Filters */}
-      <Stack 
-        direction={{ xs: 'column', sm: 'row' }} 
-        spacing={3} 
-        alignItems={{ sm: 'center' }} 
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={3}
+        alignItems={{ sm: 'center' }}
         justifyContent="space-between"
         sx={{ mb: 5, px: 1 }}
       >
@@ -546,7 +546,7 @@ const AllMocks = () => {
           }}
         >
           {getAccessIndicator(mock)}
-          <CardActionArea 
+          <CardActionArea
             onClick={() => handleCardClick(mockId)}
             sx={{ flexGrow: 1 }}
           >
@@ -568,17 +568,17 @@ const AllMocks = () => {
                   {mock.title}
                 </Typography>
 
-                {!isAdmin && 
-                 mock.pricingType === 'paid' && 
-                 !isPurchased(mockId) && (
-                  <IconButton
-                    size="small"
-                    onClick={(e) => handleAddToCart(mockId, e)}
-                    disabled={isInCart(mockId) || cartLoading}
-                  >
-                    {cartLoading ? <CircularProgress size={20} /> : <AddShoppingCartIcon />}
-                  </IconButton>
-                )}
+                {!isAdmin &&
+                  mock.pricingType === 'paid' &&
+                  !isPurchased(mockId) && (
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleAddToCart(mockId, e)}
+                      disabled={isInCart(mockId) || cartLoading}
+                    >
+                      {cartLoading ? <CircularProgress size={20} /> : <AddShoppingCartIcon />}
+                    </IconButton>
+                  )}
               </Box>
 
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 44 }}>
