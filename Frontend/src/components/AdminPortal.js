@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
   Box, TextField, Button, Typography, Container, Avatar, Tab, Tabs,
-  Paper, Grid, Card, CardContent, IconButton, InputAdornment, Alert,
+  Paper, Grid, IconButton, InputAdornment, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Chip, Switch, Collapse,
   Snackbar, Divider, Select, MenuItem, FormControl, InputLabel, Tooltip,
@@ -21,11 +21,7 @@ import {
   FileUpload as FileUploadIcon,
   Save as SaveIcon,
   FilterList as FilterIcon,
-  ArrowDropDown as ArrowDropDownIcon,
-  NavigateNext as NavigateNextIcon,
-  NavigateBefore as NavigateBeforeIcon,
   Refresh as RefreshIcon,
-  Help as HelpIcon,
   Payment as PaymentIcon,
   LocalOffer as LocalOfferIcon
 } from '@mui/icons-material';
