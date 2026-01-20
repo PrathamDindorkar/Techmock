@@ -43,6 +43,13 @@ const MotionContainer = motion(Container);
 const MotionCard = motion(Card);
 const MotionAccordion = motion(Accordion);
 
+const PROGRAMMING_LANGUAGES = [
+  'Java', 'Python', 'JavaScript', 'C++', 'React', 'Node.js', 'Go',
+  'TypeScript', 'PHP', 'C#', 'Ruby', 'Swift', 'Kotlin'
+];
+
+const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
 const AllMocks = () => {
   const [mockTests, setMockTests] = useState({});
   const [loading, setLoading] = useState(true);
@@ -65,13 +72,6 @@ const AllMocks = () => {
   const location = useLocation();
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
-
-  const PROGRAMMING_LANGUAGES = [
-    'Java', 'Python', 'JavaScript', 'C++', 'React', 'Node.js', 'Go',
-    'TypeScript', 'PHP', 'C#', 'Ruby', 'Swift', 'Kotlin'
-  ];
-
-  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   const getCategoryColors = () => ({
     'Science': isDarkMode
@@ -214,7 +214,7 @@ const AllMocks = () => {
     };
 
     fetchData();
-  }, [location.pathname]);
+  }, [location.pathname, backendUrl, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -455,62 +455,88 @@ const AllMocks = () => {
           <Typography variant="h5">No mock tests found</Typography>
         </Box>
       ) : (
-        Object.entries(mockTests).map(([category, testsData]) => {
-          const isLanguages = category === 'Languages';
-          const totalTests = isLanguages
-            ? Object.values(testsData).reduce((sum, arr) => sum + arr.length, 0)
-            : testsData.length;
+        Object.entries(mockTests)
+          .filter(([category]) => categoryFilter === 'all' || category === categoryFilter)
+          .map(([category, testsData]) => {
+            let filteredTestsData = testsData;
+            let totalTests = 0;
 
-          return (
-            <MotionAccordion
-              key={category}
-              expanded={expandedCategory === category}
-              onChange={handleAccordionChange(category)}
-              sx={{
-                mb: 4,
-                borderRadius: '12px',
-                overflow: 'hidden',
-                '&:before': { display: 'none' },
-                boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.08)',
-              }}
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
+            if (priceFilter !== 'all') {
+              if (category === 'Languages') {
+                filteredTestsData = {};
+                Object.entries(testsData).forEach(([lang, mocks]) => {
+                  const filteredMocks = mocks.filter(mock => mock.pricingType === priceFilter);
+                  if (filteredMocks.length > 0) {
+                    filteredTestsData[lang] = filteredMocks;
+                  }
+                  totalTests += filteredMocks.length;
+                });
+              } else {
+                filteredTestsData = testsData.filter(mock => mock.pricingType === priceFilter);
+                totalTests = filteredTestsData.length;
+              }
+            } else {
+              if (category === 'Languages') {
+                totalTests = Object.values(testsData).reduce((sum, arr) => sum + arr.length, 0);
+              } else {
+                totalTests = testsData.length;
+              }
+            }
+
+            if (totalTests === 0) return null;
+
+            const isLanguages = category === 'Languages';
+
+            return (
+              <MotionAccordion
+                key={category}
+                expanded={expandedCategory === category}
+                onChange={handleAccordionChange(category)}
                 sx={{
-                  background: categoryColors[category] || defaultCategoryColor,
-                  color: 'white',
+                  mb: 4,
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  '&:before': { display: 'none' },
+                  boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.08)',
                 }}
               >
-                <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
-                  {category}
-                </Typography>
-                <Chip label={`${totalTests} Tests`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.25)' }} />
-              </AccordionSummary>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  sx={{
+                    background: categoryColors[category] || defaultCategoryColor,
+                    color: 'white',
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                    {category}
+                  </Typography>
+                  <Chip label={`${totalTests} Tests`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.25)' }} />
+                </AccordionSummary>
 
-              <AccordionDetails sx={{ p: 3, bgcolor: isDarkMode ? 'background.paper' : '#fafafa' }}>
-                {isLanguages ? (
-                  Object.entries(testsData).map(([lang, mocks]) => (
-                    <Accordion key={lang} sx={{ mb: 3, boxShadow: 'none' }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Typography variant="h6">{lang}</Typography>
-                        <Chip label={`${mocks.length} Tests`} size="small" sx={{ ml: 2 }} />
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Grid container spacing={3}>
-                          {mocks.map(mock => renderMockCard(mock))}
-                        </Grid>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))
-                ) : (
-                  <Grid container spacing={3}>
-                    {testsData.map(mock => renderMockCard(mock))}
-                  </Grid>
-                )}
-              </AccordionDetails>
-            </MotionAccordion>
-          );
-        })
+                <AccordionDetails sx={{ p: 3, bgcolor: isDarkMode ? 'background.paper' : '#fafafa' }}>
+                  {isLanguages ? (
+                    Object.entries(filteredTestsData).map(([lang, mocks]) => (
+                      <Accordion key={lang} sx={{ mb: 3, boxShadow: 'none' }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography variant="h6">{lang}</Typography>
+                          <Chip label={`${mocks.length} Tests`} size="small" sx={{ ml: 2 }} />
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Grid container spacing={3}>
+                            {mocks.map(mock => renderMockCard(mock))}
+                          </Grid>
+                        </AccordionDetails>
+                      </Accordion>
+                    ))
+                  ) : (
+                    <Grid container spacing={3}>
+                      {filteredTestsData.map(mock => renderMockCard(mock))}
+                    </Grid>
+                  )}
+                </AccordionDetails>
+              </MotionAccordion>
+            );
+          })
       )}
 
       <Snackbar
