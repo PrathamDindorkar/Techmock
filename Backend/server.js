@@ -1956,6 +1956,242 @@ app.post('/api/admin/generate-mock-test', verifyUser, async (req, res) => {
   }
 });
 
+// ────────────────────────────────────────────────
+//               COMMUNITY ENDPOINTS (FIXED FOR YOUR SCHEMA)
+// ────────────────────────────────────────────────
+
+// 1. Get all posts (includes counts and "my_reaction")
+app.get('/api/community/posts', async (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  let currentUserId = null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      currentUserId = decoded.id;
+    } catch (err) { 
+      console.log('Invalid token for guest view');
+    }
+  }
+
+  try {
+    const { data: posts, error } = await supabase
+      .from('community_posts')
+      .select(`
+        id, 
+        content, 
+        created_at, 
+        user_id,
+        users!community_posts_user_id_fkey (
+          name
+        ),
+        community_comments (id),
+        community_reactions (user_id, reaction_type)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+
+    const formattedPosts = posts.map(post => {
+      const reactions = post.community_reactions || [];
+      const likes = reactions.filter(r => r.reaction_type === 'like').length;
+      const dislikes = reactions.filter(r => r.reaction_type === 'dislike').length;
+      
+      const myReaction = currentUserId 
+        ? reactions.find(r => r.user_id === currentUserId)?.reaction_type 
+        : null;
+
+      return {
+        id: post.id,
+        content: post.content,
+        created_at: post.created_at,
+        userName: post.users?.name || 'Anonymous',
+        commentCount: post.community_comments?.length || 0,
+        likes,
+        dislikes,
+        myReaction
+      };
+    });
+
+    res.json(formattedPosts);
+  } catch (err) {
+    console.error('Error fetching posts:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Create Post
+app.post('/api/community/posts', verifyUser, async (req, res) => {
+  const { content } = req.body;
+  
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Content is required' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('community_posts')
+      .insert({ 
+        user_id: req.user.id, 
+        content: content.trim() 
+      })
+      .select(`
+        id,
+        content,
+        created_at,
+        user_id,
+        users!community_posts_user_id_fkey (
+          name
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Insert error:', error);
+      throw error;
+    }
+
+    res.status(201).json({
+      ...data,
+      userName: data.users?.name || 'Anonymous'
+    });
+  } catch (err) {
+    console.error('Error creating post:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. React (Like/Dislike Toggle)
+app.post('/api/community/posts/:postId/react', verifyUser, async (req, res) => {
+  const { postId } = req.params;
+  const { type } = req.body;
+
+  if (!['like', 'dislike'].includes(type)) {
+    return res.status(400).json({ error: 'Type must be "like" or "dislike"' });
+  }
+
+  try {
+    const { data: existing } = await supabase
+      .from('community_reactions')
+      .select('*')
+      .eq('post_id', postId)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.reaction_type === type) {
+        // Remove if clicking the same button
+        const { error } = await supabase
+          .from('community_reactions')
+          .delete()
+          .eq('id', existing.id);
+        
+        if (error) throw error;
+      } else {
+        // Switch if clicking the other button
+        const { error } = await supabase
+          .from('community_reactions')
+          .update({ reaction_type: type })
+          .eq('id', existing.id);
+        
+        if (error) throw error;
+      }
+    } else {
+      // Create new reaction
+      const { error } = await supabase
+        .from('community_reactions')
+        .insert({ 
+          post_id: postId, 
+          user_id: req.user.id, 
+          reaction_type: type 
+        });
+      
+      if (error) throw error;
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error reacting:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Get Comments for a post
+app.get('/api/community/posts/:postId/comments', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('community_comments')
+      .select(`
+        id,
+        content,
+        created_at,
+        user_id,
+        users!community_comments_user_id_fkey (
+          name
+        )
+      `)
+      .eq('post_id', req.params.postId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const formattedComments = data.map(comment => ({
+      ...comment,
+      users: { name: comment.users?.name || 'Anonymous' }
+    }));
+
+    res.json(formattedComments);
+  } catch (err) {
+    console.error('Error fetching comments:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Post a Comment
+app.post('/api/community/posts/:postId/comments', verifyUser, async (req, res) => {
+  const { content } = req.body;
+  
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Content is required' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('community_comments')
+      .insert({ 
+        post_id: req.params.postId, 
+        user_id: req.user.id, 
+        content: content.trim() 
+      })
+      .select(`
+        id,
+        content,
+        created_at,
+        user_id,
+        users!community_comments_user_id_fkey (
+          name
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Comment insert error:', error);
+      throw error;
+    }
+
+    res.json({
+      ...data,
+      users: { name: data.users?.name || 'Anonymous' }
+    });
+  } catch (err) {
+    console.error('Error posting comment:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

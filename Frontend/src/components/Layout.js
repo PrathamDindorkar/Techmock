@@ -24,6 +24,7 @@ import { ThemeProvider, createTheme, alpha } from '@mui/material/styles';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import ForumIcon from '@mui/icons-material/Forum';
 import NightsStayIcon from '@mui/icons-material/NightsStay';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
@@ -137,6 +138,11 @@ const Layout = () => {
     if (isMobile) setMobileOpen(false);
   };
 
+  const handleCommunity = () => {
+    navigate('/community');           
+    if (isMobile) setMobileOpen(false);
+  };
+
   const goToAdminPortal = () => {
     if (role === 'admin') {
       navigate('/admin');
@@ -180,6 +186,7 @@ const Layout = () => {
   const navItems = [
     { text: 'Home', icon: <HomeIcon />, onClick: handleHome, path: '/hello' },
     { text: 'All Mocks', icon: <AssignmentIcon />, onClick: handleAllMocks, path: '/mocks' },
+    {text: 'TechMocks Community',onClick: handleCommunity, icon: <ForumIcon/>, path: '/mocks'},
   ];
 
   // Add Cart only for logged-in users

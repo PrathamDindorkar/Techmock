@@ -12,6 +12,7 @@ import ReviewMockPage from './components/ReviewMockPage';
 import Cart from './components/Cart';
 import ProfilePage from './components/Profile';
 import ChangePassword from './components/ChangePassword';
+import Community from './components/Community';
 
 const App = () => {
   return (
@@ -31,6 +32,7 @@ const App = () => {
           <Route path="/cart" element ={<Cart/>}/>
           <Route path="/profile" element={<ProfilePage/>}/>
           <Route path="/change-password" element={<ChangePassword darkMode={true} />} />
+          <Route path="/community" element={<Community/>}/>
         </Route>
 
         {/* Redirect to Login by Default */}
