@@ -261,9 +261,6 @@ const CommunityPage = () => {
       <Box
         sx={{
           minHeight: '100vh',
-          background: isDarkMode
-            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
