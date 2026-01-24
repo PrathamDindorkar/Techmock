@@ -65,7 +65,46 @@ const Landing = () => {
       ? "0 8px 32px rgba(0,0,0,0.38)"
       : "0 8px 32px rgba(31,38,135,0.13)",
   };
-  
+
+const techStack = [
+  { 
+    name: "Python", 
+    logo: "https://cdn.simpleicons.org/python/3776AB"
+  },
+  { 
+    name: "React", 
+    logo: "https://cdn.simpleicons.org/react/61DAFB"
+  },
+  { 
+    name: "JavaScript", 
+    logo: "https://cdn.simpleicons.org/javascript/F7DF1E"
+  },
+  { 
+    name: "Node.js", 
+    logo: "https://cdn.simpleicons.org/nodedotjs/339933"
+  },
+  { 
+    name: "Data Structure & Algorithms", 
+    logo: null 
+  },
+  {
+    name: "SAP",
+    logo: "https://cdn.simpleicons.org/sap/0FAAFF",
+    isEnterprise: true,
+  },
+  {
+    name: "OpenText VIM",
+    // Using a generic enterprise/document icon
+    logo: "https://cdn.simpleicons.org/files/4285F4",
+    isEnterprise: true,
+  },
+  { 
+    name: "Enterprise", 
+    logo: null, 
+    isEnterprise: true 
+  },
+];
+
   const benefits = [
     {
       icon: <School fontSize="large" />,
@@ -166,7 +205,7 @@ const Landing = () => {
                 <Typography
                   variant="h1"
                   sx={{
-                    fontSize: { xs: "2.4rem", sm: "3.4rem", md: "4.6rem", lg: "5.2rem" },
+                    fontSize: { xs: "2rem", sm: "3rem", md: "4.2rem", lg: "4.8rem" },
                     fontWeight: 900,
                     lineHeight: 1.05,
                     background:
@@ -176,7 +215,7 @@ const Landing = () => {
                     WebkitTextFillColor: "transparent",
                   }}
                 >
-                  Practice with Confidence. Certify for Real. 
+                  Practice with Confidence. Certify for Real.
                 </Typography>
               </Box>
             </motion.div>
@@ -289,39 +328,440 @@ const Landing = () => {
             </motion.div>
 
             {/* Tech Tags */}
-            <Stack
-              direction="row"
-              spacing={{ xs: 1.5, sm: 2.5, md: 3 }}
-              justifyContent="center"
+            <Box
               sx={{
-                flexWrap: "wrap",
-                gap: { xs: 1.5, sm: 2 },
-                maxWidth: "900px",
-                mx: "auto",
+                py: { xs: 8, md: 10 },
+                position: "relative",
               }}
             >
-              {["Python", "React", "Data Structure & Algorithms", "SAP", "JavaScript", "Node.js", "OpenText VIM"].map((tech, i) => (
-                <motion.div
-                  key={tech}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1 + i * 0.1 }}
+              <Container maxWidth="lg">
+                {/* Header Badge */}
+                <Box sx={{ textAlign: "center", mb: 6 }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 1,
+                        px: 3,
+                        py: 1.2,
+                        background: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(147,51,234,0.15) 100%)"
+                            : "linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(147,51,234,0.08) 100%)",
+                        border: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "1px solid rgba(59,130,246,0.4)"
+                            : "1px solid rgba(59,130,246,0.3)",
+                        borderRadius: "50px",
+                        mb: 3,
+                        backdropFilter: "blur(10px)",
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: "1.3rem",
+                        }}
+                      >
+                        🏆
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: (theme) =>
+                            theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb",
+                          fontWeight: 700,
+                          letterSpacing: "0.5px",
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        Enterprise-Grade Expertise
+                      </Typography>
+                    </Box>
+
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        color: (theme) => theme.palette.text.primary,
+                        fontWeight: 800,
+                        fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
+                        mb: 2,
+                        background: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%)"
+                            : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+                        backgroundClip: "text",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                      }}
+                    >
+                      Built on Real-World Enterprise Experience
+                    </Typography>
+
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: (theme) => theme.palette.text.secondary,
+                        fontSize: { xs: "1.05rem", sm: "1.15rem" },
+                        maxWidth: "750px",
+                        mx: "auto",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      Mock tests crafted with insights from SAP implementations and large-scale enterprise architectures
+                    </Typography>
+                  </motion.div>
+                </Box>
+
+                {/* Enterprise Highlights Cards */}
+                <Grid container spacing={3} sx={{ mb: 7 }}>
+                  {[
+                    {
+                      icon: "🏢",
+                      title: "SAP Implementations",
+                      desc: "End-to-end SAP solution deployment and integration expertise",
+                      gradient: {
+                        dark: "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.08) 100%)",
+                        light: "linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(37,99,235,0.02) 100%)",
+                      },
+                      borderColor: { dark: "rgba(59,130,246,0.3)", light: "rgba(59,130,246,0.2)" },
+                    },
+                    {
+                      icon: "📋",
+                      title: "OpenText VIM for SAP",
+                      desc: "Vendor Invoice Management optimization and implementation",
+                      gradient: {
+                        dark: "linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(126,34,206,0.08) 100%)",
+                        light: "linear-gradient(135deg, rgba(147,51,234,0.05) 0%, rgba(126,34,206,0.02) 100%)",
+                      },
+                      borderColor: { dark: "rgba(147,51,234,0.3)", light: "rgba(147,51,234,0.2)" },
+                    },
+                    {
+                      icon: "🏗️",
+                      title: "Enterprise Architecture",
+                      desc: "Large-scale system design, planning, and infrastructure management",
+                      gradient: {
+                        dark: "linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)",
+                        light: "linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(5,150,105,0.02) 100%)",
+                      },
+                      borderColor: { dark: "rgba(16,185,129,0.3)", light: "rgba(16,185,129,0.2)" },
+                    },
+                  ].map((item, i) => (
+                    <Grid item xs={12} md={4} key={i}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 + i * 0.1, duration: 0.5 }}
+                        whileHover={{ y: -8, scale: 1.02 }}
+                      >
+                        <Box
+                          sx={{
+                            p: 4,
+                            borderRadius: "20px",
+                            background: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? item.gradient.dark
+                                : item.gradient.light,
+                            border: (theme) =>
+                              `1.5px solid ${theme.palette.mode === "dark" ? item.borderColor.dark : item.borderColor.light}`,
+                            height: "100%",
+                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: (theme) =>
+                              theme.palette.mode === "dark"
+                                ? "0 4px 20px rgba(0,0,0,0.3)"
+                                : "0 4px 20px rgba(0,0,0,0.08)",
+                            "&:hover": {
+                              border: (theme) =>
+                                `1.5px solid ${theme.palette.mode === "dark" ? item.borderColor.dark.replace("0.3", "0.6") : item.borderColor.light.replace("0.2", "0.4")}`,
+                              boxShadow: (theme) =>
+                                theme.palette.mode === "dark"
+                                  ? "0 12px 40px rgba(59,130,246,0.25)"
+                                  : "0 12px 40px rgba(59,130,246,0.15)",
+                              transform: "translateY(-4px)",
+                            },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              fontSize: "3rem",
+                              mb: 2.5,
+                              display: "inline-block",
+                              transform: "scale(1)",
+                              transition: "transform 0.3s ease",
+                              "&:hover": {
+                                transform: "scale(1.1) rotate(5deg)",
+                              },
+                            }}
+                          >
+                            {item.icon}
+                          </Box>
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              color: (theme) => theme.palette.text.primary,
+                              fontWeight: 700,
+                              mb: 1.5,
+                              fontSize: "1.25rem",
+                            }}
+                          >
+                            {item.title}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: (theme) => theme.palette.text.secondary,
+                              lineHeight: 1.7,
+                              fontSize: "0.95rem",
+                            }}
+                          >
+                            {item.desc}
+                          </Typography>
+                        </Box>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {/* Tech Stack Section */}
+                <Box
+                  sx={{
+                    p: { xs: 4, sm: 5, md: 6 },
+                    borderRadius: "28px",
+                    background: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "linear-gradient(135deg, rgba(30,41,59,0.5) 0%, rgba(15,23,42,0.7) 100%)"
+                        : "linear-gradient(135deg, rgba(248,250,252,0.8) 0%, rgba(241,245,249,0.9) 100%)",
+                    border: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "1.5px solid rgba(255,255,255,0.1)"
+                        : "1.5px solid rgba(0,0,0,0.08)",
+                    backdropFilter: "blur(20px)",
+                    boxShadow: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "0 8px 32px rgba(0,0,0,0.4)"
+                        : "0 8px 32px rgba(0,0,0,0.06)",
+                  }}
                 >
-                  <Box
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2.5, mb: 5 }}>
+                    <Box
+                      sx={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "14px",
+                        background: "linear-gradient(135deg, #3b82f6 0%, #9333ea 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.6rem",
+                        boxShadow: "0 4px 16px rgba(59,130,246,0.4)",
+                      }}
+                    >
+                      ✓
+                    </Box>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        color: (theme) => theme.palette.text.primary,
+                        fontWeight: 800,
+                        fontSize: { xs: "1.4rem", sm: "1.6rem" },
+                      }}
+                    >
+                      Technology Stack Mastery
+                    </Typography>
+                  </Box>
+
+                  <Stack
+                    direction="row"
+                    spacing={{ xs: 1.5, sm: 2.5 }}
+                    justifyContent="center"
                     sx={{
-                      ...glassStyle,
-                      px: { xs: 2.5, sm: 3.5 },
-                      py: 1.2,
-                      borderRadius: "20px",
-                      fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                      fontWeight: 600,
+                      flexWrap: "wrap",
+                      gap: { xs: 2.5, sm: 3 },
                     }}
                   >
-                    {tech}
+                    {techStack.map((tech, i) => (
+                      <motion.div
+                        key={tech.name}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          delay: 0.5 + i * 0.08,
+                          type: "spring",
+                          stiffness: 150,
+                          damping: 15,
+                        }}
+                        whileHover={{ scale: 1.12, y: -5 }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 1.5,
+                            px: { xs: 2.5, sm: 3.5 },
+                            py: { xs: 2.5, sm: 3 },
+                            borderRadius: "18px",
+                            background: (theme) =>
+                              tech.isEnterprise
+                                ? theme.palette.mode === "dark"
+                                  ? "linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(37,99,235,0.15) 100%)"
+                                  : "linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(37,99,235,0.06) 100%)"
+                                : theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.05)"
+                                  : "rgba(0,0,0,0.03)",
+                            border: (theme) =>
+                              tech.isEnterprise
+                                ? theme.palette.mode === "dark"
+                                  ? "2px solid rgba(59,130,246,0.5)"
+                                  : "2px solid rgba(59,130,246,0.3)"
+                                : theme.palette.mode === "dark"
+                                  ? "1px solid rgba(255,255,255,0.12)"
+                                  : "1px solid rgba(0,0,0,0.1)",
+                            minWidth: { xs: "95px", sm: "110px" },
+                            position: "relative",
+                            overflow: "hidden",
+                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                            backdropFilter: "blur(10px)",
+                            "&:hover": {
+                              background: (theme) =>
+                                tech.isEnterprise
+                                  ? theme.palette.mode === "dark"
+                                    ? "linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(37,99,235,0.25) 100%)"
+                                    : "linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(37,99,235,0.1) 100%)"
+                                  : theme.palette.mode === "dark"
+                                    ? "rgba(255,255,255,0.08)"
+                                    : "rgba(0,0,0,0.05)",
+                              border: (theme) =>
+                                tech.isEnterprise
+                                  ? theme.palette.mode === "dark"
+                                    ? "2px solid rgba(59,130,246,0.7)"
+                                    : "2px solid rgba(59,130,246,0.5)"
+                                  : theme.palette.mode === "dark"
+                                    ? "1px solid rgba(255,255,255,0.25)"
+                                    : "1px solid rgba(0,0,0,0.2)",
+                              boxShadow: tech.isEnterprise
+                                ? "0 12px 40px rgba(59,130,246,0.35)"
+                                : (theme) =>
+                                  theme.palette.mode === "dark"
+                                    ? "0 8px 24px rgba(255,255,255,0.1)"
+                                    : "0 8px 24px rgba(0,0,0,0.12)",
+                            },
+                            "&::before": tech.isEnterprise
+                              ? {
+                                content: '""',
+                                position: "absolute",
+                                top: 0,
+                                right: 0,
+                                width: "35px",
+                                height: "35px",
+                                background: (theme) =>
+                                  theme.palette.mode === "dark"
+                                    ? "linear-gradient(135deg, #3b82f6 0%, transparent 100%)"
+                                    : "linear-gradient(135deg, #60a5fa 0%, transparent 100%)",
+                                opacity: 0.5,
+                              }
+                              : {},
+                          }}
+                        >
+                          {tech.isEnterprise && (
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                top: 6,
+                                right: 6,
+                                fontSize: "0.8rem",
+                                filter: "drop-shadow(0 2px 4px rgba(59,130,246,0.6))",
+                              }}
+                            >
+                              ⭐
+                            </Box>
+                          )}
+                          {tech.logo && (
+                            <Box
+                              component="img"
+                              src={tech.logo}
+                              alt={`${tech.name} logo`}
+                              loading="lazy"
+                              sx={{
+                                width: { xs: 40, sm: 44 },
+                                height: { xs: 40, sm: 44 },
+                                objectFit: "contain",
+                                borderRadius: "10px",
+                                filter: tech.isEnterprise
+                                  ? "drop-shadow(0 4px 12px rgba(59,130,246,0.6))"
+                                  : "none",
+                                transition: "transform 0.3s ease",
+                                "&:hover": {
+                                  transform: "scale(1.1)",
+                                },
+                              }}
+                            />
+                          )}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: (theme) =>
+                                tech.isEnterprise
+                                  ? theme.palette.mode === "dark"
+                                    ? "#60a5fa"
+                                    : "#2563eb"
+                                  : theme.palette.text.primary,
+                              fontWeight: tech.isEnterprise ? 800 : 700,
+                              fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                              textAlign: "center",
+                            }}
+                          >
+                            {tech.name}
+                          </Typography>
+                        </Box>
+                      </motion.div>
+                    ))}
+                  </Stack>
+
+                  <Box
+                    sx={{
+                      mt: 6,
+                      pt: 5,
+                      borderTop: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "1px solid rgba(255,255,255,0.1)"
+                          : "1px solid rgba(0,0,0,0.08)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: (theme) => theme.palette.text.secondary,
+                        fontSize: { xs: "1rem", sm: "1.1rem" },
+                        lineHeight: 1.8,
+                        maxWidth: "900px",
+                        mx: "auto",
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          color: (theme) =>
+                            theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb",
+                          fontWeight: 800,
+                        }}
+                      >
+                        All mock tests
+                      </Box>{" "}
+                      are designed with insights from hands-on enterprise implementations, real-world architectural
+                      challenges, and production-level best practices developed through years of SAP and enterprise solution delivery
+                    </Typography>
                   </Box>
-                </motion.div>
-              ))}
-            </Stack>
+                </Box>
+              </Container>
+            </Box>
           </Box>
         </Container>
       </Box>
@@ -399,148 +839,148 @@ const Landing = () => {
 
       {/* Certification Categories Section */}
       <Box sx={{ py: { xs: 8, md: 12 } }}>
-  <Container maxWidth="lg">
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
-    >
-      <Typography
-        variant="h3"
-        align="center"
-        sx={{
-          mb: 10,
-          fontWeight: 800,
-          background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}
-      >
-        Choose Your Preparation Path
-      </Typography>
-    </motion.div>
-
-    <Grid 
-      container 
-      spacing={4} 
-      justifyContent="center"           // ← Centers the cards horizontally
-      alignItems="stretch"
-    >
-      {[
-        {
-          title: "Enterprise Softwares",
-          items: [
-            { text: "SAP ERP" },
-            { text: "Opentext VIM" },
-            { text: "Salesforce", comingSoon: true },
-            { text: "Microsoft Novasion", comingSoon: true }
-          ],
-          gradient: "linear-gradient(135deg, rgba(255,107,107,0.18) 0%, rgba(255,139,148,0.18) 100%)"
-        },
-        {
-          title: "Interview Prep",
-          items: [
-            { text: "JavaScript" },
-            { text: "Node.js / Backend" },
-            { text: "React / Frontend" },
-            { text: "Python / Data Science" }
-          ],
-          gradient: "linear-gradient(135deg, rgba(78,205,196,0.18) 0%, rgba(168,230,207,0.18) 100%)"
-        }
-      ].map((category, index) => (
-        <Grid 
-          item 
-          xs={12} 
-          sm={10} 
-          md={5}                    // Slightly wider cards + centered layout
-          lg={4.5}
-          key={index}
-        >
+        <Container maxWidth="lg">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: index * 0.2 }}
-            whileHover={{ y: -12, transition: { duration: 0.3 } }}
+            transition={{ duration: 0.6 }}
           >
-            <Paper
-              elevation={0}
+            <Typography
+              variant="h3"
+              align="center"
               sx={{
-                p: { xs: 3, md: 4 },
-                height: "100%",
-                borderRadius: 5,
-                background: category.gradient,
-                backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                transition: "all 0.4s ease",
-                '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-                }
+                mb: 10,
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
               }}
             >
-              <Typography 
-                variant="h5" 
-                gutterBottom 
-                sx={{ 
-                  fontWeight: 700, 
-                  mb: 4,
-                  color: 'text.primary'
-                }}
-              >
-                {category.title}
-              </Typography>
+              Choose Your Preparation Path
+            </Typography>
+          </motion.div>
 
-              <List dense disablePadding>
-                {category.items.map((item, idx) => (
-                  <ListItem 
-                    key={idx} 
-                    disablePadding 
-                    sx={{ 
-                      mb: 1.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.5
+          <Grid
+            container
+            spacing={4}
+            justifyContent="center"           // ← Centers the cards horizontally
+            alignItems="stretch"
+          >
+            {[
+              {
+                title: "Enterprise Softwares",
+                items: [
+                  { text: "SAP ERP" },
+                  { text: "Opentext VIM" },
+                  { text: "Salesforce", comingSoon: true },
+                  { text: "Microsoft Novasion", comingSoon: true }
+                ],
+                gradient: "linear-gradient(135deg, rgba(255,107,107,0.18) 0%, rgba(255,139,148,0.18) 100%)"
+              },
+              {
+                title: "Interview Prep",
+                items: [
+                  { text: "JavaScript" },
+                  { text: "Node.js / Backend" },
+                  { text: "React / Frontend" },
+                  { text: "Python / Data Science" }
+                ],
+                gradient: "linear-gradient(135deg, rgba(78,205,196,0.18) 0%, rgba(168,230,207,0.18) 100%)"
+              }
+            ].map((category, index) => (
+              <Grid
+                item
+                xs={12}
+                sm={10}
+                md={5}                    // Slightly wider cards + centered layout
+                lg={4.5}
+                key={index}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.2 }}
+                  whileHover={{ y: -12, transition: { duration: 0.3 } }}
+                >
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: { xs: 3, md: 4 },
+                      height: "100%",
+                      borderRadius: 5,
+                      background: category.gradient,
+                      backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      transition: "all 0.4s ease",
+                      '&:hover': {
+                        transform: 'translateY(-8px)',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
+                      }
                     }}
                   >
-                    <ListItemText
-                      primary={item.text}
-                      primaryTypographyProps={{ 
-                        fontWeight: 500,
-                        fontSize: '1.05rem'
+                    <Typography
+                      variant="h5"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 700,
+                        mb: 4,
+                        color: 'text.primary'
                       }}
-                    />
-                    
-                    {item.comingSoon && (
-                      <Chip
-                        label="Coming Soon"
-                        size="small"
-                        sx={{
-                          backgroundColor: 'rgba(255, 193, 7, 0.9)',
-                          color: 'white',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                          height: 24,
-                          borderRadius: '12px',
-                          px: 1,
-                          '& .MuiChip-label': {
-                            px: 1.5
-                          }
-                        }}
-                      />
-                    )}
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </motion.div>
-        </Grid>
-      ))}
-    </Grid>
-  </Container>
-</Box>
+                    >
+                      {category.title}
+                    </Typography>
+
+                    <List dense disablePadding>
+                      {category.items.map((item, idx) => (
+                        <ListItem
+                          key={idx}
+                          disablePadding
+                          sx={{
+                            mb: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5
+                          }}
+                        >
+                          <ListItemText
+                            primary={item.text}
+                            primaryTypographyProps={{
+                              fontWeight: 500,
+                              fontSize: '1.05rem'
+                            }}
+                          />
+
+                          {item.comingSoon && (
+                            <Chip
+                              label="Coming Soon"
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(255, 193, 7, 0.9)',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                height: 24,
+                                borderRadius: '12px',
+                                px: 1,
+                                '& .MuiChip-label': {
+                                  px: 1.5
+                                }
+                              }}
+                            />
+                          )}
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Paper>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
 
       {/* Features Section */}
       <Container sx={{ py: { xs: 10, md: 14 } }}>
