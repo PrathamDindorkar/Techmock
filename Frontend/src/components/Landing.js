@@ -176,7 +176,7 @@ const Landing = () => {
                     WebkitTextFillColor: "transparent",
                   }}
                 >
-                  Master Your Tech Journey
+                  Practice with Confidence. Certify for Real. 
                 </Typography>
               </Box>
             </motion.div>
