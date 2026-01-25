@@ -66,44 +66,44 @@ const Landing = () => {
       : "0 8px 32px rgba(31,38,135,0.13)",
   };
 
-const techStack = [
-  { 
-    name: "Python", 
-    logo: "https://cdn.simpleicons.org/python/3776AB"
-  },
-  { 
-    name: "React", 
-    logo: "https://cdn.simpleicons.org/react/61DAFB"
-  },
-  { 
-    name: "JavaScript", 
-    logo: "https://cdn.simpleicons.org/javascript/F7DF1E"
-  },
-  { 
-    name: "Node.js", 
-    logo: "https://cdn.simpleicons.org/nodedotjs/339933"
-  },
-  { 
-    name: "Data Structure & Algorithms", 
-    logo: null 
-  },
-  {
-    name: "SAP",
-    logo: "https://cdn.simpleicons.org/sap/0FAAFF",
-    isEnterprise: true,
-  },
-  {
-    name: "OpenText VIM",
-    // Using a generic enterprise/document icon
-    logo: "https://cdn.simpleicons.org/files/4285F4",
-    isEnterprise: true,
-  },
-  { 
-    name: "Enterprise", 
-    logo: null, 
-    isEnterprise: true 
-  },
-];
+  const techStack = [
+    {
+      name: "Python",
+      logo: "https://cdn.simpleicons.org/python/3776AB"
+    },
+    {
+      name: "React",
+      logo: "https://cdn.simpleicons.org/react/61DAFB"
+    },
+    {
+      name: "JavaScript",
+      logo: "https://cdn.simpleicons.org/javascript/F7DF1E"
+    },
+    {
+      name: "Node.js",
+      logo: "https://cdn.simpleicons.org/nodedotjs/339933"
+    },
+    {
+      name: "Data Structure & Algorithms",
+      logo: null
+    },
+    {
+      name: "SAP",
+      logo: "https://cdn.simpleicons.org/sap/0FAAFF",
+      isEnterprise: true,
+    },
+    {
+      name: "OpenText VIM",
+      // Using a generic enterprise/document icon
+      logo: "https://cdn.simpleicons.org/files/4285F4",
+      isEnterprise: true,
+    },
+    {
+      name: "Enterprise",
+      logo: null,
+      isEnterprise: true
+    },
+  ];
 
   const benefits = [
     {
@@ -422,34 +422,34 @@ const techStack = [
                 <Grid container spacing={3} sx={{ mb: 7 }}>
                   {[
                     {
-                      icon: "🏢",
-                      title: "SAP Implementations",
-                      desc: "End-to-end SAP solution deployment and integration expertise",
+                      icon: "💻",
+                      title: "Programming Languages",
+                      desc: "Practice mocks for Python • Java • React • React Advanced",
                       gradient: {
-                        dark: "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.08) 100%)",
-                        light: "linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(37,99,235,0.02) 100%)",
+                        dark: "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.08) 100%)",
+                        light: "linear-gradient(135deg, rgba(249,115,22,0.05) 0%, rgba(234,88,12,0.02) 100%)",
                       },
-                      borderColor: { dark: "rgba(59,130,246,0.3)", light: "rgba(59,130,246,0.2)" },
+                      borderColor: { dark: "rgba(249,115,22,0.3)", light: "rgba(249,115,22,0.2)" },
                     },
                     {
-                      icon: "📋",
-                      title: "OpenText VIM for SAP",
-                      desc: "Vendor Invoice Management optimization and implementation",
-                      gradient: {
-                        dark: "linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(126,34,206,0.08) 100%)",
-                        light: "linear-gradient(135deg, rgba(147,51,234,0.05) 0%, rgba(126,34,206,0.02) 100%)",
-                      },
-                      borderColor: { dark: "rgba(147,51,234,0.3)", light: "rgba(147,51,234,0.2)" },
-                    },
-                    {
-                      icon: "🏗️",
-                      title: "Enterprise Architecture",
-                      desc: "Large-scale system design, planning, and infrastructure management",
+                      icon: "📊",
+                      title: "DSA + SQL",
+                      desc: "Data Structures, Algorithms & Database / SQL mocks",
                       gradient: {
                         dark: "linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)",
                         light: "linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(5,150,105,0.02) 100%)",
                       },
                       borderColor: { dark: "rgba(16,185,129,0.3)", light: "rgba(16,185,129,0.2)" },
+                    },
+                    {
+                      icon: "📋",
+                      title: "SAP VIM",
+                      desc: "Vendor Invoice Management • Archiving • Document Types",
+                      gradient: {
+                        dark: "linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(126,34,206,0.08) 100%)",
+                        light: "linear-gradient(135deg, rgba(147,51,234,0.05) 0%, rgba(126,34,206,0.02) 100%)",
+                      },
+                      borderColor: { dark: "rgba(147,51,234,0.3)", light: "rgba(147,51,234,0.2)" },
                     },
                   ].map((item, i) => (
                     <Grid item xs={12} md={4} key={i}>
@@ -1041,7 +1041,7 @@ const techStack = [
           ))}
         </Grid>
       </Container>
-
+          
       {/* Final CTA Section */}
       {!isLoggedIn && (
         <Box sx={{ py: { xs: 10, md: 14 }, pb: { xs: 14, md: 18 } }}>
