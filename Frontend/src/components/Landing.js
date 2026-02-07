@@ -14,6 +14,7 @@ import {
   useTheme,
   useMediaQuery,
   Tooltip,
+  Chip,
 } from "@mui/material";
 import {
   ArrowDownward,
@@ -26,7 +27,6 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
-import Chip from '@mui/material/Chip';
 
 const Landing = () => {
   const theme = useTheme();
@@ -54,55 +54,32 @@ const Landing = () => {
 
   const handleBrowseClick = () => {
     navigate('/mocks');
-  }
-  const glassStyle = {
-    background: isDarkMode
-      ? "rgba(255, 255, 255, 0.07)"
-      : "rgba(255, 255, 255, 0.72)",
-    backdropFilter: "blur(20px)",
-    border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.28)"}`,
-    boxShadow: isDarkMode
-      ? "0 8px 32px rgba(0,0,0,0.38)"
-      : "0 8px 32px rgba(31,38,135,0.13)",
   };
 
+  const glassStyle = {
+    background: isDarkMode
+      ? "rgba(255, 255, 255, 0.06)"
+      : "rgba(255, 255, 255, 0.70)",
+    backdropFilter: "blur(20px)",
+    border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(0,157,224,0.18)"}`,
+    boxShadow: isDarkMode
+      ? "0 8px 32px rgba(0,0,0,0.35)"
+      : "0 8px 32px rgba(0,157,224,0.08)",
+  };
+
+  const sapBlue = "#009DE0";
+  const sapHighlightBlue = "#007CC0";
+  const sapDeepBlue = "#0057D1";
+
   const techStack = [
-    {
-      name: "Python",
-      logo: "https://cdn.simpleicons.org/python/3776AB"
-    },
-    {
-      name: "React",
-      logo: "https://cdn.simpleicons.org/react/61DAFB"
-    },
-    {
-      name: "JavaScript",
-      logo: "https://cdn.simpleicons.org/javascript/F7DF1E"
-    },
-    {
-      name: "Node.js",
-      logo: "https://cdn.simpleicons.org/nodedotjs/339933"
-    },
-    {
-      name: "Data Structure & Algorithms",
-      logo: null
-    },
-    {
-      name: "SAP",
-      logo: "https://cdn.simpleicons.org/sap/0FAAFF",
-      isEnterprise: true,
-    },
-    {
-      name: "OpenText VIM",
-      // Using a generic enterprise/document icon
-      logo: "https://cdn.simpleicons.org/files/4285F4",
-      isEnterprise: true,
-    },
-    {
-      name: "Enterprise",
-      logo: null,
-      isEnterprise: true
-    },
+    { name: "Python", logo: "https://cdn.simpleicons.org/python/3776AB" },
+    { name: "React", logo: "https://cdn.simpleicons.org/react/61DAFB" },
+    { name: "JavaScript", logo: "https://cdn.simpleicons.org/javascript/F7DF1E" },
+    { name: "Node.js", logo: "https://cdn.simpleicons.org/nodedotjs/339933" },
+    { name: "Data Structure & Algorithms", logo: null },
+    { name: "SAP", logo: "https://cdn.simpleicons.org/sap/0FAAFF", isEnterprise: true },
+    { name: "OpenText VIM", logo: "https://cdn.simpleicons.org/files/4285F4", isEnterprise: true },
+    { name: "Enterprise", logo: null, isEnterprise: true },
   ];
 
   const benefits = [
@@ -110,19 +87,19 @@ const Landing = () => {
       icon: <School fontSize="large" />,
       title: "Industry-Relevant Content",
       description: "Curated by experts to match real certification exams and interviews.",
-      color: "#00d4ff",
+      color: sapBlue,
     },
     {
       icon: <Analytics fontSize="large" />,
       title: "Performance Analytics",
       description: "Track progress with detailed analytics and personalized insights.",
-      color: "#4ecdc4",
+      color: sapHighlightBlue,
     },
     {
       icon: <EmojiEvents fontSize="large" />,
       title: "Earn Certifications",
       description: "Motivational certificates based on your mock exam scores.",
-      color: "#ffd93d",
+      color: sapDeepBlue,
     },
   ];
 
@@ -139,7 +116,7 @@ const Landing = () => {
       <motion.div initial={{ y: -60 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 90 }}>
         <Box
           sx={{
-            background: "linear-gradient(90deg, #ec4899, #a855f7, #00d4ff)",
+            background: `linear-gradient(90deg, ${sapBlue}, ${sapHighlightBlue})`,
             py: { xs: 1, md: 1.2 },
             px: 2,
             borderRadius: 50,
@@ -162,7 +139,7 @@ const Landing = () => {
         </Box>
       </motion.div>
 
-      {/* ==================== HERO SECTION ==================== */}
+      {/* HERO SECTION */}
       <Box
         sx={{
           minHeight: { xs: "90vh", md: "100vh", lg: "110vh" },
@@ -174,7 +151,6 @@ const Landing = () => {
       >
         <Container maxWidth="lg">
           <Box sx={{ textAlign: "center" }}>
-            {/* Title + Floating Badge */}
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
@@ -182,24 +158,24 @@ const Landing = () => {
             >
               <Box sx={{ position: "relative", display: "inline-block", mb: { xs: 3, md: 4 } }}>
                 <motion.div
-                  animate={{ rotate: [0, 8, -8, 0], scale: [1, 1.08, 1] }}
-                  transition={{ repeat: Infinity, duration: 5 }}
+                  animate={{ rotate: [0, 6, -6, 0], scale: [1, 1.06, 1] }}
+                  transition={{ repeat: Infinity, duration: 6 }}
                   style={{
                     position: "absolute",
                     right: isMobile ? "-15px" : "-65px",
                     top: isMobile ? "-20px" : "-35px",
-                    background: "#ffd93d",
-                    color: "#000",
+                    background: sapHighlightBlue,
+                    color: "white",
                     padding: "6px 14px",
                     borderRadius: "50px",
                     fontWeight: 900,
                     fontSize: isMobile ? "0.75rem" : "0.85rem",
-                    boxShadow: "0 8px 16px rgba(0,0,0,0.2)",
+                    boxShadow: "0 8px 16px rgba(0,157,224,0.3)",
                     border: "2px solid white",
                     zIndex: 2,
                   }}
                 >
-                  SAVE 25% 🚀
+                  SAVE 25% →
                 </motion.div>
 
                 <Typography
@@ -208,8 +184,7 @@ const Landing = () => {
                     fontSize: { xs: "2rem", sm: "3rem", md: "4.2rem", lg: "4.8rem" },
                     fontWeight: 900,
                     lineHeight: 1.05,
-                    background:
-                      "linear-gradient(135deg, #00d4ff 0%, #22c55e 50%, #a855f7 100%)",
+                    background: `linear-gradient(135deg, ${sapBlue} 0%, ${sapHighlightBlue} 100%)`,
                     backgroundClip: "text",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
@@ -220,7 +195,6 @@ const Landing = () => {
               </Box>
             </motion.div>
 
-            {/* Free Emphasis */}
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -231,7 +205,7 @@ const Landing = () => {
                 sx={{
                   fontWeight: 700,
                   mb: 2,
-                  color: "#22c55e",
+                  color: sapBlue,
                   fontSize: { xs: "1.5rem", sm: "1.8rem", md: "2.2rem" },
                 }}
               >
@@ -244,7 +218,7 @@ const Landing = () => {
                   maxWidth: "680px",
                   mx: "auto",
                   mb: { xs: 4, md: 6 },
-                  color: isDarkMode ? "rgba(255,255,255,0.82)" : "rgba(0,0,0,0.78)",
+                  color: isDarkMode ? "rgba(255,255,255,0.80)" : "rgba(0,0,0,0.75)",
                   fontSize: { xs: "1rem", sm: "1.1rem", md: "1.2rem" },
                   lineHeight: 1.5,
                 }}
@@ -253,7 +227,6 @@ const Landing = () => {
               </Typography>
             </motion.div>
 
-            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -277,9 +250,9 @@ const Landing = () => {
                     py: 2,
                     fontSize: { xs: "1.1rem", sm: "1.25rem" },
                     fontWeight: 700,
-                    background: "linear-gradient(90deg, #22c55e, #10b981)",
+                    background: `linear-gradient(90deg, ${sapBlue}, ${sapHighlightBlue})`,
                     borderRadius: "50px",
-                    boxShadow: "0 10px 30px rgba(34,197,94,0.35)",
+                    boxShadow: `0 10px 30px ${isDarkMode ? "rgba(0,157,224,0.4)" : "rgba(0,124,192,0.25)"}`,
                     textTransform: "none",
                   }}
                 >
@@ -296,7 +269,13 @@ const Landing = () => {
                     fontSize: { xs: "1.05rem", sm: "1.15rem" },
                     borderRadius: "50px",
                     borderWidth: 2,
+                    borderColor: sapBlue,
+                    color: sapBlue,
                     ...glassStyle,
+                    '&:hover': {
+                      borderColor: sapHighlightBlue,
+                      background: `${sapBlue}10`,
+                    }
                   }}
                 >
                   Browse All Mocks
@@ -316,7 +295,7 @@ const Landing = () => {
                 transition={{ repeat: Infinity, duration: 2.2 }}
                 onClick={() => window.scrollTo({ top: window.innerHeight - 80, behavior: "smooth" })}
                 sx={{
-                  color: isDarkMode ? "white" : "black",
+                  color: sapBlue,
                   ...glassStyle,
                   width: 56,
                   height: 56,
@@ -327,21 +306,11 @@ const Landing = () => {
               </IconButton>
             </motion.div>
 
-            {/* Tech Tags */}
-            <Box
-              sx={{
-                py: { xs: 8, md: 10 },
-                position: "relative",
-              }}
-            >
+            {/* Tech Tags / Enterprise Highlights */}
+            <Box sx={{ py: { xs: 8, md: 10 }, position: "relative" }}>
               <Container maxWidth="lg">
-                {/* Header Badge */}
                 <Box sx={{ textAlign: "center", mb: 6 }}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <Box
                       sx={{
                         display: "inline-flex",
@@ -349,32 +318,18 @@ const Landing = () => {
                         gap: 1,
                         px: 3,
                         py: 1.2,
-                        background: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(147,51,234,0.15) 100%)"
-                            : "linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(147,51,234,0.08) 100%)",
-                        border: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "1px solid rgba(59,130,246,0.4)"
-                            : "1px solid rgba(59,130,246,0.3)",
+                        background: `${sapBlue}15`,
+                        border: `1px solid ${sapBlue}40`,
                         borderRadius: "50px",
                         mb: 3,
                         backdropFilter: "blur(10px)",
                       }}
                     >
-                      <Box
-                        component="span"
-                        sx={{
-                          fontSize: "1.3rem",
-                        }}
-                      >
-                        🏆
-                      </Box>
+                      <Box component="span" sx={{ fontSize: "1.3rem" }}>🏆</Box>
                       <Typography
                         variant="body2"
                         sx={{
-                          color: (theme) =>
-                            theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb",
+                          color: sapBlue,
                           fontWeight: 700,
                           letterSpacing: "0.5px",
                           fontSize: "0.95rem",
@@ -387,17 +342,10 @@ const Landing = () => {
                     <Typography
                       variant="h3"
                       sx={{
-                        color: (theme) => theme.palette.text.primary,
                         fontWeight: 800,
                         fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
                         mb: 2,
-                        background: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%)"
-                            : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-                        backgroundClip: "text",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
+                        color: theme.palette.text.primary,
                       }}
                     >
                       Built on Real-World Enterprise Experience
@@ -406,7 +354,7 @@ const Landing = () => {
                     <Typography
                       variant="body1"
                       sx={{
-                        color: (theme) => theme.palette.text.secondary,
+                        color: theme.palette.text.secondary,
                         fontSize: { xs: "1.05rem", sm: "1.15rem" },
                         maxWidth: "750px",
                         mx: "auto",
@@ -418,38 +366,26 @@ const Landing = () => {
                   </motion.div>
                 </Box>
 
-                {/* Enterprise Highlights Cards */}
+                {/* Enterprise Cards - now blue themed */}
                 <Grid container spacing={3} sx={{ mb: 7 }}>
                   {[
                     {
                       icon: "💻",
                       title: "Programming Languages",
                       desc: "Practice mocks for Python • Java • React • React Advanced",
-                      gradient: {
-                        dark: "linear-gradient(135deg, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.08) 100%)",
-                        light: "linear-gradient(135deg, rgba(249,115,22,0.05) 0%, rgba(234,88,12,0.02) 100%)",
-                      },
-                      borderColor: { dark: "rgba(249,115,22,0.3)", light: "rgba(249,115,22,0.2)" },
+                      color: sapBlue,
                     },
                     {
                       icon: "📊",
                       title: "DSA + SQL",
                       desc: "Data Structures, Algorithms & Database / SQL mocks",
-                      gradient: {
-                        dark: "linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.08) 100%)",
-                        light: "linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(5,150,105,0.02) 100%)",
-                      },
-                      borderColor: { dark: "rgba(16,185,129,0.3)", light: "rgba(16,185,129,0.2)" },
+                      color: sapHighlightBlue,
                     },
                     {
                       icon: "📋",
                       title: "SAP VIM",
                       desc: "Vendor Invoice Management • Archiving • Document Types",
-                      gradient: {
-                        dark: "linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(126,34,206,0.08) 100%)",
-                        light: "linear-gradient(135deg, rgba(147,51,234,0.05) 0%, rgba(126,34,206,0.02) 100%)",
-                      },
-                      borderColor: { dark: "rgba(147,51,234,0.3)", light: "rgba(147,51,234,0.2)" },
+                      color: sapDeepBlue,
                     },
                   ].map((item, i) => (
                     <Grid item xs={12} md={4} key={i}>
@@ -463,63 +399,23 @@ const Landing = () => {
                           sx={{
                             p: 4,
                             borderRadius: "20px",
-                            background: (theme) =>
-                              theme.palette.mode === "dark"
-                                ? item.gradient.dark
-                                : item.gradient.light,
-                            border: (theme) =>
-                              `1.5px solid ${theme.palette.mode === "dark" ? item.borderColor.dark : item.borderColor.light}`,
+                            background: `${item.color}08`,
+                            border: `1.5px solid ${item.color}30`,
                             height: "100%",
-                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                            transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
                             backdropFilter: "blur(10px)",
-                            boxShadow: (theme) =>
-                              theme.palette.mode === "dark"
-                                ? "0 4px 20px rgba(0,0,0,0.3)"
-                                : "0 4px 20px rgba(0,0,0,0.08)",
-                            "&:hover": {
-                              border: (theme) =>
-                                `1.5px solid ${theme.palette.mode === "dark" ? item.borderColor.dark.replace("0.3", "0.6") : item.borderColor.light.replace("0.2", "0.4")}`,
-                              boxShadow: (theme) =>
-                                theme.palette.mode === "dark"
-                                  ? "0 12px 40px rgba(59,130,246,0.25)"
-                                  : "0 12px 40px rgba(59,130,246,0.15)",
-                              transform: "translateY(-4px)",
+                            boxShadow: isDarkMode ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 20px rgba(0,157,224,0.08)",
+                            '&:hover': {
+                              borderColor: `${item.color}70`,
+                              boxShadow: `0 12px 40px ${item.color}30`,
                             },
                           }}
                         >
-                          <Box
-                            sx={{
-                              fontSize: "3rem",
-                              mb: 2.5,
-                              display: "inline-block",
-                              transform: "scale(1)",
-                              transition: "transform 0.3s ease",
-                              "&:hover": {
-                                transform: "scale(1.1) rotate(5deg)",
-                              },
-                            }}
-                          >
-                            {item.icon}
-                          </Box>
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              color: (theme) => theme.palette.text.primary,
-                              fontWeight: 700,
-                              mb: 1.5,
-                              fontSize: "1.25rem",
-                            }}
-                          >
+                          <Box sx={{ fontSize: "3rem", mb: 2.5, color: item.color }}>{item.icon}</Box>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: theme.palette.text.primary }}>
                             {item.title}
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: (theme) => theme.palette.text.secondary,
-                              lineHeight: 1.7,
-                              fontSize: "0.95rem",
-                            }}
-                          >
+                          <Typography variant="body2" sx={{ color: theme.palette.text.secondary, lineHeight: 1.7 }}>
                             {item.desc}
                           </Typography>
                         </Box>
@@ -528,24 +424,15 @@ const Landing = () => {
                   ))}
                 </Grid>
 
-                {/* Tech Stack Section */}
+                {/* Tech Stack - blue accents for enterprise items */}
                 <Box
                   sx={{
                     p: { xs: 4, sm: 5, md: 6 },
                     borderRadius: "28px",
-                    background: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "linear-gradient(135deg, rgba(30,41,59,0.5) 0%, rgba(15,23,42,0.7) 100%)"
-                        : "linear-gradient(135deg, rgba(248,250,252,0.8) 0%, rgba(241,245,249,0.9) 100%)",
-                    border: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "1.5px solid rgba(255,255,255,0.1)"
-                        : "1.5px solid rgba(0,0,0,0.08)",
+                    background: isDarkMode ? "rgba(15,23,42,0.6)" : "rgba(248,250,252,0.85)",
+                    border: `1.5px solid ${isDarkMode ? "rgba(255,255,255,0.08)" : `${sapBlue}15`}`,
                     backdropFilter: "blur(20px)",
-                    boxShadow: (theme) =>
-                      theme.palette.mode === "dark"
-                        ? "0 8px 32px rgba(0,0,0,0.4)"
-                        : "0 8px 32px rgba(0,0,0,0.06)",
+                    boxShadow: isDarkMode ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,157,224,0.06)",
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2.5, mb: 5 }}>
@@ -554,24 +441,18 @@ const Landing = () => {
                         width: 52,
                         height: 52,
                         borderRadius: "14px",
-                        background: "linear-gradient(135deg, #3b82f6 0%, #9333ea 100%)",
+                        background: `linear-gradient(135deg, ${sapBlue}, ${sapHighlightBlue})`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: "1.6rem",
-                        boxShadow: "0 4px 16px rgba(59,130,246,0.4)",
+                        color: "white",
+                        boxShadow: `0 4px 16px ${sapBlue}50`,
                       }}
                     >
                       ✓
                     </Box>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        color: (theme) => theme.palette.text.primary,
-                        fontWeight: 800,
-                        fontSize: { xs: "1.4rem", sm: "1.6rem" },
-                      }}
-                    >
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: theme.palette.text.primary }}>
                       Technology Stack Mastery
                     </Typography>
                   </Box>
@@ -580,22 +461,14 @@ const Landing = () => {
                     direction="row"
                     spacing={{ xs: 1.5, sm: 2.5 }}
                     justifyContent="center"
-                    sx={{
-                      flexWrap: "wrap",
-                      gap: { xs: 2.5, sm: 3 },
-                    }}
+                    sx={{ flexWrap: "wrap", gap: { xs: 2.5, sm: 3 } }}
                   >
                     {techStack.map((tech, i) => (
                       <motion.div
                         key={tech.name}
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{
-                          delay: 0.5 + i * 0.08,
-                          type: "spring",
-                          stiffness: 150,
-                          damping: 15,
-                        }}
+                        transition={{ delay: 0.5 + i * 0.08, type: "spring", stiffness: 150, damping: 15 }}
                         whileHover={{ scale: 1.12, y: -5 }}
                       >
                         <Box
@@ -607,80 +480,21 @@ const Landing = () => {
                             px: { xs: 2.5, sm: 3.5 },
                             py: { xs: 2.5, sm: 3 },
                             borderRadius: "18px",
-                            background: (theme) =>
-                              tech.isEnterprise
-                                ? theme.palette.mode === "dark"
-                                  ? "linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(37,99,235,0.15) 100%)"
-                                  : "linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(37,99,235,0.06) 100%)"
-                                : theme.palette.mode === "dark"
-                                  ? "rgba(255,255,255,0.05)"
-                                  : "rgba(0,0,0,0.03)",
-                            border: (theme) =>
-                              tech.isEnterprise
-                                ? theme.palette.mode === "dark"
-                                  ? "2px solid rgba(59,130,246,0.5)"
-                                  : "2px solid rgba(59,130,246,0.3)"
-                                : theme.palette.mode === "dark"
-                                  ? "1px solid rgba(255,255,255,0.12)"
-                                  : "1px solid rgba(0,0,0,0.1)",
+                            background: tech.isEnterprise ? `${sapBlue}12` : (isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"),
+                            border: tech.isEnterprise
+                              ? `2px solid ${sapBlue}40`
+                              : `1px solid ${isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"}`,
                             minWidth: { xs: "95px", sm: "110px" },
                             position: "relative",
-                            overflow: "hidden",
-                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                            backdropFilter: "blur(10px)",
-                            "&:hover": {
-                              background: (theme) =>
-                                tech.isEnterprise
-                                  ? theme.palette.mode === "dark"
-                                    ? "linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(37,99,235,0.25) 100%)"
-                                    : "linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(37,99,235,0.1) 100%)"
-                                  : theme.palette.mode === "dark"
-                                    ? "rgba(255,255,255,0.08)"
-                                    : "rgba(0,0,0,0.05)",
-                              border: (theme) =>
-                                tech.isEnterprise
-                                  ? theme.palette.mode === "dark"
-                                    ? "2px solid rgba(59,130,246,0.7)"
-                                    : "2px solid rgba(59,130,246,0.5)"
-                                  : theme.palette.mode === "dark"
-                                    ? "1px solid rgba(255,255,255,0.25)"
-                                    : "1px solid rgba(0,0,0,0.2)",
-                              boxShadow: tech.isEnterprise
-                                ? "0 12px 40px rgba(59,130,246,0.35)"
-                                : (theme) =>
-                                  theme.palette.mode === "dark"
-                                    ? "0 8px 24px rgba(255,255,255,0.1)"
-                                    : "0 8px 24px rgba(0,0,0,0.12)",
+                            transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+                            '&:hover': {
+                              background: tech.isEnterprise ? `${sapBlue}25` : (isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"),
+                              borderColor: tech.isEnterprise ? `${sapBlue}70` : sapBlue,
                             },
-                            "&::before": tech.isEnterprise
-                              ? {
-                                content: '""',
-                                position: "absolute",
-                                top: 0,
-                                right: 0,
-                                width: "35px",
-                                height: "35px",
-                                background: (theme) =>
-                                  theme.palette.mode === "dark"
-                                    ? "linear-gradient(135deg, #3b82f6 0%, transparent 100%)"
-                                    : "linear-gradient(135deg, #60a5fa 0%, transparent 100%)",
-                                opacity: 0.5,
-                              }
-                              : {},
                           }}
                         >
                           {tech.isEnterprise && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                top: 6,
-                                right: 6,
-                                fontSize: "0.8rem",
-                                filter: "drop-shadow(0 2px 4px rgba(59,130,246,0.6))",
-                              }}
-                            >
-                              ⭐
-                            </Box>
+                            <Box sx={{ position: "absolute", top: 6, right: 6, fontSize: "0.8rem", color: sapBlue }}>★</Box>
                           )}
                           {tech.logo && (
                             <Box
@@ -693,25 +507,14 @@ const Landing = () => {
                                 height: { xs: 40, sm: 44 },
                                 objectFit: "contain",
                                 borderRadius: "10px",
-                                filter: tech.isEnterprise
-                                  ? "drop-shadow(0 4px 12px rgba(59,130,246,0.6))"
-                                  : "none",
-                                transition: "transform 0.3s ease",
-                                "&:hover": {
-                                  transform: "scale(1.1)",
-                                },
+                                filter: tech.isEnterprise ? `drop-shadow(0 4px 12px ${sapBlue}50)` : "none",
                               }}
                             />
                           )}
                           <Typography
                             variant="body2"
                             sx={{
-                              color: (theme) =>
-                                tech.isEnterprise
-                                  ? theme.palette.mode === "dark"
-                                    ? "#60a5fa"
-                                    : "#2563eb"
-                                  : theme.palette.text.primary,
+                              color: tech.isEnterprise ? sapBlue : theme.palette.text.primary,
                               fontWeight: tech.isEnterprise ? 800 : 700,
                               fontSize: { xs: "0.9rem", sm: "0.95rem" },
                               textAlign: "center",
@@ -724,39 +527,12 @@ const Landing = () => {
                     ))}
                   </Stack>
 
-                  <Box
-                    sx={{
-                      mt: 6,
-                      pt: 5,
-                      borderTop: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? "1px solid rgba(255,255,255,0.1)"
-                          : "1px solid rgba(0,0,0,0.08)",
-                      textAlign: "center",
-                    }}
-                  >
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        fontSize: { xs: "1rem", sm: "1.1rem" },
-                        lineHeight: 1.8,
-                        maxWidth: "900px",
-                        mx: "auto",
-                      }}
-                    >
-                      <Box
-                        component="span"
-                        sx={{
-                          color: (theme) =>
-                            theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb",
-                          fontWeight: 800,
-                        }}
-                      >
+                  <Box sx={{ mt: 6, pt: 5, borderTop: `1px solid ${isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`, textAlign: "center" }}>
+                    <Typography variant="body1" sx={{ color: theme.palette.text.secondary, maxWidth: "900px", mx: "auto", lineHeight: 1.8 }}>
+                      <Box component="span" sx={{ color: sapBlue, fontWeight: 800 }}>
                         All mock tests
                       </Box>{" "}
-                      are designed with insights from hands-on enterprise implementations, real-world architectural
-                      challenges, and production-level best practices developed through years of SAP and enterprise solution delivery
+                      are designed with insights from hands-on enterprise implementations, real-world architectural challenges, and production-level best practices.
                     </Typography>
                   </Box>
                 </Box>
@@ -765,39 +541,38 @@ const Landing = () => {
           </Box>
         </Container>
       </Box>
-      {/* 3. ENHANCED FLASH SALE SECTION */}
+
+      {/* Flash Sale / Coupon Section – blue themed */}
       <Container maxWidth="md" sx={{ mt: -4, mb: 8, position: 'relative', zIndex: 10 }}>
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          whileInView={{ scale: 1, opacity: 1 }}
-          viewport={{ once: true }}
-        >
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}>
           <Box
             sx={{
               borderRadius: "24px",
               p: 1,
-              background: "linear-gradient(90deg, #00d4ff, #a855f7, #ec4899)",
+              background: `linear-gradient(90deg, ${sapBlue}, ${sapHighlightBlue})`,
               position: "relative",
               overflow: "hidden",
-              boxShadow: "0 15px 40px rgba(168, 85, 247, 0.4)",
+              boxShadow: `0 15px 40px ${sapBlue}40`,
             }}
           >
-            <Box sx={{
-              bgcolor: isDarkMode ? "#0f172a" : "#fff",
-              borderRadius: "20px",
-              p: { xs: 3, md: 4 },
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 3,
-              textAlign: { xs: "center", md: "left" }
-            }}>
+            <Box
+              sx={{
+                bgcolor: isDarkMode ? "#0f172a" : "#fff",
+                borderRadius: "20px",
+                p: { xs: 3, md: 4 },
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 3,
+                textAlign: { xs: "center", md: "left" },
+              }}
+            >
               <Box>
                 <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
-                  Special Launch Offer 🎊
+                  Special Launch Offer
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.8 }}>
+                <Typography variant="body1" sx={{ opacity: 0.85 }}>
                   Use the code at checkout to unlock your 25% discount.
                 </Typography>
               </Box>
@@ -806,27 +581,30 @@ const Landing = () => {
                 <Box
                   onClick={copyToClipboard}
                   sx={{
-                    border: '2px dashed #a855f7',
+                    border: `2px dashed ${sapBlue}`,
                     px: 4,
                     py: 1.5,
                     borderRadius: '12px',
                     cursor: 'pointer',
                     position: 'relative',
-                    bgcolor: isDarkMode ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+                    bgcolor: `${sapBlue}08`,
                     transition: '0.3s',
-                    '&:hover': { bgcolor: 'rgba(168, 85, 247, 0.2)' }
+                    '&:hover': { bgcolor: `${sapBlue}15` },
                   }}
                 >
-                  <Typography variant="h4" sx={{
-                    fontWeight: 900,
-                    letterSpacing: 4,
-                    color: "#a855f7",
-                    fontFamily: 'monospace'
-                  }}>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 900,
+                      letterSpacing: 4,
+                      color: sapBlue,
+                      fontFamily: 'monospace',
+                    }}
+                  >
                     TECH25
                   </Typography>
                   <Tooltip title={copied ? "Copied!" : "Click to copy"}>
-                    <Box sx={{ position: 'absolute', top: -10, right: -10, bgcolor: '#a855f7', borderRadius: '50%', p: 0.5, color: 'white', display: 'flex' }}>
+                    <Box sx={{ position: 'absolute', top: -10, right: -10, bgcolor: sapBlue, borderRadius: '50%', p: 0.5, color: 'white', display: 'flex' }}>
                       {copied ? <Done fontSize="small" /> : <ContentCopy fontSize="small" />}
                     </Box>
                   </Tooltip>
@@ -837,37 +615,24 @@ const Landing = () => {
         </motion.div>
       </Container>
 
-      {/* Certification Categories Section */}
+      {/* Certification Categories – blue accents */}
       <Box sx={{ py: { xs: 8, md: 12 } }}>
         <Container maxWidth="lg">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
             <Typography
               variant="h3"
               align="center"
               sx={{
                 mb: 10,
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, #00d4ff 0%, #a855f7 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                color: sapBlue,
               }}
             >
               Choose Your Preparation Path
             </Typography>
           </motion.div>
 
-          <Grid
-            container
-            spacing={4}
-            justifyContent="center"           // ← Centers the cards horizontally
-            alignItems="stretch"
-          >
+          <Grid container spacing={4} justifyContent="center" alignItems="stretch">
             {[
               {
                 title: "Enterprise Softwares",
@@ -877,7 +642,7 @@ const Landing = () => {
                   { text: "Salesforce", comingSoon: true },
                   { text: "Microsoft Novasion", comingSoon: true }
                 ],
-                gradient: "linear-gradient(135deg, rgba(255,107,107,0.18) 0%, rgba(255,139,148,0.18) 100%)"
+                color: sapBlue,
               },
               {
                 title: "Interview Prep",
@@ -887,23 +652,16 @@ const Landing = () => {
                   { text: "React / Frontend" },
                   { text: "Python / Data Science" }
                 ],
-                gradient: "linear-gradient(135deg, rgba(78,205,196,0.18) 0%, rgba(168,230,207,0.18) 100%)"
+                color: sapHighlightBlue,
               }
             ].map((category, index) => (
-              <Grid
-                item
-                xs={12}
-                sm={10}
-                md={5}                    // Slightly wider cards + centered layout
-                lg={4.5}
-                key={index}
-              >
+              <Grid item xs={12} sm={10} md={5} lg={4.5} key={index}>
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: index * 0.2 }}
-                  whileHover={{ y: -12, transition: { duration: 0.3 } }}
+                  whileHover={{ y: -12 }}
                 >
                   <Paper
                     elevation={0}
@@ -911,63 +669,38 @@ const Landing = () => {
                       p: { xs: 3, md: 4 },
                       height: "100%",
                       borderRadius: 5,
-                      background: category.gradient,
-                      backdropFilter: "blur(8px)",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: `${category.color}0D`,
+                      border: `1px solid ${category.color}20`,
                       transition: "all 0.4s ease",
                       '&:hover': {
                         transform: 'translateY(-8px)',
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
+                        boxShadow: `0 20px 40px ${category.color}20`,
+                        borderColor: `${category.color}50`,
                       }
                     }}
                   >
-                    <Typography
-                      variant="h5"
-                      gutterBottom
-                      sx={{
-                        fontWeight: 700,
-                        mb: 4,
-                        color: 'text.primary'
-                      }}
-                    >
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 4, color: category.color }}>
                       {category.title}
                     </Typography>
 
                     <List dense disablePadding>
                       {category.items.map((item, idx) => (
-                        <ListItem
-                          key={idx}
-                          disablePadding
-                          sx={{
-                            mb: 1.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1.5
-                          }}
-                        >
+                        <ListItem key={idx} disablePadding sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                           <ListItemText
                             primary={item.text}
-                            primaryTypographyProps={{
-                              fontWeight: 500,
-                              fontSize: '1.05rem'
-                            }}
+                            primaryTypographyProps={{ fontWeight: 500, fontSize: '1.05rem' }}
                           />
-
                           {item.comingSoon && (
                             <Chip
                               label="Coming Soon"
                               size="small"
                               sx={{
-                                backgroundColor: 'rgba(255, 193, 7, 0.9)',
+                                backgroundColor: `${sapHighlightBlue}CC`,
                                 color: 'white',
                                 fontWeight: 600,
                                 fontSize: '0.75rem',
                                 height: 24,
                                 borderRadius: '12px',
-                                px: 1,
-                                '& .MuiChip-label': {
-                                  px: 1.5
-                                }
                               }}
                             />
                           )}
@@ -982,7 +715,7 @@ const Landing = () => {
         </Container>
       </Box>
 
-      {/* Features Section */}
+      {/* Features Section – unified blue icons */}
       <Container sx={{ py: { xs: 10, md: 14 } }}>
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
           <Typography
@@ -991,10 +724,7 @@ const Landing = () => {
               textAlign: "center",
               mb: 8,
               fontWeight: 800,
-              background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: sapBlue,
             }}
           >
             Why Choose TechMocks?
@@ -1011,27 +741,28 @@ const Landing = () => {
                 viewport={{ once: true }}
                 whileHover={{ y: -10 }}
               >
-                <Box sx={{
-                  p: 4,
-                  borderRadius: "20px",
-                  textAlign: "center",
-                  ...glassStyle,
-                  height: '100%',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: `linear-gradient(90deg, ${benefit.color}, transparent)`,
-                  }
-                }}
+                <Box
+                  sx={{
+                    p: 4,
+                    borderRadius: "20px",
+                    textAlign: "center",
+                    ...glassStyle,
+                    height: '100%',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${benefit.color}, transparent)`,
+                    }
+                  }}
                 >
-                  <Box sx={{ color: benefit.color, mb: 2, display: "flex", justifyContent: "center", '& svg': { fontSize: '3rem' } }}>
-                    {benefit.icon}
+                  <Box sx={{ color: benefit.color, mb: 2, display: "flex", justifyContent: "center" }}>
+                    {React.cloneElement(benefit.icon, { fontSize: "inherit", style: { fontSize: '3.5rem' } })}
                   </Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{benefit.title}</Typography>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>{benefit.description}</Typography>
@@ -1042,34 +773,123 @@ const Landing = () => {
         </Grid>
       </Container>
           
-      {/* Final CTA Section */}
+      {/* Trust / Testimonial Section – blue border accents
+      <Box sx={{ py: { xs: 10, md: 14 }, bgcolor: isDarkMode ? "rgba(15,23,42,0.35)" : "rgba(248,250,252,0.5)" }}>
+        <Container maxWidth="lg">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <Typography
+              variant="h3"
+              align="center"
+              sx={{
+                mb: 3,
+                fontWeight: 800,
+                color: sapBlue,
+              }}
+            >
+              Why Learners Trust TechMocks
+            </Typography>
+            <Typography
+              variant="body1"
+              align="center"
+              sx={{
+                maxWidth: "800px",
+                mx: "auto",
+                mb: 8,
+                color: theme.palette.text.secondary,
+                fontSize: { xs: "1.05rem", md: "1.15rem" },
+                lineHeight: 1.8,
+              }}
+            >
+              Built from real enterprise experience (SAP implementations, large-scale architecture), our mocks help thousands prepare smarter — not harder.<br />
+              <strong>Real results. Real confidence. No fluff.</strong>
+            </Typography>
+          </motion.div>
+
+          <Grid container spacing={4} justifyContent="center">
+            <Grid item xs={12} md={6}>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 4,
+                    borderRadius: 4,
+                    height: "100%",
+                    ...glassStyle,
+                    borderLeft: `5px solid ${sapBlue}`,
+                  }}
+                >
+                  <Typography variant="body1" sx={{ fontStyle: "italic", mb: 3, lineHeight: 1.7 }}>
+                    "The VIM archiving and document type questions were spot-on — almost identical to what I faced in my OpenText certification..."
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: sapBlue, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                      AS
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Ankit Sharma</Typography>
+                      <Typography variant="body2" color="text.secondary">SAP Consultant • Cleared OpenText VIM Cert</Typography>
+                    </Box>
+                  </Box>
+                </Paper>
+              </motion.div>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 4,
+                    borderRadius: 4,
+                    height: "100%",
+                    ...glassStyle,
+                    borderLeft: `5px solid ${sapHighlightBlue}`,
+                  }}
+                >
+                  <Typography variant="body1" sx={{ fontStyle: "italic", mb: 3, lineHeight: 1.7 }}>
+                    "Switched from just LeetCode to TechMocks for React Advanced + DSA mocks — the explanations are clear..."
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: sapHighlightBlue, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                      RP
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Riya Patel</Typography>
+                      <Typography variant="body2" color="text.secondary">React Developer • Recent Job Switch</Typography>
+                    </Box>
+                  </Box>
+                </Paper>
+              </motion.div>
+            </Grid>
+          </Grid>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={4} justifyContent="center" alignItems="center" sx={{ mt: 10, textAlign: "center" }}>
+            <Box><Typography variant="h4" sx={{ fontWeight: 800, color: sapBlue }}>5,000+</Typography><Typography variant="body2" color="text.secondary">Mock Exams Taken</Typography></Box>
+            <Box><Typography variant="h4" sx={{ fontWeight: 800, color: sapHighlightBlue }}>87%</Typography><Typography variant="body2" color="text.secondary">First-Time Pass Rate (Reported)</Typography></Box>
+            <Box><Typography variant="h4" sx={{ fontWeight: 800, color: sapDeepBlue }}>4.8/5</Typography><Typography variant="body2" color="text.secondary">Average User Rating</Typography></Box>
+          </Stack>
+        </Container>
+      </Box>
+        */}
+      {/* Final CTA */}
       {!isLoggedIn && (
         <Box sx={{ py: { xs: 10, md: 14 }, pb: { xs: 14, md: 18 } }}>
           <Container maxWidth="md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} viewport={{ once: true }}>
               <Box
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: `linear-gradient(135deg, ${sapBlue}, ${sapHighlightBlue})`,
                   borderRadius: "30px",
                   p: { xs: 5, md: 8 },
                   textAlign: "center",
-                  position: "relative",
-                  overflow: "hidden",
-                  boxShadow: "0 20px 60px rgba(102, 126, 234, 0.4)",
+                  boxShadow: `0 20px 60px ${sapBlue}40`,
                 }}
               >
                 <Typography variant="h3" sx={{ mb: 2, fontWeight: 800, color: 'white' }}>
                   Ready to Excel?
                 </Typography>
-
-                {/* 4. REINFORCE COUPON IN FINAL CTA */}
                 <Typography variant="h6" sx={{ mb: 4, color: 'rgba(255,255,255,0.9)', fontWeight: 400 }}>
-                  Join thousands of professionals. Use code <strong style={{ color: '#ffd93d' }}>TECH25</strong> for instant savings!
+                  Join thousands of professionals. Use code <strong style={{ color: '#ffffff', fontWeight: 700 }}>TECH25</strong> for instant savings!
                 </Typography>
 
                 <Button
@@ -1080,7 +900,7 @@ const Landing = () => {
                   size="large"
                   sx={{
                     bgcolor: "white",
-                    color: "#667eea",
+                    color: sapDeepBlue,
                     px: 6,
                     py: 2,
                     borderRadius: "30px",
