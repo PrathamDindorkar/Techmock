@@ -309,8 +309,77 @@ const Landing = () => {
             {/* Tech Tags / Enterprise Highlights */}
             <Box sx={{ py: { xs: 8, md: 10 }, position: "relative" }}>
               <Container maxWidth="lg">
+                {/* Challenge Message – centered, animated, high contrast */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                  <Box
+                    sx={{
+                      textAlign: "center",
+                      mb: { xs: 6, md: 8 },
+                      px: { xs: 2, sm: 4 },
+                    }}
+                  >
+                    <Typography
+                      variant="h4"
+                      component="div"
+                      sx={{
+                        fontWeight: 900,
+                        color: "#c62828", // deep red – signals difficulty/challenge
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                        fontSize: { xs: "1.4rem", sm: "1.6rem", md: "1.9rem", lg: "2.2rem" },
+                        lineHeight: 1.35,
+                        mb: 1.5,
+                        textShadow: isDarkMode
+                          ? "0 3px 12px rgba(0,0,0,0.7)"
+                          : "0 3px 12px rgba(198,40,40,0.25)",
+                      }}
+                    >
+                      We’ve built a test most people can’t clear.
+                    </Typography>
+
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        color: isDarkMode ? "#ff8a80" : "#d32f2f",
+                        fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.4rem" },
+                        letterSpacing: 0.5,
+                        mb: 4,
+                      }}
+                    >
+                      If you think you’re ready — prove it.
+                    </Typography>
+
+                    {/* Subtle animated underline / accent line */}
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1.2, delay: 0.4, ease: "easeOut" }}
+                      style={{ originX: 0.5 }}
+                    >
+                      <Box
+                        sx={{
+                          height: "4px",
+                          width: { xs: "140px", md: "220px" },
+                          background: "linear-gradient(90deg, transparent, #d32f2f, transparent)",
+                          mx: "auto",
+                          borderRadius: "4px",
+                          mb: 2,
+                        }}
+                      />
+                    </motion.div>
+                  </Box>
+                </motion.div>
+
+                {/* Original enterprise content continues here */}
                 <Box sx={{ textAlign: "center", mb: 6 }}>
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.3 }}>
                     <Box
                       sx={{
                         display: "inline-flex",
@@ -772,7 +841,7 @@ const Landing = () => {
           ))}
         </Grid>
       </Container>
-          
+
       {/* Trust / Testimonial Section – blue border accents
       <Box sx={{ py: { xs: 10, md: 14 }, bgcolor: isDarkMode ? "rgba(15,23,42,0.35)" : "rgba(248,250,252,0.5)" }}>
         <Container maxWidth="lg">

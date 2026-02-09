@@ -85,8 +85,8 @@ const AllMocks = () => {
 
   const categoryColors = getCategoryColors();
   const defaultCategoryColor = isDarkMode
-    ? 'linear-gradient(135deg, #2d3436 0%, #4b5e6d 100%)'
-    : 'linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%)';
+    ? 'linear-gradient(135deg, #003366 0%, #0055aa 100%)'   // darker variant for dark mode
+    : 'linear-gradient(135deg, #004080 0%, #009de0 100%)';
 
   // Currency detection 
   useEffect(() => {
@@ -119,15 +119,15 @@ const AllMocks = () => {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        
+
         if (token) {
           setIsLoggedIn(true);
-          
+
           try {
             const profileResponse = await axios.get(`${backendUrl}/api/user/profile`, {
               headers: { Authorization: token },
             });
-            
+
             const userRole = profileResponse.data.role || 'user';
             setIsAdmin(userRole === 'admin');
 
@@ -182,7 +182,7 @@ const AllMocks = () => {
         }
 
         setMockTests(data);
-        
+
         if (Object.keys(data).length > 0) {
           setExpandedCategory(Object.keys(data)[0]);
         }
@@ -267,7 +267,7 @@ const AllMocks = () => {
 
   const handleAddToCart = async (mockId, event) => {
     event.stopPropagation();
-    
+
     if (!isLoggedIn) {
       setAlertMessage('Please log in to add items to cart!');
       setAlertSeverity('warning');
@@ -322,9 +322,9 @@ const AllMocks = () => {
 
   const getDifficultyIcon = (difficulty) => {
     const lower = (difficulty || '').toLowerCase();
-    if (lower === 'easy')   return <Chip icon={<AssignmentIcon />} label="Easy"   size="small" color="success" />;
+    if (lower === 'easy') return <Chip icon={<AssignmentIcon />} label="Easy" size="small" color="success" />;
     if (lower === 'medium') return <Chip icon={<AssignmentIcon />} label="Medium" size="small" color="warning" />;
-    if (lower === 'hard')   return <Chip icon={<AssignmentIcon />} label="Hard"   size="small" color="error"   />;
+    if (lower === 'hard') return <Chip icon={<AssignmentIcon />} label="Hard" size="small" color="error" />;
     return null;
   };
 
@@ -380,7 +380,7 @@ const AllMocks = () => {
       {/* Hero Header */}
       <Box
         sx={{
-          background: headerGradient,
+          background: defaultCategoryColor,
           color: 'white',
           pt: { xs: 8, md: 10 },
           pb: { xs: 6, md: 8 },
