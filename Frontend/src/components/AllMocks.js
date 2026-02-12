@@ -543,7 +543,7 @@ const AllMocks = () => {
                     <Chip
                       label={`${totalTests} Tests`}
                       size="small"
-                      sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 600 }}
+                      sx={{ bgcolor: 'rgba(255,255,255,0.20)', color: 'white', fontWeight: 600 }}
                     />
                   </AccordionSummary>
 

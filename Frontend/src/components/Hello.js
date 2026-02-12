@@ -17,18 +17,19 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Select,
+  MenuItem,
   Tooltip,
   Paper,
   useTheme,
   Badge as MuiBadge
 } from '@mui/material';
-import {styled} from '@mui/material/styles'
+import { styled } from '@mui/material/styles'
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { AssignmentTurnedIn, School, Psychology, Home, PeopleAlt, Delete, Star } from '@mui/icons-material';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { generateCertificate } from './CertificateService';
 
 const Hello = ({ darkMode }) => {
   const navigate = useNavigate();
@@ -47,6 +48,9 @@ const Hello = ({ darkMode }) => {
   const [error, setError] = useState(null);
   const [badges, setBadges] = useState([]);
   const [userRank, setUserRank] = useState({ rank: 'Beginner', points: 0 });
+
+  const [selectedMockForUser, setSelectedMockForUser] = useState({});
+
   const token = localStorage.getItem('token');
   const theme = useTheme();
 
@@ -58,59 +62,110 @@ const Hello = ({ darkMode }) => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   // Styled components for badges
-const BadgeCard = styled(Card)(({ theme, rankColor }) => ({
-  p: 2,
-  minWidth: '180px',
-  borderRadius: 12,
-  boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${rankColor}20 100%)`,
-  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-  '&:hover': {
-    transform: 'scale(1.05) rotate(2deg)',
-    boxShadow: `0 8px 16px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}`,
-  },
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  textAlign: 'center',
-  position: 'relative',
-  overflow: 'hidden',
-}));
+  const BadgeCard = styled(Card)(({ theme, rankColor }) => ({
+    p: 2,
+    minWidth: '180px',
+    borderRadius: 12,
+    boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+    background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${rankColor}20 100%)`,
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+    '&:hover': {
+      transform: 'scale(1.05) rotate(2deg)',
+      boxShadow: `0 8px 16px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}`,
+    },
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  }));
 
-const BadgeIcon = styled(Box)(({ theme, isNew }) => ({
-  fontSize: 40,
-  marginBottom: theme.spacing(1),
-  animation: isNew ? 'pulse 2s infinite' : 'none',
-  '@keyframes pulse': {
-    '0%': { transform: 'scale(1)', opacity: 1 },
-    '50%': { transform: 'scale(1.2)', opacity: 0.7 },
-    '100%': { transform: 'scale(1)', opacity: 1 },
-  },
-}));
+  const handleAssignTest = (userId, mockId) => {
+    setSelectedMockForUser((prev) => ({
+      ...prev,
+      [userId]: mockId,
+    }));
+  };
 
-const LatestAchievementCard = styled(Card)(({ theme }) => ({
-  p: 3,
-  borderRadius: 12,
-  boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-  color: 'white',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  textAlign: 'center',
-  position: 'relative',
-  overflow: 'hidden',
-  '&:before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)',
-    opacity: 0.5,
-  },
-}));
+  // 3. Handler when user clicks "Assign" button
+  const confirmAssign = async (userId) => {
+    const mockId = selectedMockForUser[userId];
+    if (!mockId) return;
+
+    try {
+      // 1. Ensure you use backendUrl
+      // 2. DO NOT use "Bearer " if your backend verifyAdmin doesn't strip it
+      const response = await fetch(`${backendUrl}/api/admin/assign-mock-test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': localStorage.getItem('token') || '',
+        },
+        body: JSON.stringify({
+          userId,
+          mockTestId: mockId,
+        }),
+      });
+
+      const clonedResponse = response.clone();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        const text = await clonedResponse.text();
+        console.error('Response was not JSON:', text);
+        throw new Error('Server returned invalid response (Not Found or Server Error)');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || `Server error: ${response.status}`);
+      }
+
+      alert('Mock test assigned successfully!');
+      // Optional: refresh data here
+      window.location.reload();
+
+    } catch (err) {
+      console.error('Assign error:', err);
+      alert(err.message || 'Something went wrong while assigning the test');
+    }
+  };
+
+  const BadgeIcon = styled(Box)(({ theme, isNew }) => ({
+    fontSize: 40,
+    marginBottom: theme.spacing(1),
+    animation: isNew ? 'pulse 2s infinite' : 'none',
+    '@keyframes pulse': {
+      '0%': { transform: 'scale(1)', opacity: 1 },
+      '50%': { transform: 'scale(1.2)', opacity: 0.7 },
+      '100%': { transform: 'scale(1)', opacity: 1 },
+    },
+  }));
+
+  const LatestAchievementCard = styled(Card)(({ theme }) => ({
+    p: 3,
+    borderRadius: 12,
+    boxShadow: `0 4px 12px ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+    color: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    '&:before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)',
+      opacity: 0.5,
+    },
+  }));
 
   useEffect(() => {
     if (!token) {
@@ -120,13 +175,17 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
 
     try {
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
-      setIsAdmin(decodedToken.role === 'admin');
+      const isAdmin = decodedToken.role === 'admin';
+      setIsAdmin(isAdmin);
 
       const fetchData = async () => {
         setLoading(true);
         setError(null);
+
         try {
-          const [userResponse, mockResponse, badgesResponse, rankResponse] = await Promise.all([
+          // ────────────────────────────────────────────────
+          // Base requests everyone needs
+          const baseRequests = [
             axios.get(`${backendUrl}/api/user/profile`, {
               headers: { Authorization: token },
             }),
@@ -139,15 +198,48 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
             axios.get(`${backendUrl}/api/user/rank`, {
               headers: { Authorization: token },
             })
-          ]);
+          ];
 
+          // Add admin-only requests conditionally
+          if (isAdmin) {
+            baseRequests.push(
+              axios.get(`${backendUrl}/api/admin/users`, {
+                headers: { Authorization: token },
+              })
+            );
+          }
+
+          // Execute all requests in parallel
+          const responses = await Promise.all(baseRequests);
+
+          // Destructure safely
+          const [
+            userResponse,
+            mockResponse,
+            badgesResponse,
+            rankResponse,
+            usersResponse   // ← only exists if admin
+          ] = responses;
+
+          // Common state updates
           setUserData(userResponse.data);
-          setPurchasedTests(Array.isArray(userResponse.data.purchasedTests) ? userResponse.data.purchasedTests : []);
+          setPurchasedTests(
+            Array.isArray(userResponse.data.purchasedTests)
+              ? userResponse.data.purchasedTests
+              : []
+          );
           setMockTests(Array.isArray(mockResponse.data) ? mockResponse.data : []);
           setBadges(Array.isArray(badgesResponse.data) ? badgesResponse.data : []);
           setUserRank(rankResponse.data);
 
-          if (decodedToken.role === 'admin') {
+          // Admin-only data
+          if (isAdmin) {
+            // Already-fetched admin users list
+            setUserStats(
+              Array.isArray(usersResponse?.data) ? usersResponse.data : []
+            );
+
+            // Your existing extra admin fetches
             const [purchasedTestsResponse, submissionsResponse] = await Promise.all([
               axios.get(`${backendUrl}/api/admin/purchased-tests`, {
                 headers: { Authorization: token },
@@ -156,16 +248,27 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
                 headers: { Authorization: token },
               })
             ]);
-            setAllPurchasedTests(Array.isArray(purchasedTestsResponse.data) ? purchasedTestsResponse.data : []);
-            setAllSubmissions(Array.isArray(submissionsResponse.data) ? submissionsResponse.data : []);
+
+            setAllPurchasedTests(
+              Array.isArray(purchasedTestsResponse.data)
+                ? purchasedTestsResponse.data
+                : []
+            );
+            setAllSubmissions(
+              Array.isArray(submissionsResponse.data)
+                ? submissionsResponse.data
+                : []
+            );
           }
 
-          if (decodedToken.role !== 'admin') {
+          // Non-admin submissions
+          if (!isAdmin) {
             const submissionResponse = await axios.get(`${backendUrl}/api/submissions`, {
               headers: { Authorization: token },
             });
-            setSubmissions(submissionResponse.data);
+            setSubmissions(submissionResponse.data || []);
           }
+
         } catch (error) {
           console.error('Error fetching data:', error);
           setError('Failed to fetch data. Please try again later.');
@@ -181,7 +284,7 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
       navigate('/login');
       setLoading(false);
     }
-  }, [token, navigate]);
+  }, [token, navigate, backendUrl]);   // ← added backendUrl if it's not stable
 
   const handleTabChange = (event, newIndex) => {
     setTabIndex(newIndex);
@@ -301,49 +404,26 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
   };
 
   const getMockAccuracy = (mockId) => {
-    //console.log(`Calculating accuracy for mockId: ${mockId}`);
-    const submission = allSubmissions.find((sub) => sub.mock_test_id.toString() === mockId.toString()) ||
-      submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
-    if (!submission) {
-      console.log(`No submission found for mockId: ${mockId}`);
-      return 0;
-    }
-    //console.log('Submission found:', submission);
+    const submission = submissions.find(s => s.mock_test_id.toString() === mockId.toString()) ||
+      allSubmissions.find(s => s.mock_test_id.toString() === mockId.toString());
+
+    if (!submission || !submission.answers) return 0;
 
     const mockTest = [...mockTests, ...purchasedTests].find(
-      (test) => test.id.toString() === submission.mock_test_id.toString()
+      (test) => test.id.toString() === mockId.toString()
     );
-    if (!mockTest) {
-      console.log(`No mock test found for mockId: ${mockId}`);
-      return 0;
-    }
-   // console.log('Mock test found:', mockTest);
 
-    const userAnswers = submission.answers || {};
-    //console.log('User answers:', userAnswers);
+    if (!mockTest) return 0;
+
     let correct = 0;
-    const totalQuestions = mockTest.questions.length;
-    //console.log(`Total questions: ${totalQuestions}`);
-
-    mockTest.questions.forEach((question, index) => {
-      const userAnswer = userAnswers[index.toString()];
-      const correctAnswer = question.correctAnswer;
-     // console.log(`Question ${index}: userAnswer=${userAnswer}, correctAnswer=${correctAnswer}`);
-      if (userAnswer != null && userAnswer !== '') {
-        if (userAnswer.toString().trim().toLowerCase() === correctAnswer.toString().trim().toLowerCase()) {
-          correct += 1;
-          //console.log(`Question ${index}: Correct`);
-        } else {
-         // console.log(`Question ${index}: Incorrect`);
-        }
-      } else {
-       // console.log(`Question ${index}: Not answered`);
+    mockTest.questions.forEach((q, idx) => {
+      const uAns = submission.answers[idx.toString()];
+      if (uAns?.toString().trim().toLowerCase() === q.correctAnswer?.toString().trim().toLowerCase()) {
+        correct++;
       }
     });
 
-    const accuracy = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
-    //console.log(`Accuracy: ${accuracy}% (Correct: ${correct}, Total: ${totalQuestions})`);
-    return accuracy;
+    return Math.round((correct / mockTest.questions.length) * 100);
   };
 
   const getCorrectCount = (mockId) => {
@@ -378,220 +458,185 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
     );
     return mockTest ? mockTest.questions.length : 0;
   };
-
-  const generateCertificate = (mockTitle, userName, accuracy) => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    doc.polygon = function (points, style) {
-      this.lines(
-        points.map((p, i) => (i === 0 ? [0, 0] : [p[0] - points[0][0], p[1] - points[0][1]])),
-        points[0][0],
-        points[0][1],
-        [1, 1],
-        style
-      );
+  const getCertificateTier = (accuracy) => {
+    const score = Number(accuracy);
+    if (score >= 90) {
+      return {
+        tier: 'GOLD',
+        label: 'Certificate of Excellence',
+        primary: [184, 134, 11],    // Deep Gold
+        secondary: [255, 215, 0],   // Bright Gold
+        accent: [255, 245, 200],    // Pale Gold
+      };
+    }
+    if (score >= 80) {
+      return {
+        tier: 'SILVER',
+        label: 'Certificate of Distinction',
+        primary: [80, 80, 80],      // Dark Steel
+        secondary: [192, 192, 192], // Bright Silver
+        accent: [240, 240, 240],    // White Silver
+      };
+    }
+    return {
+      tier: 'BRONZE',
+      label: 'Certificate of Achievement',
+      primary: [100, 50, 20],     // Deep Bronze
+      secondary: [176, 141, 87],  // Aged Bronze
+      accent: [230, 190, 150],    // Light Copper
     };
+  };
+
+  const generateCertificate = (topic, userName, accuracy) => {
+    const config = getCertificateTier(accuracy);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
 
-    const colors = {
-      navy: [25, 55, 100],
-      gold: [218, 165, 32],
-      lightGold: [255, 215, 0],
-      pale: [249, 250, 253],
-      text: [50, 50, 50],
-      accent: [70, 130, 180],
-      lightNavy: [0, 50, 100],
-    };
-
-    doc.setFillColor(...colors.pale);
+    // 1. MAIN BACKGROUND
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-    const drawCornerTriangle = (x1, y1, x2, y2, x3, y3, fill) => {
-      doc.setFillColor(...fill);
-      doc.triangle(x1, y1, x2, y2, x3, y3, 'F');
-    };
+    // 2. THE TOP-LEFT BLACK HEADER
+    doc.setFillColor(25, 25, 25);
+    doc.moveTo(0, 0);
+    doc.lineTo(145, 0);
+    doc.lineTo(0, 110);
+    doc.fill();
 
-    drawCornerTriangle(0, 0, 0, 35, 40, 0, colors.navy);
-    drawCornerTriangle(0, 35, 15, 20, 40, 0, colors.gold);
-    drawCornerTriangle(pageWidth, pageHeight, pageWidth, pageHeight - 35, pageWidth - 40, pageHeight, colors.navy);
-    drawCornerTriangle(pageWidth, pageHeight - 35, pageWidth - 15, pageHeight - 20, pageWidth - 40, pageHeight, colors.gold);
-    drawCornerTriangle(pageWidth, 0, pageWidth - 25, 0, pageWidth, 25, colors.navy);
-    drawCornerTriangle(0, pageHeight, 0, pageHeight - 25, 25, pageHeight, colors.navy);
+    // 3. THE TOP-RIGHT "PEELED" EFFECT
+    // Darker fold
+    doc.setFillColor(20, 20, 20);
+    doc.moveTo(pageWidth, 0);
+    doc.lineTo(pageWidth - 80, 0);
+    doc.lineTo(pageWidth, 50);
+    doc.fill();
+    // Metallic highlight line on the fold
+    doc.setDrawColor(...config.secondary);
+    doc.setLineWidth(1.5);
+    doc.line(pageWidth - 80, 0, pageWidth, 50);
 
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(2);
-    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+    // 4. THE LUXURY DIAGONAL STRIPES
+    // Stripe 1 (Dark Metallic)
+    doc.setFillColor(...config.primary);
+    doc.moveTo(0, 110);
+    doc.lineTo(145, 0);
+    doc.lineTo(165, 0);
+    doc.lineTo(0, 130);
+    doc.fill();
 
-    doc.setDrawColor(...colors.accent);
-    doc.setLineWidth(0.5);
-    doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
+    // Stripe 2 (Bright Metallic)
+    doc.setFillColor(...config.secondary);
+    doc.moveTo(0, 130);
+    doc.lineTo(165, 0);
+    doc.lineTo(185, 0);
+    doc.lineTo(0, 150);
+    doc.fill();
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(34);
-    doc.setTextColor(...colors.navy);
-    doc.text('CERTIFICATE OF ACHIEVEMENT', pageWidth / 2, 36, { align: 'center' });
+    // 5. BOTTOM ACCENT BAR
+    doc.setFillColor(25, 25, 25);
+    doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+    doc.setFillColor(...config.secondary);
+    doc.rect(0, pageHeight - 16, pageWidth, 1, 'F');
 
-    doc.setFont('times', 'italic');
-    doc.setFontSize(16);
-    doc.setTextColor(...colors.gold);
-    doc.text('Official Recognition of Excellence', pageWidth / 2, 48, { align: 'center' });
+    // 6. THE CENTER SEAL (TOP)
+    const sealX = pageWidth / 2 + 15; // Shifted slightly right to match image balance
+    const sealY = 35;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(14);
-    doc.setTextColor(...colors.text);
-    doc.text('This certificate is proudly presented to:', pageWidth / 2, 68, { align: 'center' });
+    // Ribbon Tails
+    doc.setFillColor(...config.primary);
+    doc.triangle(sealX - 12, sealY + 10, sealX - 18, sealY + 35, sealX - 5, sealY + 25, 'F');
+    doc.triangle(sealX + 12, sealY + 10, sealX + 18, sealY + 35, sealX + 5, sealY + 25, 'F');
 
-    doc.setFont('times', 'bolditalic');
-    doc.setFontSize(40);
-    const nameText = userName || 'John Doe';
-    const nameWidth = doc.getTextWidth(nameText);
-    doc.setTextColor(...colors.gold);
-    doc.text(nameText, pageWidth / 2, 90, { align: 'center' });
-
-    const lineOffset = 4;
-    const underlineY = 94;
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(1.8);
-    doc.line((pageWidth - nameWidth - 20) / 2, underlineY, (pageWidth + nameWidth + 20) / 2, underlineY);
-
-    doc.setDrawColor(...colors.accent);
-    doc.setLineWidth(0.6);
-    doc.line((pageWidth - nameWidth - 20) / 2, underlineY + 2, (pageWidth + nameWidth + 20) / 2, underlineY + 2);
-
-    doc.setFont('times', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(...colors.navy);
-    doc.text(`For successfully completing`, pageWidth / 2, 112, { align: 'center' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.setTextColor(...colors.gold);
-    const titleText = mockTitle || 'Advanced Training Program';
-    doc.text(titleText, pageWidth / 2, 124, { align: 'center', maxWidth: pageWidth - 80 });
-
-    doc.setFont('times', 'italic');
-    doc.setFontSize(12);
-    doc.setTextColor(...colors.text);
-    const desc = `${userName || 'The recipient'} demonstrated exceptional knowledge and dedication, achieving a score of ${accuracy}% in the assessment. This reflects a high level of commitment, preparation, and mastery of the subject matter.`;
-    doc.text(desc, pageWidth / 2, 140, {
-      align: 'center',
-      maxWidth: pageWidth - 60,
-      lineHeightFactor: 1.5,
-    });
-
-    const sealX = pageWidth - 40;
-    const sealY = 55;
-    const radius = 22;
-
-    doc.setFillColor(0, 0, 0, 0.2);
-    doc.circle(sealX + 2, sealY + 2, radius, 'F');
-
-    doc.setFillColor(...colors.gold);
-    doc.circle(sealX, sealY, radius, 'F');
-
-    doc.setFillColor(...colors.lightGold);
-    doc.circle(sealX, sealY, radius - 2, 'F');
-
-    doc.setFillColor(...colors.navy);
-    for (let angle = 0; angle < 360; angle += 10) {
-      const rad = (angle * Math.PI) / 180;
-      doc.circle(sealX + Math.cos(rad) * (radius + 2), sealY + Math.sin(rad) * (radius + 2), 0.8, 'F');
+    // Sunburst Seal
+    doc.setFillColor(...config.secondary);
+    for (let i = 0; i < 40; i++) {
+      let angle = (i * 9) * (Math.PI / 180);
+      let r = i % 2 === 0 ? 20 : 17;
+      let x = sealX + r * Math.cos(angle);
+      let y = sealY + r * Math.sin(angle);
+      if (i === 0) doc.moveTo(x, y); else doc.lineTo(x, y);
     }
+    doc.fill();
 
-    doc.setFillColor(255, 248, 220);
-    doc.circle(sealX, sealY, radius - 5, 'F');
+    // Inner Seal Details
+    doc.setFillColor(...config.accent);
+    doc.circle(sealX, sealY, 14, 'F');
+    doc.setDrawColor(...config.primary);
+    doc.setLineWidth(0.5);
+    doc.circle(sealX, sealY, 12, 'D');
 
-    doc.setDrawColor(...colors.navy);
-    doc.setLineWidth(0.4);
-    doc.circle(sealX, sealY, radius - 5, 'S');
-
-    doc.setFont('times', 'bold');
+    doc.setTextColor(...config.primary);
     doc.setFontSize(8);
-    doc.setTextColor(...colors.navy);
-    doc.text('EXCELLENCE', sealX, sealY - 3, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setTextColor(...colors.gold);
-    doc.text('AWARD', sealX, sealY + 2, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.setTextColor(...colors.lightGold);
-    doc.text('* * *', sealX, sealY + 8, { align: 'center' });
-
-    doc.setFillColor(...colors.navy);
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(0.5);
-    doc.polygon(
-      [
-        [sealX - 10, sealY + radius],
-        [sealX - 22, sealY + radius + 18],
-        [sealX - 6, sealY + radius + 10],
-      ],
-      'FD'
-    );
-
-    doc.setFillColor(...colors.navy);
-    doc.setDrawColor(...colors.gold);
-    doc.polygon(
-      [
-        [sealX + 10, sealY + radius],
-        [sealX + 22, sealY + radius + 18],
-        [sealX + 6, sealY + radius + 10],
-      ],
-      'FD'
-    );
-
-    doc.setFillColor(...colors.lightNavy);
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(0.5);
-    doc.polygon(
-      [
-        [sealX - 6, sealY + radius + 10],
-        [sealX + 6, sealY + radius + 10],
-        [sealX, sealY + radius + 5],
-      ],
-      'FD'
-    );
-
-    doc.setFont('times', 'bold');
+    doc.setFont('helvetica', 'bold');
+    doc.text(config.tier, sealX, sealY - 1, { align: 'center' });
     doc.setFontSize(6);
+    doc.text('AWARD', sealX, sealY + 3, { align: 'center' });
+
+    // 7. TEXT CONTENT
+    // Top-Left "CERTIFICATE" with Ornate flourishes
     doc.setTextColor(255, 255, 255);
-    doc.text('2025', sealX, sealY + radius + 8, { align: 'center' });
+    doc.setFont('times', 'normal');
+    doc.setFontSize(28);
+    doc.text('CERTIFICATE', 25, 45);
 
-    const sigY = pageHeight - 40;
-    doc.setFont('times', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(...colors.navy);
+    // Decorative lines for the header
+    doc.setDrawColor(...config.secondary);
+    doc.setLineWidth(0.5);
+    doc.line(25, 50, 85, 50);
+    doc.circle(25, 50, 0.8, 'F');
+    doc.circle(85, 50, 0.8, 'F');
 
-    doc.setFont('times', 'bold');
+    // Company / Topic Name
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('TECHMOCKS ACADEMY', pageWidth / 2 + 40, 85, { align: 'center' });
+
     doc.setFontSize(10);
-    doc.setTextColor(...colors.text);
-    const currentDate = new Date();
-    const dateStr = new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(currentDate);
-    doc.text(`Issued on: ${dateStr}`, pageWidth / 2, sigY + 14, { align: 'center' });
-    doc.text('TechMocks', pageWidth / 2, sigY, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(config.label.toUpperCase(), pageWidth / 2 + 40, 93, { align: 'center' });
 
-    doc.setDrawColor(...colors.gold);
-    doc.setLineWidth(1);
-    doc.line(50, sigY + 18, pageWidth - 50, sigY + 18);
+    doc.setFontSize(12);
+    doc.setTextColor(60, 60, 60);
+    doc.text('THIS CERTIFICATE IS PROUDLY PRESENTED TO', pageWidth / 2 + 40, 110, { align: 'center' });
 
-    const cleanName = (userName || 'Recipient').replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `Certificate_Of_Achievement_${cleanName}_${currentDate.getFullYear()}.pdf`;
+    // Recipient Name (The focus)
+    doc.setTextColor(...config.primary);
+    doc.setFont('times', 'bolditalic');
+    doc.setFontSize(54);
+    doc.text(userName || 'Pratham', pageWidth / 2 + 40, 135, { align: 'center' });
 
-    doc.save(fileName);
+    // Main Recognition Text
+    doc.setTextColor(80, 80, 80);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    const mainText = `In recognition of outstanding achievement and excellence in "${topic || 'Technical Assessment'}"`;
+    const splitMain = doc.splitTextToSize(mainText, 140);
+    doc.text(splitMain, pageWidth / 2 + 40, 150, { align: 'center' });
+
+    // 8. FOOTER - DATE & SIGNATURE
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(55, 182, 95, 182); // Date Line
+    doc.line(pageWidth - 95, 182, pageWidth - 55, 182); // Sign Line
+
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text('DATE OF ISSUANCE', 75, 188, { align: 'center' });
+    doc.text('DIRECTOR OF ASSESSMENT', pageWidth - 75, 188, { align: 'center' });
+
+    // Add the actual date
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text(new Date().toLocaleDateString(), 75, 180, { align: 'center' });
+
+    // 9. SAVE
+    doc.save(`${config.tier}_Certificate_${userName}.pdf`);
   };
-
   const categoryStats = !isAdmin ? getCategoryStats() : [];
   const mockTestStats = isAdmin ? getMockTestStats() : null;
 
@@ -1151,12 +1196,12 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
                               </Button>
                               {accuracy >= 80 && (
                                 <Button
-                                  variant='contained'
-                                  color='success'
+                                  variant="contained"
+                                  color="success"
                                   sx={{ borderRadius: 4, px: 3 }}
                                   onClick={() => generateCertificate(mock.title, userData?.name, accuracy)}
                                 >
-                                  Get Certificate
+                                  Get {accuracy === 100 ? 'Gold' : accuracy >= 90 ? 'Silver' : 'Bronze'} Certificate
                                 </Button>
                               )}
                               <Button
@@ -1416,85 +1461,78 @@ const LatestAchievementCard = styled(Card)(({ theme }) => ({
           {isAdmin ? (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant='h5' fontWeight='bold' color={textPrimary}>
-                  User Management
+                <Typography variant="h5" fontWeight="bold" color={textPrimary}>
+                  Assign Mock Tests
                 </Typography>
-                <Button variant='contained' onClick={handleViewUsers} sx={{ borderRadius: 2 }}>
-                  View All Users
+                <Button variant="contained" onClick={handleViewUsers} sx={{ borderRadius: 2 }}>
+                  Refresh
                 </Button>
               </Box>
-              <TableContainer
-                component={Paper}
-                sx={{ boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}
-              >
+
+              <TableContainer component={Paper} sx={{ boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          User
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          Email
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          Role
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          Tests Taken
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          Last Login
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography fontWeight='bold' color={textPrimary}>
-                          Actions
-                        </Typography>
-                      </TableCell>
+                      <TableCell><Typography fontWeight="bold">User</Typography></TableCell>
+                      <TableCell><Typography fontWeight="bold">Email</Typography></TableCell>
+                      <TableCell><Typography fontWeight="bold">Assigned Tests</Typography></TableCell>
+                      <TableCell align="right"><Typography fontWeight="bold">Assign New</Typography></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {userStats.slice(0, 10).map((user, index) => (
-                      <TableRow
-                        key={index}
-                        sx={{ '&:hover': { bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' } }}
-                      >
-                        <TableCell sx={{ color: textPrimary }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>{user.name.charAt(0)}</Avatar>
-                            {user.name}
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ color: textPrimary }}>{user.email}</TableCell>
-                        <TableCell sx={{ color: textPrimary }}>{user.role || 'user'}</TableCell>
-                        <TableCell sx={{ color: textPrimary }}>{user.testsTaken || 0}</TableCell>
-                        <TableCell sx={{ color: textPrimary }}>
-                          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction='row' spacing={1}>
-                            <Button size='small' variant='outlined' sx={{ borderRadius: 2 }}>
-                              Edit
+                    {userStats.slice(0, 10).map((user) => {
+                      // Use _id instead of id
+                      const userId = user._id;
+
+                      return (
+                        <TableRow key={userId} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
+                                {user.name?.charAt(0) || '?'}
+                              </Avatar>
+                              {user.name || '—'}
+                            </Box>
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            {/* ... existing assigned mocks logic ... */}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Select
+                              size="small"
+                              // Fix: bind value to state so it doesn't look empty
+                              value={selectedMockForUser[userId] || ""}
+                              onChange={(e) => handleAssignTest(userId, e.target.value)}
+                              displayEmpty
+                              sx={{ minWidth: 180, mr: 1 }}
+                            >
+                              <MenuItem value="" disabled>Select test...</MenuItem>
+                              {mockTests
+                                .filter((m) => !user.assignedMocks?.some((am) => am.id === m.id))
+                                .map((mock) => (
+                                  <MenuItem key={mock.id} value={mock.id}>
+                                    {mock.title}
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              // Use userId (_id) here
+                              disabled={!selectedMockForUser[userId]}
+                              onClick={() => confirmAssign(userId)}
+                            >
+                              Assign
                             </Button>
-                            <Button size='small' variant='outlined' color='error' sx={{ borderRadius: 2 }}>
-                              Delete
-                            </Button>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+
                     {userStats.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} align='center' sx={{ color: textSecondary }}>
+                        <TableCell colSpan={4} align="center" sx={{ color: textSecondary, py: 4 }}>
                           No users found
                         </TableCell>
                       </TableRow>

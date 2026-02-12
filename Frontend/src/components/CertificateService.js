@@ -1,44 +1,56 @@
-// CertificateService.js
+// CertificateService.js - Premium Luxury Edition
 import jsPDF from 'jspdf';
 
 const getTierConfig = (accuracy) => {
   const score = Number(accuracy);
-  
+
   if (score >= 90) {
     return {
       tier: 'GOLD',
       label: 'Certificate of Excellence',
-      primary: [184, 134, 11],      // Deep Gold
-      secondary: [218, 165, 32],     // Goldenrod
-      accent: [255, 245, 220],       // Bright Shine
-      border: [184, 134, 11],
-      ribbonGradient: [255, 215, 0], // Brighter gold for gradient
-      sealRing: [139, 101, 8]        // Darker gold for contrast
+      bgGradientStart: [255, 248, 220], // soft ivory
+      bgGradientEnd: [255, 240, 180],
+      primary: [212, 175, 55],     // rich metallic gold
+      secondary: [184, 134, 11],   // deep gold
+      accent: [255, 255, 240],     // near-white shine
+      textMain: [40, 40, 40],
+      border: [180, 140, 40],
+      ribbon: [220, 180, 60],
+      sealOuter: [139, 69, 19],
+      sealInner: [255, 215, 0]
     };
   }
-  
+
   if (score >= 80) {
     return {
       tier: 'SILVER',
       label: 'Certificate of Distinction',
-      primary: [70, 70, 70],         // Dark Steel
-      secondary: [160, 160, 160],    // Silver
-      accent: [245, 245, 245],       // White Silver
-      border: [100, 100, 100],
-      ribbonGradient: [192, 192, 192],
-      sealRing: [50, 50, 50]
+      bgGradientStart: [245, 245, 245],
+      bgGradientEnd: [220, 220, 230],
+      primary: [192, 192, 192],    // bright silver
+      secondary: [140, 140, 140],
+      accent: [255, 255, 255],
+      textMain: [30, 30, 30],
+      border: [160, 160, 160],
+      ribbon: [210, 210, 210],
+      sealOuter: [100, 100, 100],
+      sealInner: [230, 230, 230]
     };
   }
-  
+
   return {
     tier: 'BRONZE',
     label: 'Certificate of Achievement',
-    primary: [100, 50, 20],         // Deep Bronze
-    secondary: [176, 141, 87],      // Aged Bronze
-    accent: [245, 235, 220],        // Tan
-    border: [120, 70, 30],
-    ribbonGradient: [205, 127, 50],
-    sealRing: [80, 40, 15]
+    bgGradientStart: [245, 235, 220],
+    bgGradientEnd: [220, 190, 150],
+    primary: [176, 141, 87],
+    secondary: [139, 90, 43],
+    accent: [255, 245, 230],
+    textMain: [50, 40, 30],
+    border: [160, 120, 70],
+    ribbon: [205, 150, 90],
+    sealOuter: [120, 70, 30],
+    sealInner: [210, 160, 100]
   };
 };
 
@@ -50,340 +62,173 @@ export const generateCertificate = (topic, userName, accuracy) => {
     format: 'a4'
   });
 
-  const pageWidth = doc.internal.pageSize.width;   // 297mm
-  const pageHeight = doc.internal.pageSize.height; // 210mm
+  const pageWidth = doc.internal.pageSize.width;  // 297
+  const pageHeight = doc.internal.pageSize.height; // 210
+  const centerX = pageWidth / 2;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 1. BACKGROUND WITH PREMIUM SECURITY PATTERN
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  doc.setFillColor(255, 255, 255);
+  // ────────────────────────────────────────────────
+  // 1. Elegant Background with Subtle Gradient + Security
+  // ────────────────────────────────────────────────
+  const gradient = doc.internal.getRadialGradient(
+    centerX, pageHeight / 2, 20,
+    centerX, pageHeight / 2, Math.max(pageWidth, pageHeight) / 1.2
+  );
+  gradient.addColorStop(0, `rgb(${config.bgGradientStart.join(',')})`);
+  gradient.addColorStop(1, `rgb(${config.bgGradientEnd.join(',')})`);
+  doc.setFillColor(gradient); // fallback
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // Enhanced Guilloche Pattern (Security Lines) - More sophisticated
-  doc.setDrawColor(245, 245, 245);
-  doc.setLineWidth(0.08);
-  for (let i = 0; i < pageWidth; i += 3) {
-    doc.line(i, 0, pageWidth - i, pageHeight);
-  }
-  
-  // Diagonal guilloche in opposite direction
-  doc.setDrawColor(248, 248, 248);
-  for (let i = 0; i < pageWidth; i += 3) {
-    doc.line(0, i * (pageHeight / pageWidth), i, pageHeight);
+  // Very subtle micro-pattern security background (luxury watermark feel)
+  doc.setDrawColor(230, 230, 230);
+  doc.setLineWidth(0.05);
+  for (let i = -pageHeight; i < pageWidth + pageHeight; i += 4) {
+    doc.line(i, 0, i - pageHeight, pageHeight);
   }
 
-  // Subtle watermark circles
-  doc.setDrawColor(250, 250, 250);
-  doc.setLineWidth(0.5);
-  doc.circle(pageWidth / 2 + 40, pageHeight / 2, 60, 'D');
-  doc.circle(pageWidth / 2 + 40, pageHeight / 2, 65, 'D');
-  doc.circle(pageWidth / 2 + 40, pageHeight / 2, 70, 'D');
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 2. GEOMETRIC DESIGN ELEMENTS (Matching reference image)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Top-Left Black Header Triangle
-  doc.setFillColor(22, 22, 22);
-  doc.moveTo(0, 0);
-  doc.lineTo(150, 0);
-  doc.lineTo(0, 115);
-  doc.fill();
-
-  // Top-Right "Peeled Corner" Effect
-  doc.setFillColor(30, 30, 30);
-  doc.moveTo(pageWidth, 0);
-  doc.lineTo(pageWidth - 70, 0);
-  doc.lineTo(pageWidth, 45);
-  doc.fill();
-
-  // Metallic accent on the fold
-  doc.setDrawColor(...config.secondary);
-  doc.setLineWidth(1.5);
-  doc.line(pageWidth - 70, 0, pageWidth, 45);
-  
-  // Inner highlight line for depth
-  doc.setDrawColor(...config.accent);
-  doc.setLineWidth(0.4);
-  doc.line(pageWidth - 69, 1, pageWidth - 1, 44);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 3. LUXURY DIAGONAL RIBBONS (Tier-colored stripes)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Primary Ribbon Stripe
-  doc.setFillColor(...config.primary);
-  doc.moveTo(0, 115);
-  doc.lineTo(150, 0);
-  doc.lineTo(168, 0);
-  doc.lineTo(0, 133);
-  doc.fill();
-
-  // Secondary Ribbon Stripe (lighter shade)
-  doc.setFillColor(...config.secondary);
-  doc.moveTo(0, 133);
-  doc.lineTo(168, 0);
-  doc.lineTo(186, 0);
-  doc.lineTo(0, 151);
-  doc.fill();
-  
-  // Accent thin stripe for sophistication
-  doc.setFillColor(...config.ribbonGradient);
-  doc.moveTo(0, 151);
-  doc.lineTo(186, 0);
-  doc.lineTo(196, 0);
-  doc.lineTo(0, 161);
-  doc.fill();
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. BOTTOM BRANDING BAR
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  doc.setFillColor(22, 22, 22);
-  doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
-  
-  // Metallic top border of footer
-  doc.setFillColor(...config.secondary);
-  doc.rect(0, pageHeight - 16, pageWidth, 1.2, 'F');
-  
-  // Subtle gradient effect on footer
-  doc.setFillColor(...config.primary);
-  doc.rect(0, pageHeight - 16, pageWidth, 0.4, 'F');
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 5. PREMIUM SEAL WITH RIBBON (Enhanced design)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const sealX = pageWidth / 2 + 40;
-  const sealY = 40;
-
-  // Ribbon Tails (flowing beneath the seal)
-  doc.setFillColor(...config.primary);
-  
-  // Left ribbon tail
-  doc.moveTo(sealX - 12, sealY + 12);
-  doc.lineTo(sealX - 22, sealY + 42);
-  doc.lineTo(sealX - 18, sealY + 44);
-  doc.lineTo(sealX - 5, sealY + 30);
-  doc.fill();
-  
-  // Right ribbon tail
-  doc.moveTo(sealX + 12, sealY + 12);
-  doc.lineTo(sealX + 22, sealY + 42);
-  doc.lineTo(sealX + 18, sealY + 44);
-  doc.lineTo(sealX + 5, sealY + 30);
-  doc.fill();
-  
-  // Ribbon tail shading for depth
-  doc.setFillColor(...config.sealRing);
-  doc.triangle(sealX - 22, sealY + 42, sealX - 18, sealY + 44, sealX - 16, sealY + 40, 'F');
-  doc.triangle(sealX + 22, sealY + 42, sealX + 18, sealY + 44, sealX + 16, sealY + 40, 'F');
-
-  // Starburst Seal (40 pointed star)
-  doc.setFillColor(...config.secondary);
-  const points = 40;
-  for (let i = 0; i <= points; i++) {
-    let angle = (i * (360 / points)) * (Math.PI / 180);
-    let r = i % 2 === 0 ? 22 : 18;
-    doc[i === 0 ? 'moveTo' : 'lineTo'](
-      sealX + r * Math.cos(angle), 
-      sealY + r * Math.sin(angle)
-    );
-  }
-  doc.fill();
-
-  // Outer ring for definition
-  doc.setDrawColor(...config.sealRing);
-  doc.setLineWidth(0.8);
-  doc.circle(sealX, sealY, 22, 'D');
-
-  // Inner Badge Circle (main seal face)
-  doc.setFillColor(...config.accent);
-  doc.circle(sealX, sealY, 15, 'F');
-  
-  // Decorative rings
-  doc.setDrawColor(...config.primary);
-  doc.setLineWidth(1);
-  doc.circle(sealX, sealY, 13, 'D');
-  
-  doc.setLineWidth(0.4);
-  doc.circle(sealX, sealY, 11, 'D');
-
-  // Seal Text
-  doc.setTextColor(...config.primary);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(config.tier, sealX, sealY - 1, { align: 'center' });
-  
-  doc.setFontSize(5.5);
-  doc.setFont('helvetica', 'normal');
-  doc.text('OFFICIAL AWARD', sealX, sealY + 4, { align: 'center' });
-  
-  // Score percentage in seal
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${accuracy}%`, sealX, sealY + 10, { align: 'center' });
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 6. TYPOGRAPHY & CONTENT
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Header Text (White on Black triangle)
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('times', 'bold');
-  doc.setFontSize(38);
-  doc.text('CERTIFICATE', 28, 50);
-
-  // Elegant decorative line with ornaments
-  doc.setDrawColor(...config.secondary);
+  // ────────────────────────────────────────────────
+  // 2. Premium Thin Ornate Border (double layer for depth)
+  // ────────────────────────────────────────────────
+  doc.setDrawColor(...config.border);
   doc.setLineWidth(0.6);
-  doc.line(28, 56, 95, 56);
-  
-  // Decorative dots
-  doc.setFillColor(...config.secondary);
-  doc.circle(28, 56, 1, 'F');
-  doc.circle(95, 56, 1, 'F');
-  
-  // Small ornamental line
-  doc.setLineWidth(0.3);
-  doc.line(28, 58, 95, 58);
+  doc.rect(8, 8, pageWidth - 16, pageHeight - 16, 'D');
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 7. MAIN CONTENT AREA
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Organization Name
-  doc.setTextColor(40, 40, 40);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.text('TECHMOCKS ACADEMY', pageWidth / 2 + 40, 85, { align: 'center' });
-
-  // Certificate Type Label
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(config.label.toUpperCase(), pageWidth / 2 + 40, 93, { align: 'center' });
-
-  // Decorative divider
   doc.setDrawColor(...config.secondary);
-  doc.setLineWidth(0.4);
-  const dividerY = 97;
-  doc.line(pageWidth / 2 - 20, dividerY, pageWidth / 2 + 100, dividerY);
-  doc.setFillColor(...config.secondary);
-  doc.circle(pageWidth / 2 - 20, dividerY, 0.8, 'F');
-  doc.circle(pageWidth / 2 + 100, dividerY, 0.8, 'F');
+  doc.setLineWidth(0.25);
+  doc.rect(11, 11, pageWidth - 22, pageHeight - 22, 'D');
 
-  // Presentation Text
-  doc.setFontSize(12);
+  // Corner embellishments (small flourishes)
+  const cornerSize = 18;
+  doc.setFillColor(...config.primary);
+  doc.circle(8 + cornerSize/2, 8 + cornerSize/2, cornerSize/2, 'F');
+  doc.circle(pageWidth - 8 - cornerSize/2, 8 + cornerSize/2, cornerSize/2, 'F');
+  doc.circle(8 + cornerSize/2, pageHeight - 8 - cornerSize/2, cornerSize/2, 'F');
+  doc.circle(pageWidth - 8 - cornerSize/2, pageHeight - 8 - cornerSize/2, cornerSize/2, 'F');
+
+  // ────────────────────────────────────────────────
+  // 3. Central Seal – Larger, More Dramatic & Shiny
+  // ────────────────────────────────────────────────
+  const sealX = centerX;
+  const sealY = 55;
+  const sealRadius = 32;
+
+  // Outer glow / starburst (subtle)
+  doc.setFillColor(...config.sealInner);
+  for (let i = 0; i < 32; i++) {
+    const angle = (i * 360 / 32) * Math.PI / 180;
+    const rOuter = sealRadius + 12 + (i % 2 ? 6 : 0);
+    const rInner = sealRadius + 4;
+    doc.moveTo(sealX + rInner * Math.cos(angle), sealY + rInner * Math.sin(angle));
+    doc.lineTo(sealX + rOuter * Math.cos(angle), sealY + rOuter * Math.sin(angle));
+  }
+  doc.fill();
+
+  // Main seal body with gradient feel (simulated)
+  doc.setFillColor(...config.primary);
+  doc.circle(sealX, sealY, sealRadius, 'F');
+
+  doc.setDrawColor(...config.secondary);
+  doc.setLineWidth(1.2);
+  doc.circle(sealX, sealY, sealRadius - 4, 'D');
+  doc.circle(sealX, sealY, sealRadius - 8, 'D');
+
+  // Seal text – bold & centered
+  doc.setTextColor(...config.accent);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(config.tier, sealX, sealY - 4, { align: 'center' });
+
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(80, 80, 80);
-  doc.text('THIS CERTIFICATE IS PROUDLY PRESENTED TO', pageWidth / 2 + 40, 110, { align: 'center' });
+  doc.text('PREMIUM AWARD', sealX, sealY + 2, { align: 'center' });
 
-  // Recipient Name (The star of the show)
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${accuracy}%`, sealX, sealY + 12, { align: 'center' });
+
+  // ────────────────────────────────────────────────
+  // 4. Flowing Ribbon/Wave Accent (adds life & movement)
+  // ────────────────────────────────────────────────
+  doc.setFillColor(...config.ribbon);
+  doc.setDrawColor(...config.secondary);
+  doc.setLineWidth(0.5);
+
+  // Gentle wave under header
+  doc.beginPath();
+  doc.moveTo(30, 90);
+  doc.bezierCurveTo(centerX - 60, 75, centerX + 60, 105, pageWidth - 30, 90);
+  doc.lineTo(pageWidth - 30, 100);
+  doc.bezierCurveTo(centerX + 60, 115, centerX - 60, 85, 30, 100);
+  doc.close();
+  doc.fill();
+  doc.stroke();
+
+  // ────────────────────────────────────────────────
+  // 5. Typography – Elegant & Dramatic
+  // ────────────────────────────────────────────────
+  // Title
+  doc.setTextColor(...config.primary);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(48);
+  doc.text('CERTIFICATE', centerX, 35, { align: 'center' });
+
+  // Subtitle label
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(90, 90, 90);
+  doc.text(config.label.toUpperCase(), centerX, 48, { align: 'center' });
+
+  // Presented to
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(70, 70, 70);
+  doc.text('This Certificate is Proudly Presented to', centerX, 110, { align: 'center' });
+
+  // Name – large, luxurious
   doc.setTextColor(...config.primary);
   doc.setFont('times', 'bolditalic');
-  doc.setFontSize(52);
-  const nameText = userName || 'Valued Learner';
-  doc.text(nameText, pageWidth / 2 + 40, 132, { align: 'center' });
+  doc.setFontSize(60);
+  const name = userName || 'Valued Achiever';
+  doc.text(name, centerX, 138, { align: 'center' });
 
-  // Elegant underline for name
-  const nameWidth = doc.getTextWidth(nameText);
+  // Underline flourish
+  const nameW = doc.getTextWidth(name);
   doc.setDrawColor(...config.primary);
-  doc.setLineWidth(0.8);
-  doc.line(pageWidth / 2 + 40 - nameWidth / 2 - 5, 137, pageWidth / 2 + 40 + nameWidth / 2 + 5, 137);
-  
-  // Double line for elegance
-  doc.setLineWidth(0.3);
-  doc.setDrawColor(...config.secondary);
-  doc.line(pageWidth / 2 + 40 - nameWidth / 2 - 5, 139, pageWidth / 2 + 40 + nameWidth / 2 + 5, 139);
+  doc.setLineWidth(1);
+  doc.line(centerX - nameW/2 - 12, 145, centerX + nameW/2 + 12, 145);
 
-  // Achievement Description
-  doc.setTextColor(70, 70, 70);
+  // Description
+  doc.setTextColor(60, 60, 60);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11.5);
-  
-  const mainText = `In recognition of outstanding achievement and demonstrated excellence in the comprehensive assessment of "${topic || 'Technical Knowledge'}" with an exemplary score of ${accuracy}%. This certificate acknowledges exceptional dedication, proficiency, and mastery of the subject matter.`;
-  
-  const splitMain = doc.splitTextToSize(mainText, 150);
-  doc.text(splitMain, pageWidth / 2 + 40, 152, { 
-    align: 'center',
-    lineHeightFactor: 1.6
-  });
+  doc.setFontSize(12);
+  const desc = `In recognition of exceptional performance and mastery in "${topic || 'Technical Excellence'}" achieving ${accuracy}%. This award celebrates dedication, skill, and outstanding accomplishment.`;
+  const descLines = doc.splitTextToSize(desc, 220);
+  doc.text(descLines, centerX, 160, { align: 'center', lineHeightFactor: 1.5 });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 8. FOOTER - SIGNATURES & VERIFICATION
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ────────────────────────────────────────────────
+  // 6. Footer – Minimal & Refined
+  // ────────────────────────────────────────────────
+  const footerY = pageHeight - 18;
 
-  const footerY = 182;
-
-  // Signature Lines
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.4);
-  doc.line(55, footerY, 105, footerY);
-  doc.line(pageWidth - 105, footerY, pageWidth - 55, footerY);
+  doc.line(centerX - 80, footerY, centerX - 20, footerY);
+  doc.line(centerX + 20, footerY, centerX + 80, footerY);
 
-  // Labels under signature lines
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(120, 120, 120);
-  doc.text('DATE OF ISSUANCE', 80, footerY + 6, { align: 'center' });
-  doc.text('DIRECTOR OF ASSESSMENT', pageWidth - 80, footerY + 6, { align: 'center' });
-
-  // Actual date
-  doc.setTextColor(40, 40, 40);
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  const issueDate = new Date().toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-  doc.text(issueDate, 80, footerY - 2, { align: 'center' });
+  doc.setTextColor(80, 80, 80);
+  doc.text('Issued: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), centerX - 50, footerY + 6, { align: 'center' });
+  doc.text('Authorized by Techmocks Academy', centerX + 50, footerY + 6, { align: 'center' });
 
-  // Official signature placeholder
-  doc.setFont('times', 'italic');
-  doc.setFontSize(11);
-  doc.setTextColor(60, 60, 60);
-  doc.text('Dr. A. Kumar', pageWidth - 80, footerY - 2, { align: 'center' });
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 9. VERIFICATION & SECURITY INFO (Footer bar)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Generate unique certificate ID
-  const certId = `TM-${config.tier.charAt(0)}-${Math.random().toString(36).toUpperCase().substring(2, 10)}`;
-  
-  doc.setFontSize(7);
+  // Cert ID
+  const certId = `TM-${config.tier[0]}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  doc.setFontSize(8);
   doc.setFont('courier', 'normal');
-  doc.setTextColor(180, 180, 180);
-  doc.text(`Certificate ID: ${certId}`, 12, pageHeight - 5);
-  doc.text(`Verify at: techmocks.edu/verify/${certId}`, pageWidth - 70, pageHeight - 5);
-  
-  // QR code placeholder indicator
-  doc.setFontSize(6);
-  doc.text('▪', pageWidth / 2, pageHeight - 6);
-  doc.text('Digitally Certified', pageWidth / 2 + 3, pageHeight - 5);
+  doc.setTextColor(140, 140, 140);
+  doc.text(`ID: ${certId} • Verify: techmocks.edu/verify/${certId}`, centerX, pageHeight - 6, { align: 'center' });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 10. FINAL BORDER FRAME
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Outer decorative border
-  doc.setDrawColor(...config.border);
-  doc.setLineWidth(0.3);
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10, 'D');
-  
-  // Inner border for depth
-  doc.setDrawColor(...config.secondary);
-  doc.setLineWidth(0.15);
-  doc.rect(6, 6, pageWidth - 12, pageHeight - 12, 'D');
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SAVE CERTIFICATE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const cleanName = (userName || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `${config.tier}_Certificate_${cleanName}_${accuracy}pct.pdf`;
-  doc.save(fileName);
+  // ────────────────────────────────────────────────
+  // Save
+  // ────────────────────────────────────────────────
+  const cleanName = (userName || 'Learner').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`${config.tier}_Premium_Certificate_${cleanName}_${accuracy}%.pdf`);
 };

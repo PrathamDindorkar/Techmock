@@ -339,7 +339,7 @@ const Landing = () => {
                           : "0 3px 12px rgba(198,40,40,0.25)",
                       }}
                     >
-                      We’ve built a test most people can’t clear.
+                      We’ve built a test, most people can’t clear.
                     </Typography>
 
                     <Typography

@@ -2192,6 +2192,125 @@ app.post('/api/community/posts/:postId/comments', verifyUser, async (req, res) =
   }
 });
 
+// Admin: Assign mock test to user + send email
+app.post('/api/admin/assign-mock-test', verifyAdmin, async (req, res) => {
+  const { userId, mockTestId } = req.body;
+
+  if (!userId || !mockTestId) {
+    return res.status(400).json({ message: 'userId and mockTestId are required' });
+  }
+
+  try {
+    // 1. Check if already assigned
+    const { data: existing } = await supabase
+      .from('user_mock_assignments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('mock_test_id', mockTestId)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(400).json({ message: 'This mock test is already assigned to the user' });
+    }
+
+    // 2. Insert assignment
+    const { error: assignError } = await supabase
+      .from('user_mock_assignments')
+      .insert({
+        user_id: userId,
+        mock_test_id: mockTestId,
+        assigned_by: req.user.id,
+      });
+
+    if (assignError) throw assignError;
+
+    // 3. Fetch user & mock test details for email
+    const { data: user } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', userId)
+      .single();
+
+    const { data: mock } = await supabase
+      .from('mock_tests')
+      .select('title, description, category, questions, time_limit, pricing_type')
+      .eq('id', mockTestId)
+      .single();
+
+    if (!user?.email || !mock) {
+      console.warn('Could not fetch user or mock details for email');
+      return res.status(201).json({ message: 'Assignment created (email skipped)' });
+    }
+
+    // 4. Send nice email
+    const questionCount = mock.questions?.length || 0;
+    const directLink = `https://www.techmocks.com/mock-test/${mockTestId}`;
+
+    const mailOptions = {
+      from: `"TechMocks Admin" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: `New Mock Test Assigned: ${mock.title}`,
+      text: `Hello ${user.name || 'there'},
+
+An administrator has assigned you a new mock test:
+
+→ ${mock.title}
+→ Category: ${mock.category || 'General'}
+→ ${questionCount} questions
+→ Time limit: ${mock.time_limit || '?'} minutes
+
+Start the test here: ${directLink}
+
+Good luck — you've got this! 🚀
+
+Best regards,
+TechMocks Team
+https://www.techmocks.com`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #1e40af;">New Mock Test Assigned!</h2>
+          <p>Hello ${user.name || 'there'},</p>
+          <p>An administrator has just assigned you the following mock test:</p>
+          
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0 0 12px 0; color: #1e40af;">${mock.title}</h3>
+            <p style="margin: 8px 0;"><strong>Category:</strong> ${mock.category || 'General'}</p>
+            <p style="margin: 8px 0;"><strong>Questions:</strong> ${questionCount}</p>
+            <p style="margin: 8px 0;"><strong>Time limit:</strong> ${mock.time_limit || '?'} minutes</p>
+          </div>
+
+          <p style="margin: 24px 0;">
+            <a href="${directLink}" 
+               style="background: #6366f1; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Start Mock Test Now →
+            </a>
+          </p>
+
+          <p style="color: #4b5563; font-size: 14px;">
+            If the button doesn't work, copy-paste this link:<br>
+            <a href="${directLink}">${directLink}</a>
+          </p>
+
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+
+          <p style="color: #6b7280; font-size: 13px; text-align: center;">
+            This is an automated message from TechMocks<br>
+            <a href="https://www.techmocks.com">www.techmocks.com</a>
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Assignment email sent to ${user.email}`);
+
+    res.status(201).json({ message: 'Mock test assigned successfully and email sent' });
+  } catch (err) {
+    console.error('Assign mock test error:', err);
+    res.status(500).json({ message: 'Failed to assign mock test', error: err.message });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
