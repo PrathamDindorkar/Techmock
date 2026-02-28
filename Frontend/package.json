@@ -14,7 +14,8 @@
     "country-to-currency": "^2.0.2",
     "cra-template": "1.2.0",
     "framer-motion": "^12.4.7",
-    "jspdf": "^3.0.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.525.0",
@@ -43,7 +44,7 @@
       "react-app/jest"
     ],
     "rules": {
-      "no-unused-vars": "warn"           
+      "no-unused-vars": "warn"
     }
   },
   "browserslist": {

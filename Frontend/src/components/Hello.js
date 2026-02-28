@@ -17,8 +17,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Select,
-  MenuItem,
   Tooltip,
   Paper,
   useTheme,
@@ -29,7 +27,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { AssignmentTurnedIn, School, Psychology, Home, PeopleAlt, Delete, Star } from '@mui/icons-material';
-import { generateCertificate } from './CertificateService';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import generateCertificatePDF from './CertificateService';
 
 const Hello = ({ darkMode }) => {
   const navigate = useNavigate();
@@ -48,9 +48,6 @@ const Hello = ({ darkMode }) => {
   const [error, setError] = useState(null);
   const [badges, setBadges] = useState([]);
   const [userRank, setUserRank] = useState({ rank: 'Beginner', points: 0 });
-
-  const [selectedMockForUser, setSelectedMockForUser] = useState({});
-
   const token = localStorage.getItem('token');
   const theme = useTheme();
 
@@ -80,57 +77,6 @@ const Hello = ({ darkMode }) => {
     position: 'relative',
     overflow: 'hidden',
   }));
-
-  const handleAssignTest = (userId, mockId) => {
-    setSelectedMockForUser((prev) => ({
-      ...prev,
-      [userId]: mockId,
-    }));
-  };
-
-  // 3. Handler when user clicks "Assign" button
-  const confirmAssign = async (userId) => {
-    const mockId = selectedMockForUser[userId];
-    if (!mockId) return;
-
-    try {
-      // 1. Ensure you use backendUrl
-      // 2. DO NOT use "Bearer " if your backend verifyAdmin doesn't strip it
-      const response = await fetch(`${backendUrl}/api/admin/assign-mock-test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': localStorage.getItem('token') || '',
-        },
-        body: JSON.stringify({
-          userId,
-          mockTestId: mockId,
-        }),
-      });
-
-      const clonedResponse = response.clone();
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonErr) {
-        const text = await clonedResponse.text();
-        console.error('Response was not JSON:', text);
-        throw new Error('Server returned invalid response (Not Found or Server Error)');
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || `Server error: ${response.status}`);
-      }
-
-      alert('Mock test assigned successfully!');
-      // Optional: refresh data here
-      window.location.reload();
-
-    } catch (err) {
-      console.error('Assign error:', err);
-      alert(err.message || 'Something went wrong while assigning the test');
-    }
-  };
 
   const BadgeIcon = styled(Box)(({ theme, isNew }) => ({
     fontSize: 40,
@@ -175,17 +121,13 @@ const Hello = ({ darkMode }) => {
 
     try {
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
-      const isAdmin = decodedToken.role === 'admin';
-      setIsAdmin(isAdmin);
+      setIsAdmin(decodedToken.role === 'admin');
 
       const fetchData = async () => {
         setLoading(true);
         setError(null);
-
         try {
-          // ────────────────────────────────────────────────
-          // Base requests everyone needs
-          const baseRequests = [
+          const [userResponse, mockResponse, badgesResponse, rankResponse] = await Promise.all([
             axios.get(`${backendUrl}/api/user/profile`, {
               headers: { Authorization: token },
             }),
@@ -198,48 +140,15 @@ const Hello = ({ darkMode }) => {
             axios.get(`${backendUrl}/api/user/rank`, {
               headers: { Authorization: token },
             })
-          ];
+          ]);
 
-          // Add admin-only requests conditionally
-          if (isAdmin) {
-            baseRequests.push(
-              axios.get(`${backendUrl}/api/admin/users`, {
-                headers: { Authorization: token },
-              })
-            );
-          }
-
-          // Execute all requests in parallel
-          const responses = await Promise.all(baseRequests);
-
-          // Destructure safely
-          const [
-            userResponse,
-            mockResponse,
-            badgesResponse,
-            rankResponse,
-            usersResponse   // ← only exists if admin
-          ] = responses;
-
-          // Common state updates
           setUserData(userResponse.data);
-          setPurchasedTests(
-            Array.isArray(userResponse.data.purchasedTests)
-              ? userResponse.data.purchasedTests
-              : []
-          );
+          setPurchasedTests(Array.isArray(userResponse.data.purchasedTests) ? userResponse.data.purchasedTests : []);
           setMockTests(Array.isArray(mockResponse.data) ? mockResponse.data : []);
           setBadges(Array.isArray(badgesResponse.data) ? badgesResponse.data : []);
           setUserRank(rankResponse.data);
 
-          // Admin-only data
-          if (isAdmin) {
-            // Already-fetched admin users list
-            setUserStats(
-              Array.isArray(usersResponse?.data) ? usersResponse.data : []
-            );
-
-            // Your existing extra admin fetches
+          if (decodedToken.role === 'admin') {
             const [purchasedTestsResponse, submissionsResponse] = await Promise.all([
               axios.get(`${backendUrl}/api/admin/purchased-tests`, {
                 headers: { Authorization: token },
@@ -248,27 +157,16 @@ const Hello = ({ darkMode }) => {
                 headers: { Authorization: token },
               })
             ]);
-
-            setAllPurchasedTests(
-              Array.isArray(purchasedTestsResponse.data)
-                ? purchasedTestsResponse.data
-                : []
-            );
-            setAllSubmissions(
-              Array.isArray(submissionsResponse.data)
-                ? submissionsResponse.data
-                : []
-            );
+            setAllPurchasedTests(Array.isArray(purchasedTestsResponse.data) ? purchasedTestsResponse.data : []);
+            setAllSubmissions(Array.isArray(submissionsResponse.data) ? submissionsResponse.data : []);
           }
 
-          // Non-admin submissions
-          if (!isAdmin) {
+          if (decodedToken.role !== 'admin') {
             const submissionResponse = await axios.get(`${backendUrl}/api/submissions`, {
               headers: { Authorization: token },
             });
-            setSubmissions(submissionResponse.data || []);
+            setSubmissions(submissionResponse.data);
           }
-
         } catch (error) {
           console.error('Error fetching data:', error);
           setError('Failed to fetch data. Please try again later.');
@@ -284,7 +182,7 @@ const Hello = ({ darkMode }) => {
       navigate('/login');
       setLoading(false);
     }
-  }, [token, navigate, backendUrl]);   // ← added backendUrl if it's not stable
+  }, [token, navigate]);
 
   const handleTabChange = (event, newIndex) => {
     setTabIndex(newIndex);
@@ -404,26 +302,49 @@ const Hello = ({ darkMode }) => {
   };
 
   const getMockAccuracy = (mockId) => {
-    const submission = submissions.find(s => s.mock_test_id.toString() === mockId.toString()) ||
-      allSubmissions.find(s => s.mock_test_id.toString() === mockId.toString());
-
-    if (!submission || !submission.answers) return 0;
+    //console.log(`Calculating accuracy for mockId: ${mockId}`);
+    const submission = allSubmissions.find((sub) => sub.mock_test_id.toString() === mockId.toString()) ||
+      submissions.find((sub) => sub.mock_test_id.toString() === mockId.toString());
+    if (!submission) {
+      console.log(`No submission found for mockId: ${mockId}`);
+      return 0;
+    }
+    //console.log('Submission found:', submission);
 
     const mockTest = [...mockTests, ...purchasedTests].find(
-      (test) => test.id.toString() === mockId.toString()
+      (test) => test.id.toString() === submission.mock_test_id.toString()
     );
+    if (!mockTest) {
+      console.log(`No mock test found for mockId: ${mockId}`);
+      return 0;
+    }
+    // console.log('Mock test found:', mockTest);
 
-    if (!mockTest) return 0;
-
+    const userAnswers = submission.answers || {};
+    //console.log('User answers:', userAnswers);
     let correct = 0;
-    mockTest.questions.forEach((q, idx) => {
-      const uAns = submission.answers[idx.toString()];
-      if (uAns?.toString().trim().toLowerCase() === q.correctAnswer?.toString().trim().toLowerCase()) {
-        correct++;
+    const totalQuestions = mockTest.questions.length;
+    //console.log(`Total questions: ${totalQuestions}`);
+
+    mockTest.questions.forEach((question, index) => {
+      const userAnswer = userAnswers[index.toString()];
+      const correctAnswer = question.correctAnswer;
+      // console.log(`Question ${index}: userAnswer=${userAnswer}, correctAnswer=${correctAnswer}`);
+      if (userAnswer != null && userAnswer !== '') {
+        if (userAnswer.toString().trim().toLowerCase() === correctAnswer.toString().trim().toLowerCase()) {
+          correct += 1;
+          //console.log(`Question ${index}: Correct`);
+        } else {
+          // console.log(`Question ${index}: Incorrect`);
+        }
+      } else {
+        // console.log(`Question ${index}: Not answered`);
       }
     });
 
-    return Math.round((correct / mockTest.questions.length) * 100);
+    const accuracy = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
+    //console.log(`Accuracy: ${accuracy}% (Correct: ${correct}, Total: ${totalQuestions})`);
+    return accuracy;
   };
 
   const getCorrectCount = (mockId) => {
@@ -458,185 +379,7 @@ const Hello = ({ darkMode }) => {
     );
     return mockTest ? mockTest.questions.length : 0;
   };
-  const getCertificateTier = (accuracy) => {
-    const score = Number(accuracy);
-    if (score >= 90) {
-      return {
-        tier: 'GOLD',
-        label: 'Certificate of Excellence',
-        primary: [184, 134, 11],    // Deep Gold
-        secondary: [255, 215, 0],   // Bright Gold
-        accent: [255, 245, 200],    // Pale Gold
-      };
-    }
-    if (score >= 80) {
-      return {
-        tier: 'SILVER',
-        label: 'Certificate of Distinction',
-        primary: [80, 80, 80],      // Dark Steel
-        secondary: [192, 192, 192], // Bright Silver
-        accent: [240, 240, 240],    // White Silver
-      };
-    }
-    return {
-      tier: 'BRONZE',
-      label: 'Certificate of Achievement',
-      primary: [100, 50, 20],     // Deep Bronze
-      secondary: [176, 141, 87],  // Aged Bronze
-      accent: [230, 190, 150],    // Light Copper
-    };
-  };
 
-  const generateCertificate = (topic, userName, accuracy) => {
-    const config = getCertificateTier(accuracy);
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-
-    // 1. MAIN BACKGROUND
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-    // 2. THE TOP-LEFT BLACK HEADER
-    doc.setFillColor(25, 25, 25);
-    doc.moveTo(0, 0);
-    doc.lineTo(145, 0);
-    doc.lineTo(0, 110);
-    doc.fill();
-
-    // 3. THE TOP-RIGHT "PEELED" EFFECT
-    // Darker fold
-    doc.setFillColor(20, 20, 20);
-    doc.moveTo(pageWidth, 0);
-    doc.lineTo(pageWidth - 80, 0);
-    doc.lineTo(pageWidth, 50);
-    doc.fill();
-    // Metallic highlight line on the fold
-    doc.setDrawColor(...config.secondary);
-    doc.setLineWidth(1.5);
-    doc.line(pageWidth - 80, 0, pageWidth, 50);
-
-    // 4. THE LUXURY DIAGONAL STRIPES
-    // Stripe 1 (Dark Metallic)
-    doc.setFillColor(...config.primary);
-    doc.moveTo(0, 110);
-    doc.lineTo(145, 0);
-    doc.lineTo(165, 0);
-    doc.lineTo(0, 130);
-    doc.fill();
-
-    // Stripe 2 (Bright Metallic)
-    doc.setFillColor(...config.secondary);
-    doc.moveTo(0, 130);
-    doc.lineTo(165, 0);
-    doc.lineTo(185, 0);
-    doc.lineTo(0, 150);
-    doc.fill();
-
-    // 5. BOTTOM ACCENT BAR
-    doc.setFillColor(25, 25, 25);
-    doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
-    doc.setFillColor(...config.secondary);
-    doc.rect(0, pageHeight - 16, pageWidth, 1, 'F');
-
-    // 6. THE CENTER SEAL (TOP)
-    const sealX = pageWidth / 2 + 15; // Shifted slightly right to match image balance
-    const sealY = 35;
-
-    // Ribbon Tails
-    doc.setFillColor(...config.primary);
-    doc.triangle(sealX - 12, sealY + 10, sealX - 18, sealY + 35, sealX - 5, sealY + 25, 'F');
-    doc.triangle(sealX + 12, sealY + 10, sealX + 18, sealY + 35, sealX + 5, sealY + 25, 'F');
-
-    // Sunburst Seal
-    doc.setFillColor(...config.secondary);
-    for (let i = 0; i < 40; i++) {
-      let angle = (i * 9) * (Math.PI / 180);
-      let r = i % 2 === 0 ? 20 : 17;
-      let x = sealX + r * Math.cos(angle);
-      let y = sealY + r * Math.sin(angle);
-      if (i === 0) doc.moveTo(x, y); else doc.lineTo(x, y);
-    }
-    doc.fill();
-
-    // Inner Seal Details
-    doc.setFillColor(...config.accent);
-    doc.circle(sealX, sealY, 14, 'F');
-    doc.setDrawColor(...config.primary);
-    doc.setLineWidth(0.5);
-    doc.circle(sealX, sealY, 12, 'D');
-
-    doc.setTextColor(...config.primary);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(config.tier, sealX, sealY - 1, { align: 'center' });
-    doc.setFontSize(6);
-    doc.text('AWARD', sealX, sealY + 3, { align: 'center' });
-
-    // 7. TEXT CONTENT
-    // Top-Left "CERTIFICATE" with Ornate flourishes
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('times', 'normal');
-    doc.setFontSize(28);
-    doc.text('CERTIFICATE', 25, 45);
-
-    // Decorative lines for the header
-    doc.setDrawColor(...config.secondary);
-    doc.setLineWidth(0.5);
-    doc.line(25, 50, 85, 50);
-    doc.circle(25, 50, 0.8, 'F');
-    doc.circle(85, 50, 0.8, 'F');
-
-    // Company / Topic Name
-    doc.setTextColor(40, 40, 40);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text('TECHMOCKS ACADEMY', pageWidth / 2 + 40, 85, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(config.label.toUpperCase(), pageWidth / 2 + 40, 93, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.setTextColor(60, 60, 60);
-    doc.text('THIS CERTIFICATE IS PROUDLY PRESENTED TO', pageWidth / 2 + 40, 110, { align: 'center' });
-
-    // Recipient Name (The focus)
-    doc.setTextColor(...config.primary);
-    doc.setFont('times', 'bolditalic');
-    doc.setFontSize(54);
-    doc.text(userName || 'Pratham', pageWidth / 2 + 40, 135, { align: 'center' });
-
-    // Main Recognition Text
-    doc.setTextColor(80, 80, 80);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    const mainText = `In recognition of outstanding achievement and excellence in "${topic || 'Technical Assessment'}"`;
-    const splitMain = doc.splitTextToSize(mainText, 140);
-    doc.text(splitMain, pageWidth / 2 + 40, 150, { align: 'center' });
-
-    // 8. FOOTER - DATE & SIGNATURE
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(55, 182, 95, 182); // Date Line
-    doc.line(pageWidth - 95, 182, pageWidth - 55, 182); // Sign Line
-
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text('DATE OF ISSUANCE', 75, 188, { align: 'center' });
-    doc.text('DIRECTOR OF ASSESSMENT', pageWidth - 75, 188, { align: 'center' });
-
-    // Add the actual date
-    doc.setTextColor(40, 40, 40);
-    doc.setFont('helvetica', 'bold');
-    doc.text(new Date().toLocaleDateString(), 75, 180, { align: 'center' });
-
-    // 9. SAVE
-    doc.save(`${config.tier}_Certificate_${userName}.pdf`);
-  };
   const categoryStats = !isAdmin ? getCategoryStats() : [];
   const mockTestStats = isAdmin ? getMockTestStats() : null;
 
@@ -1199,9 +942,19 @@ const Hello = ({ darkMode }) => {
                                   variant="contained"
                                   color="success"
                                   sx={{ borderRadius: 4, px: 3 }}
-                                  onClick={() => generateCertificate(mock.title, userData?.name, accuracy)}
+                                  onClick={async () => {
+                                    await generateCertificatePDF({
+                                      name: userData?.name || "Student Name",
+                                      course: mock.title,
+                                      score: accuracy,
+                                      // tier: 'gold',           // optional — if you want to force tier
+                                      // date: "March 15, 2025", // optional
+                                      // issuer: "Techmocks Academy",
+                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                    });
+                                  }}
                                 >
-                                  Get {accuracy === 100 ? 'Gold' : accuracy >= 90 ? 'Silver' : 'Bronze'} Certificate
+                                  Get Certificate
                                 </Button>
                               )}
                               <Button
@@ -1411,10 +1164,20 @@ const Hello = ({ darkMode }) => {
                             )}
                             {accuracy >= 80 && (
                               <Button
-                                variant='contained'
-                                color='success'
+                                variant="contained"
+                                color="success"
                                 sx={{ borderRadius: 4, px: 3 }}
-                                onClick={() => generateCertificate(mock.title, userData?.name, accuracy)}
+                                onClick={async () => {
+                                  await generateCertificatePDF({
+                                    name: userData?.name || "Student Name",
+                                    course: mock.title,
+                                    score: accuracy,
+                                    // tier: 'gold',           // optional — if you want to force tier
+                                    // date: "March 15, 2025", // optional
+                                    // issuer: "Techmocks Academy",
+                                    certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                  });
+                                }}
                               >
                                 Get Certificate
                               </Button>
@@ -1461,78 +1224,85 @@ const Hello = ({ darkMode }) => {
           {isAdmin ? (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" fontWeight="bold" color={textPrimary}>
-                  Assign Mock Tests
+                <Typography variant='h5' fontWeight='bold' color={textPrimary}>
+                  User Management
                 </Typography>
-                <Button variant="contained" onClick={handleViewUsers} sx={{ borderRadius: 2 }}>
-                  Refresh
+                <Button variant='contained' onClick={handleViewUsers} sx={{ borderRadius: 2 }}>
+                  View All Users
                 </Button>
               </Box>
-
-              <TableContainer component={Paper} sx={{ boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}>
+              <TableContainer
+                component={Paper}
+                sx={{ boxShadow: `0 2px 4px ${borderColor}`, bgcolor: theme.palette.background.default }}
+              >
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell><Typography fontWeight="bold">User</Typography></TableCell>
-                      <TableCell><Typography fontWeight="bold">Email</Typography></TableCell>
-                      <TableCell><Typography fontWeight="bold">Assigned Tests</Typography></TableCell>
-                      <TableCell align="right"><Typography fontWeight="bold">Assign New</Typography></TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          User
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          Email
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          Role
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          Tests Taken
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          Last Login
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight='bold' color={textPrimary}>
+                          Actions
+                        </Typography>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {userStats.slice(0, 10).map((user) => {
-                      // Use _id instead of id
-                      const userId = user._id;
-
-                      return (
-                        <TableRow key={userId} hover>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
-                                {user.name?.charAt(0) || '?'}
-                              </Avatar>
-                              {user.name || '—'}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            {/* ... existing assigned mocks logic ... */}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Select
-                              size="small"
-                              // Fix: bind value to state so it doesn't look empty
-                              value={selectedMockForUser[userId] || ""}
-                              onChange={(e) => handleAssignTest(userId, e.target.value)}
-                              displayEmpty
-                              sx={{ minWidth: 180, mr: 1 }}
-                            >
-                              <MenuItem value="" disabled>Select test...</MenuItem>
-                              {mockTests
-                                .filter((m) => !user.assignedMocks?.some((am) => am.id === m.id))
-                                .map((mock) => (
-                                  <MenuItem key={mock.id} value={mock.id}>
-                                    {mock.title}
-                                  </MenuItem>
-                                ))}
-                            </Select>
-                            <Button
-                              variant="contained"
-                              size="small"
-                              // Use userId (_id) here
-                              disabled={!selectedMockForUser[userId]}
-                              onClick={() => confirmAssign(userId)}
-                            >
-                              Assign
+                    {userStats.slice(0, 10).map((user, index) => (
+                      <TableRow
+                        key={index}
+                        sx={{ '&:hover': { bgcolor: darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' } }}
+                      >
+                        <TableCell sx={{ color: textPrimary }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>{user.name.charAt(0)}</Avatar>
+                            {user.name}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ color: textPrimary }}>{user.email}</TableCell>
+                        <TableCell sx={{ color: textPrimary }}>{user.role || 'user'}</TableCell>
+                        <TableCell sx={{ color: textPrimary }}>{user.testsTaken || 0}</TableCell>
+                        <TableCell sx={{ color: textPrimary }}>
+                          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction='row' spacing={1}>
+                            <Button size='small' variant='outlined' sx={{ borderRadius: 2 }}>
+                              Edit
                             </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-
+                            <Button size='small' variant='outlined' color='error' sx={{ borderRadius: 2 }}>
+                              Delete
+                            </Button>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                     {userStats.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ color: textSecondary, py: 4 }}>
+                        <TableCell colSpan={6} align='center' sx={{ color: textSecondary }}>
                           No users found
                         </TableCell>
                       </TableRow>
@@ -1618,10 +1388,20 @@ const Hello = ({ darkMode }) => {
                               )}
                               {accuracy >= 80 && (
                                 <Button
-                                  variant='contained'
-                                  color='success'
+                                  variant="contained"
+                                  color="success"
                                   sx={{ borderRadius: 4, px: 3 }}
-                                  onClick={() => generateCertificate(mock.title, userData?.name, accuracy)}
+                                  onClick={async () => {
+                                    await generateCertificatePDF({
+                                      name: userData?.name || "Student Name",
+                                      course: mock.title,
+                                      score: accuracy,
+                                      // tier: 'gold',           // optional — if you want to force tier
+                                      // date: "March 15, 2025", // optional
+                                      // issuer: "Techmocks Academy",
+                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                    });
+                                  }}
                                 >
                                   Get Certificate
                                 </Button>

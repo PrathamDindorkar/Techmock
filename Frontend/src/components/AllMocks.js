@@ -78,7 +78,7 @@ const AllMocks = () => {
   const getCategoryColors = () => ({
     'Science': isDarkMode ? 'linear-gradient(135deg, #6b48ff 0%, #a239ca 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     'Mathematics': isDarkMode ? 'linear-gradient(135deg, #00c6ab 0%, #0077b6 100%)' : 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
-    'Languages': isDarkMode ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%)' : 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
+    'Languages': isDarkMode ? 'linear-gradient(135deg, #003366 0%, #0055aa 100%)' : 'linear-gradient(135deg, #004080 0%, #009de0 100%)',
     'History': isDarkMode ? 'linear-gradient(135deg, #feca57 0%, #ff9f43 100%)' : 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
     'General Knowledge': isDarkMode ? 'linear-gradient(135deg, #48dbfb 0%, #0abde3 100%)' : 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
   });
