@@ -1158,8 +1158,8 @@ const Hello = ({ darkMode }) => {
                               </Button>
                             )}
                             {submissions.some((sub) => sub.mock_test_id.toString() === mock.id.toString()) && (
-                              <Button variant='outlined' sx={{ borderRadius: 4, px: 3 }} onClick={() => navigate(`/results/${mock.id}`)}>
-                                View Results ({accuracy}%)
+                              <Button variant='outlined' sx={{ borderRadius: 4, px: 3 }} >
+                                Your Score: ({accuracy}%)
                               </Button>
                             )}
                             {accuracy >= 80 && (
@@ -1382,8 +1382,8 @@ const Hello = ({ darkMode }) => {
                                 </Button>
                               )}
                               {submissions.some((sub) => sub.mock_test_id.toString() === mock.id.toString()) && (
-                                <Button variant='outlined' sx={{ borderRadius: 4, px: 3 }} onClick={() => navigate(`/results/${mock.id}`)}>
-                                  View Results ({accuracy}%)
+                                <Button variant='outlined' sx={{ borderRadius: 4, px: 3 }}>
+                                  Your Score: ({accuracy}%)
                                 </Button>
                               )}
                               {accuracy >= 80 && (
