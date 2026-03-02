@@ -19,16 +19,17 @@ import {
   Menu,
   MenuItem,
   Badge,
+  alpha,
 } from '@mui/material';
-import { ThemeProvider, createTheme, alpha } from '@mui/material/styles';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
-import ForumIcon from '@mui/icons-material/Forum';
 import NightsStayIcon from '@mui/icons-material/NightsStay';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import ForumIcon from '@mui/icons-material/Forum';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -42,7 +43,7 @@ import Footer from "./Footer";
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
@@ -53,348 +54,299 @@ const Layout = () => {
   const token = localStorage.getItem('token');
   const email = localStorage.getItem('email');
   const role = localStorage.getItem('role');
-  const username = email ? email.split('@')[0] : 'User';
+  const username = email ? email.split('@')[0] : 'Guest';
+
   const isMobile = useMediaQuery('(max-width:900px)');
+  const isVerySmall = useMediaQuery('(max-width:600px)');
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-  // Map rank to number
+  // ── Rank helpers ──
   const getRankNumber = (rank) => {
-    const rankMap = {
-      Beginner: 1,
-      Intermediate: 2,
-      Advanced: 3,
-      Expert: 4,
-      Master: 5,
-    };
-    return rankMap[rank] || 1;
+    const map = { Beginner: 1, Intermediate: 2, Advanced: 3, Expert: 4, Master: 5 };
+    return map[rank] || 1;
   };
 
-  // Load dark mode preference and fetch rank/badges (only if logged in)
+  const getRankColor = (rank) => {
+    const colors = {
+      Master: '#FFD700',
+      Expert: '#C0C0C0',
+      Advanced: '#CD7F32',
+      Intermediate: '#4CAF50',
+      Beginner: '#2196F3',
+    };
+    return colors[rank] || '#2196F3';
+  };
+
+  // ── Data fetching ──
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
+    localStorage.setItem('darkMode', darkMode);
 
-    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-
-    // Only fetch user-specific data if logged in
     if (token) {
-      const fetchUserData = async () => {
+      const fetchData = async () => {
         try {
           const [rankRes, badgesRes] = await Promise.all([
             axios.get(`${backendUrl}/api/user/rank`, { headers: { Authorization: token } }),
             axios.get(`${backendUrl}/api/user/badges`, { headers: { Authorization: token } }),
           ]);
-
           setUserRank(rankRes.data || { rank: 'Beginner', points: 0 });
           setBadges(Array.isArray(badgesRes.data) ? badgesRes.data : []);
         } catch (err) {
-          console.error('Failed to load user data:', err);
-          setError('Failed to load profile data. Please log in again.');
-          // Optional: localStorage.clear(); navigate('/login');
-          // ^^^ Comment out if you don't want auto-logout on fetch fail
+          console.error('User data fetch failed:', err);
+          setError('Failed to load profile. Please try logging in again.');
         }
       };
-
-      fetchUserData();
+      fetchData();
     }
-  }, [token, backendUrl]);
+  }, [token, backendUrl, darkMode]);
 
-  // Handle scroll effects
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Toggle dark mode
-  const handleDarkModeToggle = () => {
-    setDarkMode((prev) => {
-      localStorage.setItem('darkMode', !prev);
-      return !prev;
-    });
-  };
+  // ── Handlers ──
+  const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const toggleDrawer = () => setMobileOpen((prev) => !prev);
 
-  const handleLogout = () => {
+  const logout = () => {
     localStorage.clear();
     navigate('/home');
-    handleProfileMenuClose();
-    if (isMobile) setMobileOpen(false);
-  };
-
-  const handleHome = () => {
-    navigate('/hello');
-    if (isMobile) setMobileOpen(false);
-  };
-
-  const handleAllMocks = () => {
-    navigate('/mocks');
-    if (isMobile) setMobileOpen(false);
-  };
-
-  const handleCommunity = () => {
-    navigate('/community');           
-    if (isMobile) setMobileOpen(false);
-  };
-
-  const goToAdminPortal = () => {
-    if (role === 'admin') {
-      navigate('/admin');
-    } else {
-      alert('You do not have access to the Admin Portal');
-    }
-    if (isMobile) setMobileOpen(false);
-  };
-
-  const handleProfileMenuOpen = (event) => {
-    setProfileMenuAnchor(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
     setProfileMenuAnchor(null);
+    setMobileOpen(false);
   };
 
-  const handleProfileClick = () => {
-    navigate('/profile');
-    handleProfileMenuClose();
-    if (isMobile) setMobileOpen(false);
+  const goTo = (path) => {
+    navigate(path);
+    setMobileOpen(false);
   };
 
-  const handleCartClick = () => {
-    navigate('/cart');
-    if (isMobile) setMobileOpen(false);
-  };
+  const openProfileMenu = (e) => setProfileMenuAnchor(e.currentTarget);
+  const closeProfileMenu = () => setProfileMenuAnchor(null);
 
-  // Function to get rank color
-  const getRankColor = (rank) => {
-    switch (rank) {
-      case 'Master': return '#FFD700';
-      case 'Expert': return '#C0C0C0';
-      case 'Advanced': return '#CD7F32';
-      case 'Intermediate': return '#4CAF50';
-      default: return '#2196F3';
-    }
-  };
-
-  // ── Navigation Items ──
+  // ── Navigation items ──
   const navItems = [
-    { text: 'Home', icon: <HomeIcon />, onClick: handleHome, path: '/hello' },
-    { text: 'All Mocks', icon: <AssignmentIcon />, onClick: handleAllMocks, path: '/mocks' },
-    {text: 'TechMocks Community',onClick: handleCommunity, icon: <ForumIcon/>, path: '/mocks'},
+    { label: 'Home', icon: <HomeIcon />, path: '/hello', action: () => goTo('/hello') },
+    { label: 'All Mocks', icon: <AssignmentIcon />, path: '/mocks', action: () => goTo('/mocks') },
+    { label: 'Community', icon: <ForumIcon />, path: '/community', action: () => goTo('/community') },
   ];
 
-  // Add Cart only for logged-in users
   if (token) {
-    navItems.push({ text: 'Cart', icon: <ShoppingCartIcon />, onClick: handleCartClick, path: '/cart' });
+    navItems.push({ label: 'Cart', icon: <ShoppingCartIcon />, path: '/cart', action: () => goTo('/cart') });
   }
 
   if (role === 'admin') {
     navItems.push({
-      text: 'Admin Portal',
+      label: 'Admin',
       icon: <AdminPanelSettingsIcon />,
-      onClick: goToAdminPortal,
       path: '/admin',
+      action: () => goTo('/admin'),
     });
   }
 
-  // Theme configuration
+  // ── Theme ──
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
-      primary: {
-        main: '#2196f3',
-        light: '#64b5f6',
-        dark: '#1976d2',
-      },
-      secondary: {
-        main: '#f50057',
-        light: '#ff4081',
-        dark: '#c51162',
-      },
+      primary: { main: '#2196f3' },
+      secondary: { main: '#f50057' },
       background: {
-        default: darkMode ? '#121212' : '#f5f5f7',
-        paper: darkMode ? '#1e1e1e' : '#ffffff',
+        default: darkMode ? '#0f1217' : '#f8fafc',
+        paper: darkMode ? '#1a1f2e' : '#ffffff',
       },
     },
     typography: {
-      fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
-      button: {
-        textTransform: 'none',
-        fontWeight: 500,
-      },
+      fontFamily: '"Poppins", "Roboto", sans-serif',
+      button: { textTransform: 'none', fontWeight: 600 },
     },
-    shape: {
-      borderRadius: 8,
-    },
+    shape: { borderRadius: 12 },
     components: {
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            boxShadow: 'none',
-          },
-        },
-      },
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            borderRadius: 8,
-            padding: '8px 16px',
-          },
-        },
-      },
+      MuiAppBar: { styleOverrides: { root: { boxShadow: 'none' } } },
     },
   });
 
-  // Mobile drawer content (only shown when logged in)
-  const drawer = (
-    <Box sx={{ height: '100%', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" fontWeight={700}>TechMocks</Typography>
-        <IconButton onClick={handleDrawerToggle}><CloseIcon /></IconButton>
+  // ── Mobile Drawer Content ──
+  const drawerContent = (
+    <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" fontWeight={800} color="primary">TechMocks</Typography>
+        <IconButton onClick={toggleDrawer}><CloseIcon /></IconButton>
       </Box>
 
       <Divider />
 
-      {token && (
+      {token ? (
         <>
-          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
             <Badge
               overlap="circular"
-              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-              badgeContent={<StarIcon sx={{ fontSize: 16, color: '#FFD700' }} />}
+              badgeContent={<StarIcon sx={{ fontSize: 14, color: getRankColor(userRank.rank) }} />}
             >
-              <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 48, height: 48 }}>
+              <Avatar sx={{ width: 56, height: 56, bgcolor: 'primary.main', fontWeight: 'bold' }}>
                 {getRankNumber(userRank.rank)}
               </Avatar>
             </Badge>
             <Box>
-              <Typography variant="subtitle1" fontWeight={600}>{username}</Typography>
+              <Typography variant="subtitle1" fontWeight={700}>{username}</Typography>
               <Typography variant="body2" color="text.secondary">
                 {userRank.rank} • {userRank.points} pts
               </Typography>
             </Box>
           </Box>
 
-          <Box sx={{ px: 2, pb: 2 }}>
-            <Typography variant="body2" fontWeight="bold" mb={1}>Badges</Typography>
-            {badges.length > 0 ? (
+          {badges.length > 0 && (
+            <Box sx={{ px: 3, pb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>Badges</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {badges.slice(0, 3).map((b, i) => (
-                  <Typography key={i} variant="caption" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.15), borderRadius: 1, px: 1, py: 0.3 }}>
+                {badges.slice(0, 4).map((b, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      borderRadius: 1,
+                      px: 1.2,
+                      py: 0.4,
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                    }}
+                  >
                     {b.name}
-                  </Typography>
+                  </Box>
                 ))}
+                {badges.length > 4 && (
+                  <Typography variant="caption" color="text.secondary">+{badges.length - 4}</Typography>
+                )}
               </Box>
-            ) : (
-              <Typography variant="caption" color="text.secondary">No badges yet</Typography>
-            )}
-          </Box>
+            </Box>
+          )}
 
           <Divider />
         </>
+      ) : (
+        <Box sx={{ p: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>Welcome, Guest</Typography>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => goTo('/login')}
+            sx={{ mb: 1.5 }}
+          >
+            Login
+          </Button>
+          <Button fullWidth variant="outlined" onClick={() => goTo('/register')}>
+            Register
+          </Button>
+        </Box>
       )}
 
       <List sx={{ flexGrow: 1 }}>
         {navItems.map((item) => (
           <ListItem
             button
-            key={item.text}
-            onClick={item.onClick}
+            key={item.label}
             selected={location.pathname === item.path}
+            onClick={item.action}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+            <ListItemText primary={item.label} />
           </ListItem>
         ))}
 
-        {token ? (
+        {token && (
           <>
-            <ListItem button onClick={handleProfileClick}>
+            <Divider />
+            <ListItem button onClick={() => goTo('/profile')}>
               <ListItemIcon><AccountCircleIcon /></ListItemIcon>
               <ListItemText primary="Profile" />
             </ListItem>
-            <ListItem button onClick={handleLogout} sx={{ color: 'error.main' }}>
+            <ListItem button onClick={logout} sx={{ color: 'error.main' }}>
               <ListItemIcon sx={{ color: 'error.main' }}><LogoutIcon /></ListItemIcon>
               <ListItemText primary="Logout" />
             </ListItem>
           </>
-        ) : (
-          <ListItem button onClick={() => navigate('/login')}>
-            <ListItemIcon><AccountCircleIcon /></ListItemIcon>
-            <ListItemText primary="Login" />
-          </ListItem>
         )}
       </List>
 
-      <Box sx={{ p: 2, mt: 'auto' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.08) }}>
-          <Typography variant="body2">{darkMode ? 'Dark Mode' : 'Light Mode'}</Typography>
-          <IconButton onClick={handleDarkModeToggle}>
-            {darkMode ? <WbSunnyIcon /> : <NightsStayIcon />}
-          </IconButton>
-        </Box>
+      <Box sx={{ p: 3, mt: 'auto' }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={darkMode ? <WbSunnyIcon /> : <NightsStayIcon />}
+          onClick={toggleDarkMode}
+        >
+          {darkMode ? 'Light Mode' : 'Dark Mode'}
+        </Button>
       </Box>
     </Box>
   );
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', color: 'text.primary', transition: 'background-color 0.3s ease' }}>
-        {/* Animated Background Blobs */}
-        <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-          <motion.div animate={{ x: [0, 100, 0], y: [0, -100, 0], scale: [1, 1.2, 1] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-            style={{ position: 'absolute', top: '10%', left: '10%', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(0,212,255,0.15) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
-          <motion.div animate={{ x: [0, -150, 0], y: [0, 100, 0], scale: [1, 1.3, 1] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-            style={{ position: 'absolute', bottom: '10%', right: '10%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(138,43,226,0.15) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
-          <motion.div animate={{ x: [0, 80, 0], y: [0, -80, 0], scale: [1, 1.1, 1] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-            style={{ position: 'absolute', top: '50%', left: '50%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(255,107,107,0.1) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(40px)' }} />
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+        {/* Background blobs – optional, can remove if performance issue */}
+        <Box sx={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }}>
+          <motion.div
+            animate={{ x: [0, 120, 0], y: [0, -120, 0], scale: [1, 1.15, 1] }}
+            transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              position: 'absolute',
+              top: '15%',
+              left: '8%',
+              width: 480,
+              height: 480,
+              background: 'radial-gradient(circle, rgba(33,150,243,0.12) 0%, transparent 70%)',
+              borderRadius: '50%',
+              filter: 'blur(50px)',
+            }}
+          />
+          <motion.div
+            animate={{ x: [0, -140, 0], y: [0, 140, 0], scale: [1, 1.2, 1] }}
+            transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              position: 'absolute',
+              bottom: '12%',
+              right: '10%',
+              width: 560,
+              height: 560,
+              background: 'radial-gradient(circle, rgba(156,39,176,0.10) 0%, transparent 70%)',
+              borderRadius: '50%',
+              filter: 'blur(60px)',
+            }}
+          />
         </Box>
 
-        {/* Navbar */}
+        {/* ── Navbar ── */}
         <AppBar
-          component={motion.div}
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
           position="sticky"
           sx={{
-            backdropFilter: 'blur(10px)',
-            backgroundColor: alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7),
-            color: 'text.primary',
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-            transition: 'all 0.3s ease',
+            backdropFilter: 'blur(12px)',
+            bgcolor: alpha(theme.palette.background.paper, darkMode ? 0.82 : 0.78),
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            transition: 'all 0.3s',
           }}
-          elevation={0}
         >
-          <Toolbar sx={{ justifyContent: 'space-between', padding: { xs: '0 16px', sm: '0 24px' } }}>
-            {/* Left: Logo + Mobile Menu (only if logged in) */}
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isMobile && token && (
-                <IconButton color="inherit" onClick={handleDrawerToggle} sx={{ mr: 2 }}>
+          <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 4 } }}>
+            {/* Logo + Mobile Menu Button */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {isMobile && (
+                <IconButton color="inherit" onClick={toggleDrawer} edge="start">
                   <MenuIcon />
                 </IconButton>
               )}
               <Link
-                component={motion.a}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/home')}
-                sx={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                onClick={() => goTo('/home')}
+                sx={{ textDecoration: 'none', cursor: 'pointer' }}
               >
                 <Typography
                   variant="h6"
+                  fontWeight={900}
                   sx={{
-                    fontWeight: 1000,
-                    background: alpha(theme.palette.background.paper, darkMode ? 0.8 : 0.7),
+                    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
                     WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: darkMode ? theme.palette.primary.dark : theme.palette.primary.light,
-                    letterSpacing: '0.5px',
+                    WebkitTextFillColor: 'transparent',
+                    letterSpacing: '-0.5px',
                   }}
                 >
                   TechMocks
@@ -402,215 +354,194 @@ const Layout = () => {
               </Link>
             </Box>
 
-            {/* Center: Navigation Links (only desktop + logged in) */}
+            {/* Desktop Nav (hidden on mobile) */}
             {!isMobile && token && (
-              <Box sx={{ display: 'flex', gap: { xs: 1, md: 2 }, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-                {navItems.map((item, index) => (
+              <Box sx={{ display: 'flex', gap: 1.5, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+                {navItems.map((item) => (
                   <Button
-                    key={item.text}
-                    component={motion.button}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
+                    key={item.label}
                     color="inherit"
-                    onClick={item.onClick}
                     startIcon={item.icon}
+                    onClick={item.action}
                     sx={{
-                      mx: 1,
+                      color: darkMode ? 'white' : 'text.primary',          // ← explicit contrast
+                      fontWeight: location.pathname === item.path ? 700 : 500,
+                      borderRadius: 2,
                       px: 2,
-                      py: 1,
-                      borderRadius: '10px',
-                      fontWeight: location.pathname === item.path ? 600 : 400,
-                      '&::after': location.pathname === item.path ? {
+                      minWidth: 110,
+                      position: 'relative',
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      },
+                      '&::after': location.pathname === item.path && {
                         content: '""',
                         position: 'absolute',
-                        bottom: '5px',
+                        bottom: 6,
                         left: '20%',
                         width: '60%',
-                        height: '3px',
-                        backgroundColor: scrolled ? theme.palette.primary.main : 'white',
-                        borderRadius: '3px',
-                      } : {},
+                        height: 3,
+                        bgcolor: darkMode ? 'primary.light' : 'primary.main',  // better visibility
+                        borderRadius: 2,
+                      },
                     }}
                   >
-                    {item.text}
+                    {item.label}
                   </Button>
                 ))}
               </Box>
             )}
-
-            {/* Right: Dark Mode + Login/Profile */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
-              {/* Dark Mode Toggle */}
+            {/* Right side – compact on mobile */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 } }}>
+              {/* Dark Mode Toggle – always visible */}
               <IconButton
-                component={motion.button}
-                whileHover={{ scale: 1.1, rotate: darkMode ? 0 : 180 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleDarkModeToggle}
-                sx={{
-                  bgcolor: alpha(scrolled ? theme.palette.action.active : '#fff', 0.1),
-                  '&:hover': { bgcolor: alpha(scrolled ? theme.palette.action.active : '#fff', 0.2) },
-                }}
+                onClick={toggleDarkMode}
+                sx={{ color: 'text.primary' }}
               >
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={darkMode ? 'dark' : 'light'}
+                    key={darkMode ? 'sun' : 'moon'}
                     initial={{ rotate: -30, opacity: 0 }}
                     animate={{ rotate: 0, opacity: 1 }}
                     exit={{ rotate: 30, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.25 }}
                   >
                     {darkMode ? <WbSunnyIcon /> : <NightsStayIcon />}
                   </motion.div>
                 </AnimatePresence>
               </IconButton>
 
-              {/* Conditional: Login Button OR Profile */}
               {token ? (
-                <>
-                  {!isMobile && (
-                    <Button
-                      component={motion.button}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={handleProfileMenuOpen}
-                      color="inherit"
-                      endIcon={<KeyboardArrowDownIcon />}
-                      startIcon={
-                        <Badge
-                          overlap="circular"
-                          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                          badgeContent={<StarIcon sx={{ fontSize: 16, color: getRankColor(userRank.rank) }} />}
-                        >
-                          <Avatar
-                            sx={{
-                              width: 28,
-                              height: 28,
-                              bgcolor: theme.palette.primary.main,
-                              color: '#fff',
-                              fontSize: '0.875rem',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            {getRankNumber(userRank.rank)}
-                          </Avatar>
-                        </Badge>
-                      }
-                      sx={{
-                        ml: 1,
-                        borderRadius: '30px',
-                        bgcolor: alpha(scrolled ? theme.palette.action.active : '#fff', 0.1),
-                        '&:hover': { bgcolor: alpha(scrolled ? theme.palette.action.active : '#fff', 0.2) },
-                        px: 2,
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}>
-                        {username}
-                      </Typography>
-                    </Button>
-                  )}
-
-                  {/* Profile Dropdown Menu */}
-                  <Menu
-                    anchorEl={profileMenuAnchor}
-                    open={Boolean(profileMenuAnchor)}
-                    onClose={handleProfileMenuClose}
-                    PaperProps={{ sx: { width: 220, mt: 1.5, boxShadow: theme.shadows[8], borderRadius: '12px' } }}
-                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                  >
-                    <Box sx={{ pt: 2, pb: 1, px: 2 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{username}</Typography>
-                      <Typography variant="body2" color="text.secondary">{email}</Typography>
-                      <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
-                        Rank: {userRank.rank} ({userRank.points} points)
-                      </Typography>
-                    </Box>
-                    <Box sx={{ px: 2, pb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Your Badges</Typography>
-                      {badges.length > 0 ? (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {badges.slice(0, 3).map((badge, index) => (
-                            <Badge key={index} badgeContent={badge.icon} color="primary">
-                              <Typography variant="caption" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: 1, px: 1, py: 0.5 }}>
-                                {badge.name}
-                              </Typography>
-                            </Badge>
-                          ))}
-                          {badges.length > 3 && <Typography variant="caption" color="text.secondary">+{badges.length - 3} more</Typography>}
-                        </Box>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">No badges earned yet</Typography>
-                      )}
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <MenuItem onClick={handleProfileClick} sx={{ py: 1.5 }}>
-                      <ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>
-                      <ListItemText>My Profile</ListItemText>
-                    </MenuItem>
-                    {role === 'admin' && (
-                      <MenuItem onClick={goToAdminPortal} sx={{ py: 1.5 }}>
-                        <ListItemIcon><AdminPanelSettingsIcon fontSize="small" /></ListItemIcon>
-                        <ListItemText>Admin Portal</ListItemText>
-                      </MenuItem>
-                    )}
-                    <Divider />
-                    <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: theme.palette.error.main }}>
-                      <ListItemIcon sx={{ color: theme.palette.error.main }}><LogoutIcon fontSize="small" /></ListItemIcon>
-                      <ListItemText>Logout</ListItemText>
-                    </MenuItem>
-                  </Menu>
-                </>
-              ) : (
-                /* Login Button for Guests */
-                <Button
-                  component={motion.button}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  variant="contained"
-                  color="primary"
-                  onClick={() => navigate('/login')}
+                <IconButton
+                  size="small"
+                  onClick={openProfileMenu}
                   sx={{
-                    borderRadius: '30px',
-                    px: 4,
-                    py: 1.2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)',
+                    p: 0.5,
+                    borderRadius: '50%',
+                    bgcolor: alpha(theme.palette.action.hover, scrolled ? 0.18 : 0.08),
                   }}
                 >
-                  Login
-                </Button>
+                  <Badge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    badgeContent={<StarIcon sx={{ fontSize: 14, color: getRankColor(userRank.rank) }} />}
+                  >
+                    <Avatar
+                      sx={{
+                        width: isVerySmall ? 32 : 38,
+                        height: isVerySmall ? 32 : 38,
+                        bgcolor: 'primary.main',
+                        fontSize: '1rem',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {getRankNumber(userRank.rank)}
+                    </Avatar>
+                  </Badge>
+                </IconButton>
+              ) : (
+                !isMobile && (
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    onClick={() => goTo('/login')}
+                    sx={{ borderRadius: 3, px: 3, fontWeight: 600 }}
+                  >
+                    Login
+                  </Button>
+                )
               )}
             </Box>
           </Toolbar>
         </AppBar>
 
-        {/* Mobile Drawer (only when logged in) */}
-        {token && (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{ keepMounted: true }}
-            sx={{ display: { xs: 'block', md: 'none' } }}
-            PaperProps={{
-              component: motion.div,
-              initial: { x: '-100%' },
-              animate: { x: 0 },
-              exit: { x: '-100%' },
-              transition: { type: 'spring', stiffness: 300, damping: 30 },
-            }}
-          >
-            {drawer}
-          </Drawer>
-        )}
+        {/* Profile Menu */}
+        <Menu
+          anchorEl={profileMenuAnchor}
+          open={Boolean(profileMenuAnchor)}
+          onClose={closeProfileMenu}
+          PaperProps={{
+            elevation: 6,
+            sx: { width: 260, mt: 1.5, borderRadius: 2 },
+          }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          <Box sx={{ p: 2.5, pb: 1 }}>
+            <Typography variant="subtitle1" fontWeight={700}>{username}</Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {email}
+            </Typography>
+            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {userRank.rank}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                ({userRank.points} pts)
+              </Typography>
+            </Box>
+          </Box>
+
+          {badges.length > 0 && (
+            <>
+              <Divider />
+              <Box sx={{ p: 2 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  Badges
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {badges.slice(0, 5).map((b, i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        borderRadius: 1,
+                        px: 1.2,
+                        py: 0.4,
+                        fontSize: '0.78rem',
+                      }}
+                    >
+                      {b.name}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </>
+          )}
+
+          <Divider />
+          <MenuItem onClick={() => { goTo('/profile'); closeProfileMenu(); }}>
+            <ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>
+            My Profile
+          </MenuItem>
+
+          {role === 'admin' && (
+            <MenuItem onClick={() => { goTo('/admin'); closeProfileMenu(); }}>
+              <ListItemIcon><AdminPanelSettingsIcon fontSize="small" /></ListItemIcon>
+              Admin Portal
+            </MenuItem>
+          )}
+
+          <Divider />
+          <MenuItem onClick={logout} sx={{ color: 'error.main' }}>
+            <ListItemIcon sx={{ color: 'error.main' }}><LogoutIcon fontSize="small" /></ListItemIcon>
+            Logout
+          </MenuItem>
+        </Menu>
+
+        {/* Mobile Drawer – now for everyone */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={toggleDrawer}
+          sx={{ '& .MuiDrawer-paper': { width: 280 } }}
+        >
+          {drawerContent}
+        </Drawer>
 
         {/* Main Content */}
-        <Container maxWidth="xl" sx={{ pt: 3, pb: 8 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
           {error && (
-            <Typography color="error" sx={{ mb: 2, textAlign: 'center' }}>
+            <Typography color="error" align="center" sx={{ mb: 3 }}>
               {error}
             </Typography>
           )}

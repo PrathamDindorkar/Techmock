@@ -937,7 +937,7 @@ const Hello = ({ darkMode }) => {
                               <Button variant='outlined' sx={{ borderRadius: 4, px: 3 }}>
                                 Score: ({accuracy}%)
                               </Button>
-                              {accuracy >= 80 && (
+                              {accuracy >= 70 && (
                                 <Button
                                   variant="contained"
                                   color="success"
@@ -947,10 +947,7 @@ const Hello = ({ darkMode }) => {
                                       name: userData?.name || "Student Name",
                                       course: mock.title,
                                       score: accuracy,
-                                      // tier: 'gold',           // optional — if you want to force tier
-                                      // date: "March 15, 2025", // optional
-                                      // issuer: "Techmocks Academy",
-                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 80 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
                                     });
                                   }}
                                 >
@@ -1162,7 +1159,7 @@ const Hello = ({ darkMode }) => {
                                 Your Score: ({accuracy}%)
                               </Button>
                             )}
-                            {accuracy >= 80 && (
+                            {accuracy >= 70 && (
                               <Button
                                 variant="contained"
                                 color="success"
@@ -1172,10 +1169,7 @@ const Hello = ({ darkMode }) => {
                                     name: userData?.name || "Student Name",
                                     course: mock.title,
                                     score: accuracy,
-                                    // tier: 'gold',           // optional — if you want to force tier
-                                    // date: "March 15, 2025", // optional
-                                    // issuer: "Techmocks Academy",
-                                    certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                    certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 80 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
                                   });
                                 }}
                               >
@@ -1386,7 +1380,7 @@ const Hello = ({ darkMode }) => {
                                   Your Score: ({accuracy}%)
                                 </Button>
                               )}
-                              {accuracy >= 80 && (
+                              {accuracy >= 70 && (
                                 <Button
                                   variant="contained"
                                   color="success"
@@ -1396,10 +1390,7 @@ const Hello = ({ darkMode }) => {
                                       name: userData?.name || "Student Name",
                                       course: mock.title,
                                       score: accuracy,
-                                      // tier: 'gold',           // optional — if you want to force tier
-                                      // date: "March 15, 2025", // optional
-                                      // issuer: "Techmocks Academy",
-                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 85 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                                      certId: `TM-${accuracy >= 95 ? 'D' : accuracy >= 80 ? 'G' : 'S'}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
                                     });
                                   }}
                                 >
