@@ -98,6 +98,9 @@ const AdminPortal = () => {
   const [pricingType, setPricingType] = useState('free');
   const [price, setPrice] = useState('');
 
+  const [multiPrices, setMultiPrices] = useState({});
+  const [autoMultiPrices, setAutoMultiPrices] = useState({});
+
   // State for mock test search
   const [mockTests, setMockTests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,6 +178,14 @@ const AdminPortal = () => {
     }
   };
 
+  const supportedCurrencies = [
+    { code: 'INR', symbol: '₹', label: 'INR (India)', required: true },
+    { code: 'USD', symbol: '$', label: 'USD' },
+    { code: 'GBP', symbol: '£', label: 'GBP (UK)' },
+    { code: 'EUR', symbol: '€', label: 'EUR' },
+    // { code: 'CAD', symbol: 'C$', label: 'CAD' }, // add later if needed
+  ];
+
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
@@ -195,8 +206,8 @@ const AdminPortal = () => {
     setEditingTest({
       ...test,
       timeLimit: test.time_limit || test.timeLimit,
-      price: test.price || 0,
-      pricingType: test.pricing_type || 'free'
+      pricingType: test.pricing_type || 'free',
+      prices: test.prices || {},
     });
     setEditDialogOpen(true);
   };
@@ -221,9 +232,12 @@ const AdminPortal = () => {
       return;
     }
 
-    if (editingTest.pricingType === 'paid' && (!editingTest.price || editingTest.price <= 0)) {
-      showSnackbar('Please enter a valid price for paid test', 'error');
-      return;
+    if (editingTest.pricingType === 'paid') {
+      const prices = editingTest.prices || {};
+      if (!prices.INR || prices.INR <= 0) {
+        showSnackbar('INR price is required and must be > 0 for paid tests', 'error');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -238,7 +252,7 @@ const AdminPortal = () => {
           timeLimit: Number(editingTest.timeLimit),
           questions: editingTest.questions,
           pricingType: editingTest.pricingType,
-          price: editingTest.pricingType === 'paid' ? Number(editingTest.price) : 0
+          prices: editingTest.pricingType === 'paid' ? editingTest.prices : {},
         },
         { headers: { Authorization: token } }
       );
@@ -387,9 +401,12 @@ const AdminPortal = () => {
       return;
     }
 
-    if (autoPricingType === 'paid' && (!autoPrice || autoPrice <= 0)) {
-      showSnackbar('Enter a valid price', 'error');
-      return;
+    if (autoPricingType === 'paid') {
+      const hasAtLeastOnePrice = Object.values(autoMultiPrices).some(v => v > 0);
+      if (!hasAtLeastOnePrice) {
+        showSnackbar('At least one currency price required for paid test', 'error');
+        return;
+      }
     }
 
     setGenerating(true);
@@ -406,7 +423,7 @@ const AdminPortal = () => {
           timeLimit: Number(autoTimeLimit),
           numQuestions: Number(numQuestions),
           pricingType: autoPricingType,
-          price: autoPricingType === 'paid' ? Number(autoPrice) : 0
+          prices: autoPricingType === 'paid' ? autoMultiPrices : {},
         },
         { headers: { Authorization: token } }
       );
@@ -414,6 +431,7 @@ const AdminPortal = () => {
       showSnackbar('Mock test generated successfully!', 'success');
 
       // Reset form
+      setAutoMultiPrices({});
       setAutoTitle('');
       setAutoDescription('');
       setAutoCategory('');
@@ -461,9 +479,12 @@ const AdminPortal = () => {
     }
 
     // Validate price if paid option is selected
-    if (pricingType === 'paid' && (!price || isNaN(price) || Number(price) <= 0)) {
-      showSnackbar('Please enter a valid price for the paid test', 'error');
-      return;
+    if (pricingType === 'paid') {
+      const hasAtLeastOnePrice = Object.values(multiPrices).some(v => v > 0);
+      if (!hasAtLeastOnePrice) {
+        showSnackbar('At least one currency price must be set for paid test', 'error');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -478,7 +499,7 @@ const AdminPortal = () => {
           timeLimit: Number(timeLimit),
           questions,
           pricingType,
-          price: pricingType === 'paid' ? Number(price) : 0
+          prices: pricingType === 'paid' ? multiPrices : {},
         },
         { headers: { Authorization: token } }
       );
@@ -486,6 +507,7 @@ const AdminPortal = () => {
       console.log('Submitting:', { pricingType, price });
 
       // Reset form after successful submission
+      setMultiPrices({});
       setTitle('');
       setDescription('');
       setCategory('');
@@ -854,19 +876,36 @@ const AdminPortal = () => {
                             <FormControlLabel value="free" control={<Radio />} label="Free" />
                             <FormControlLabel value="paid" control={<Radio />} label="Paid" />
                           </RadioGroup>
+                          {/* Replace with almost identical block as above, but use autoMultiPrices */}
                           <Collapse in={autoPricingType === 'paid'}>
-                            <TextField
-                              fullWidth
-                              label="Price (₹)"
-                              type="number"
-                              value={autoPrice}
-                              onChange={(e) => setAutoPrice(e.target.value)}
-                              sx={{ mt: 2 }}
-                              InputProps={{
-                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                                inputProps: { min: 1 }
-                              }}
-                            />
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                              Set explicit prices for each currency
+                            </Typography>
+
+                            <Grid container spacing={2}>
+                              {supportedCurrencies.map((curr) => (
+                                <Grid item xs={6} sm={4} md={3} key={curr.code}>
+                                  <TextField
+                                    fullWidth
+                                    label={`${curr.label} Price`}
+                                    type="number"
+                                    value={autoMultiPrices[curr.code] || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setAutoMultiPrices(prev => ({
+                                        ...prev,
+                                        [curr.code]: val === '' ? '' : Number(val)
+                                      }));
+                                    }}
+                                    InputProps={{
+                                      startAdornment: <InputAdornment position="start">{curr.symbol}</InputAdornment>,
+                                      inputProps: { min: 0, step: curr.code === 'INR' ? 1 : 0.01 }
+                                    }}
+                                    required={curr.required}
+                                  />
+                                </Grid>
+                              ))}
+                            </Grid>
                           </Collapse>
                         </Paper>
                       </Grid>
@@ -974,6 +1013,7 @@ const AdminPortal = () => {
 
                           {/* Pricing Options */}
                           <Grid item xs={12} sm={6}>
+                            {/* Replace the entire <Paper> for Pricing Options with: */}
                             <Paper sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <PaymentIcon color="primary" sx={{ mr: 1 }} />
@@ -981,32 +1021,51 @@ const AdminPortal = () => {
                                   Pricing Options
                                 </Typography>
                               </Box>
+
                               <RadioGroup
                                 value={pricingType}
                                 onChange={handlePricingTypeChange}
-                                sx={{ ml: 1 }}
+                                sx={{ ml: 1, mb: 2 }}
                               >
                                 <FormControlLabel value="free" control={<Radio />} label="Free" />
-                                <FormControlLabel value="paid" control={<Radio />} label="Paid" />
+                                <FormControlLabel value="paid" control={<Radio />} label="Paid – set prices per currency" />
                               </RadioGroup>
 
                               <Collapse in={pricingType === 'paid'}>
-                                <TextField
-                                  fullWidth
-                                  label="Price (₹)"
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => setPrice(e.target.value)}
-                                  sx={{ mt: 1 }}
-                                  InputProps={{
-                                    startAdornment: (
-                                      <InputAdornment position="start">₹</InputAdornment>
-                                    ),
-                                    inputProps: { min: 1 }
-                                  }}
-                                  placeholder="Enter amount in rupees"
-                                  required={pricingType === 'paid'}
-                                />
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                  Set explicit prices for each currency (leave blank if not selling in that region)
+                                </Typography>
+
+                                <Grid container spacing={2}>
+                                  {supportedCurrencies.map((curr) => (
+                                    <Grid item xs={6} sm={4} md={3} key={curr.code}>
+                                      <TextField
+                                        fullWidth
+                                        label={`${curr.label} Price`}
+                                        type="number"
+                                        value={multiPrices[curr.code] || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setMultiPrices(prev => ({
+                                            ...prev,
+                                            [curr.code]: val === '' ? '' : Number(val)
+                                          }));
+                                        }}
+                                        InputProps={{
+                                          startAdornment: <InputAdornment position="start">{curr.symbol}</InputAdornment>,
+                                          inputProps: { min: 0, step: curr.code === 'INR' ? 1 : 0.01 }
+                                        }}
+                                        required={curr.required}
+                                        error={curr.required && pricingType === 'paid' && !multiPrices[curr.code]}
+                                        helperText={
+                                          curr.required && pricingType === 'paid' && !multiPrices[curr.code]
+                                            ? 'Required'
+                                            : ''
+                                        }
+                                      />
+                                    </Grid>
+                                  ))}
+                                </Grid>
                               </Collapse>
                             </Paper>
                           </Grid>
@@ -1236,7 +1295,18 @@ const AdminPortal = () => {
                               </TableCell>
                               <TableCell>{test.questions?.length || 0}
                               </TableCell>
-                              <TableCell>{isFree ? <Chip label="Free" size="small" color="success" /> : <Chip label={`₹${priceValue}`} size="small" color="secondary" />}
+                              <TableCell>
+                                {test.pricing_type === 'free' ? (
+                                  <Chip label="Free" size="small" color="success" />
+                                ) : (
+                                  <Tooltip title="Multi-currency pricing">
+                                    <Chip
+                                      label={`₹${test.prices?.INR || '?'} ${Object.keys(test.prices || {}).length > 1 ? '+' : ''}`}
+                                      size="small"
+                                      color="secondary"
+                                    />
+                                  </Tooltip>
+                                )}
                               </TableCell>
                               <TableCell>{new Date(test.createdAt || test.created_at).toLocaleDateString()}</TableCell>
                               <TableCell align="center"><Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
@@ -1293,14 +1363,24 @@ const AdminPortal = () => {
                     </Box>
 
                     <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                        Pricing
-                      </Typography>
-                      <Chip
-                        label={selectedTest.pricingType === 'free' ? 'Free' : `₹${selectedTest.price}`}
-                        color={selectedTest.pricingType === 'free' ? 'success' : 'secondary'}
-                        size="small"
-                      />
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Pricing</Typography>
+                      {selectedTest.pricingType === 'free' ? (
+                        <Chip label="Free" color="success" />
+                      ) : (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {Object.entries(selectedTest.prices || {}).map(([curr, amt]) => (
+                            <Chip
+                              key={curr}
+                              label={`${curr} ${new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(amt)}`}
+                              color="secondary"
+                              size="small"
+                            />
+                          ))}
+                          {Object.keys(selectedTest.prices || {}).length === 0 && (
+                            <Chip label="No prices set" color="warning" />
+                          )}
+                        </Box>
+                      )}
                     </Box>
 
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
@@ -1387,18 +1467,50 @@ const AdminPortal = () => {
                           <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Pricing</Typography>
                           <RadioGroup
                             value={editingTest.pricingType}
-                            onChange={(e) => setEditingTest({ ...editingTest, pricingType: e.target.value, price: e.target.value === 'free' ? 0 : editingTest.price })}
+                            onChange={(e) => {
+                              const newType = e.target.value;
+                              setEditingTest(prev => ({
+                                ...prev,
+                                pricingType: newType,
+                                prices: newType === 'free' ? {} : prev.prices || {}
+                              }));
+                            }}
                           >
                             <FormControlLabel value="free" control={<Radio />} label="Free" />
                             <FormControlLabel value="paid" control={<Radio />} label="Paid" />
                           </RadioGroup>
+
                           {editingTest.pricingType === 'paid' && (
-                            <TextField
-                              fullWidth label="Price (₹)" type="number" sx={{ mt: 2 }}
-                              value={editingTest.price}
-                              onChange={(e) => setEditingTest({ ...editingTest, price: e.target.value })}
-                              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-                            />
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Prices per currency (leave blank = not available)
+                              </Typography>
+                              <Grid container spacing={2}>
+                                {supportedCurrencies.map((curr) => (
+                                  <Grid item xs={6} sm={4} key={curr.code}>
+                                    <TextField
+                                      fullWidth
+                                      label={`${curr.label} Price`}
+                                      type="number"
+                                      value={editingTest.prices?.[curr.code] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditingTest(prev => ({
+                                          ...prev,
+                                          prices: {
+                                            ...prev.prices,
+                                            [curr.code]: val === '' ? undefined : Number(val)
+                                          }
+                                        }));
+                                      }}
+                                      InputProps={{
+                                        startAdornment: <InputAdornment position="start">{curr.symbol}</InputAdornment>,
+                                      }}
+                                    />
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            </Box>
                           )}
                         </Paper>
                       </Grid>

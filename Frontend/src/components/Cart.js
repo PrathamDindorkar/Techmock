@@ -40,7 +40,9 @@ import {
   useElements,
   ExpressCheckoutElement,
 } from '@stripe/react-stripe-js';
-import countryToCurrency from 'country-to-currency';
+
+// Your helper (make sure this file exists or paste the function directly)
+import { getCurrencyByCountry } from './getCurrencyByCountry'; // Adjust path if needed
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
@@ -50,8 +52,6 @@ const MotionPaper = motion(Paper);
 const CheckoutForm = ({
   displayTotal,
   userCurrency,
-  gbpTotal,
-  gbpRate,
   onBack,
   onSuccess,
   showSnackbar,
@@ -91,27 +91,19 @@ const CheckoutForm = ({
       setMessageType('success');
       await onSuccess();
       showSnackbar('Payment complete! Your mock tests are now unlocked. 🎉', 'success');
-      setMessage('Payment complete! Your mock tests are now unlocked. 🎉');
     }
 
     setProcessing(false);
   };
 
-  const localFormatter = new Intl.NumberFormat(undefined, {
+  const formatter = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency: userCurrency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-  const formattedDisplayTotal = localFormatter.format(displayTotal);
-
-  const gbpFormatter = new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'GBP',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const formattedGbpTotal = gbpFormatter.format(gbpTotal);
+
+  const formattedTotal = formatter.format(displayTotal);
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
@@ -133,11 +125,7 @@ const CheckoutForm = ({
       <Box sx={{ mt: 3, mb: 2, p: 2, backgroundColor: 'info.light', borderRadius: 1 }}>
         <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <InfoIcon fontSize="small" />
-          Your total is <strong>{formattedDisplayTotal}</strong> ({userCurrency}) in your local currency.
-          This will be charged as approximately <strong>{formattedGbpTotal}</strong> in <strong>GBP</strong>.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-          Your bank or card may apply additional conversion fees. Exchange rate used: 1 INR ≈ {gbpRate.toFixed(4)} GBP.
+          Your total is <strong>{formattedTotal}</strong> in {userCurrency}.
         </Typography>
       </Box>
 
@@ -189,20 +177,61 @@ const Cart = () => {
   const [clientSecret, setClientSecret] = useState('');
   const [paymentMode, setPaymentMode] = useState(false);
 
-  const [userCurrency, setUserCurrency] = useState('INR');
-  const [displayRate, setDisplayRate] = useState(1);
-  const [gbpRate, setGbpRate] = useState(0.0082);
+
+  const [userCountry, setUserCountry] = useState('IN');
+const [userCurrency, setUserCurrency] = useState('INR');
 
   const [razorpayLoading, setRazorpayLoading] = useState(false);
 
   // Coupon states
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount }
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   const location = useLocation();
   const theme = useTheme();
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+  // Detect user currency using your helper
+  useEffect(() => {
+  const getUserLocationAndCurrency = async () => {
+    // 1. Try to load from localStorage first (fast & persistent)
+    const savedCurrency = localStorage.getItem('userCurrency');
+    const savedCountry = localStorage.getItem('userCountry');
+
+    if (savedCurrency && savedCountry) {
+      setUserCountry(savedCountry);
+      setUserCurrency(savedCurrency);
+      console.log('Currency loaded from localStorage:', savedCurrency, '(country:', savedCountry, ')');
+      return; // skip network call
+    }
+
+    // 2. No saved value → detect from IP
+    try {
+      const geoRes = await axios.get('https://ipapi.co/json/');
+      const countryCode = geoRes.data.country_code || 'IN';
+      const detectedCurrency = getCurrencyByCountry(countryCode);
+
+      // Save to localStorage for next time
+      localStorage.setItem('userCurrency', detectedCurrency);
+      localStorage.setItem('userCountry', countryCode);
+
+      setUserCountry(countryCode);
+      setUserCurrency(detectedCurrency);
+
+      console.log('Detected new currency:', detectedCurrency, '(country:', countryCode, ') – saved to localStorage');
+    } catch (err) {
+      console.error('Location detection failed:', err);
+      // Fallback + save it too
+      localStorage.setItem('userCurrency', 'INR');
+      localStorage.setItem('userCountry', 'IN');
+      setUserCountry('IN');
+      setUserCurrency('INR');
+    }
+  };
+
+  getUserLocationAndCurrency();
+}, []); // runs only once on mount
 
   // Stripe redirect handler
   useEffect(() => {
@@ -221,36 +250,6 @@ const Cart = () => {
     }
   }, [location.search]);
 
-  // Fetch currency rates
-  useEffect(() => {
-    const getCurrencyAndRates = async () => {
-      try {
-        const geoRes = await axios.get('https://ipapi.co/json/');
-        const countryCode = geoRes.data.country_code || 'IN';
-        const currency = countryToCurrency[countryCode] || 'INR';
-        setUserCurrency(currency);
-
-        if (currency !== 'INR') {
-          const displayRes = await axios.get(`https://api.frankfurter.app/latest?from=INR&to=${currency}`);
-          setDisplayRate(displayRes.data?.rates?.[currency] || 1);
-        } else {
-          setDisplayRate(1);
-        }
-
-        const gbpRes = await axios.get('https://api.frankfurter.app/latest?from=INR&to=GBP');
-        const rate = gbpRes.data?.rates?.GBP || 0.0082;
-        setGbpRate(rate);
-      } catch (error) {
-        console.error('Error fetching currency/rates:', error);
-        setUserCurrency('INR');
-        setDisplayRate(1);
-        setGbpRate(0.0082);
-      }
-    };
-
-    getCurrencyAndRates();
-  }, []);
-
   // Fetch cart
   useEffect(() => {
     const fetchCart = async () => {
@@ -268,10 +267,11 @@ const Cart = () => {
 
         const formattedItems = response.data.cart.map((item) => ({
           id: item.mock_test_id,
-          title: item.mock_tests.title,
-          description: item.mock_tests.description || 'No description available',
+          title: item.mock_tests?.title || 'Untitled Test',
+          description: item.mock_tests?.description || 'No description available',
           price: item.price,
-          pricingType: item.mock_tests.pricing_type,
+          currency: item.currency || 'INR',
+          pricingType: item.mock_tests?.pricing_type,
         }));
 
         setCartItems(formattedItems);
@@ -292,7 +292,7 @@ const Cart = () => {
     setSnackbarOpen(true);
   };
 
-  // Apply coupon
+  // Coupon handlers
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       showSnackbar('Please enter a coupon code', 'warning');
@@ -358,7 +358,7 @@ const Cart = () => {
       const response = await axios.post(
         `${backendUrl}/api/payment/create-intent`,
         {
-          currency: 'gbp',
+          currency: userCurrency.toLowerCase(), // 'inr', 'gbp', 'eur', 'usd'
           coupon_code: appliedCoupon?.code || null,
         },
         { headers: { Authorization: token } }
@@ -390,41 +390,30 @@ const Cart = () => {
       setPaymentMode(false);
       setClientSecret('');
       setAppliedCoupon(null);
+      showSnackbar('Purchase completed! Your tests are unlocked.', 'success');
     } catch (error) {
       console.error('Fulfillment error:', error);
       showSnackbar('Failed to finalize purchase. Please refresh.', 'error');
     }
   };
 
-  const formatPrice = (basePriceINR) => {
-    const converted = basePriceINR * displayRate;
-    const formatter = new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: userCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-    return formatter.format(converted);
-  };
-
-  // Calculate totals
-  const baseTotalINR = cartItems
-    .filter((item) => item.pricingType === 'paid')
-    .reduce((sum, item) => sum + item.price, 0);
-
-  const discountedTotalINR = appliedCoupon
-    ? baseTotalINR * (1 - appliedCoupon.discount / 100)
-    : baseTotalINR;
-
-  const finalAmountINR = Math.max(0, Math.round(discountedTotalINR)); // Round to nearest rupee
-
-  const displayTotal = finalAmountINR * displayRate;
-  const gbpTotal = finalAmountINR * gbpRate;
-  const formattedTotal = formatPrice(finalAmountINR);
-  const formattedOriginalTotal = formatPrice(baseTotalINR);
-
-  // Razorpay payment with discount
+  // Razorpay - ONLY for INR
   const handleRazorpayPayment = async () => {
+    if (userCurrency !== 'INR') {
+      showSnackbar('Razorpay is only available for INR. Use card payment for other currencies.', 'info');
+      return;
+    }
+
+    const totalINR = cartItems
+      .filter(item => item.pricingType === 'paid')
+      .reduce((sum, item) => sum + (item.price || 0), 0);
+
+    const discountedINR = appliedCoupon
+      ? totalINR * (1 - appliedCoupon.discount / 100)
+      : totalINR;
+
+    const finalAmountINR = Math.max(0, Math.round(discountedINR));
+
     if (finalAmountINR === 0) {
       showSnackbar('No amount to pay after discount!', 'info');
       return;
@@ -480,16 +469,11 @@ const Cart = () => {
         },
         prefill: {},
         theme: { color: '#3399cc' },
-        modal: { ondismiss: () => {
-          showSnackbar('Payment cancelled.', 'info');
-          setRazorpayLoading(false);
-        }},
-        config: {
-          display: {
-            blocks: { upi: { name: 'Pay using UPI', instruments: [{ method: 'upi' }] } },
-            sequence: ['block.upi'],
-            preferences: { show_default_blocks: false },
-          },
+        modal: {
+          ondismiss: () => {
+            showSnackbar('Payment cancelled.', 'info');
+            setRazorpayLoading(false);
+          }
         },
       };
 
@@ -517,6 +501,31 @@ const Cart = () => {
     });
   };
 
+  // Format price with currency symbol
+  const formatPrice = (amount, currency = userCurrency) => {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: currency || 'INR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return `${amount} ${currency}`;
+    }
+  };
+
+  // Calculate total (prices already in user's currency)
+  const total = cartItems
+    .filter(item => item.pricingType === 'paid')
+    .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+  const discountedTotal = appliedCoupon
+    ? total * (1 - appliedCoupon.discount / 100)
+    : total;
+
+  const finalTotal = Math.max(0, discountedTotal);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -527,7 +536,7 @@ const Cart = () => {
 
   return (
     <MotionContainer maxWidth="md" sx={{ py: 6 }}>
-      <Typography variant="h4" align="center" sx={{ mb: 5, fontWeight: 700, background: 'linear-gradient(90deg, #4b6cb7 0%, #182848 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+      <Typography variant="h4" align="center" sx={{ mb: 5, fontWeight: 700 }}>
         {paymentMode ? 'Complete Your Payment' : 'Your Shopping Cart'}
       </Typography>
 
@@ -548,22 +557,35 @@ const Cart = () => {
                   <React.Fragment key={item.id}>
                     <ListItem>
                       <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}><AssignmentIcon /></Avatar>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                          <AssignmentIcon />
+                        </Avatar>
                       </ListItemAvatar>
                       <ListItemText
                         primary={<Typography variant="subtitle1" fontWeight="medium">{item.title}</Typography>}
                         secondary={
                           <>
-                            <Typography component="span" variant="body2" color="text.secondary">{item.description}</Typography>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {item.description}
+                            </Typography>
                             <br />
-                            <Typography component="span" variant="body1" color={item.pricingType === 'free' ? 'success.main' : 'text.primary'} fontWeight="bold">
-                              {item.pricingType === 'free' ? 'FREE' : formatPrice(item.price)}
+                            <Typography
+                              component="span"
+                              variant="body1"
+                              color={item.pricingType === 'free' ? 'success.main' : 'text.primary'}
+                              fontWeight="bold"
+                            >
+                              {item.pricingType === 'free' ? 'FREE' : formatPrice(item.price, item.currency)}
                             </Typography>
                           </>
                         }
                       />
                       <ListItemSecondaryAction>
-                        <IconButton edge="end" onClick={() => handleRemoveItem(item.id)} disabled={operationLoading}>
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleRemoveItem(item.id)}
+                          disabled={operationLoading}
+                        >
                           {operationLoading ? <CircularProgress size={24} /> : <DeleteIcon />}
                         </IconButton>
                       </ListItemSecondaryAction>
@@ -612,42 +634,44 @@ const Cart = () => {
 
                 {/* Totals */}
                 <Box sx={{ mb: 3 }}>
-                  {appliedCoupon && (
+                  {appliedCoupon && total > finalTotal && (
                     <Typography variant="body1" align="right" sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
-                      Original: {formattedOriginalTotal}
+                      Original: {formatPrice(total)}
                     </Typography>
                   )}
                   <Typography variant="h5" align="right" gutterBottom>
-                    Total: <strong>{formattedTotal}</strong>
+                    Total: <strong>{formatPrice(finalTotal)}</strong>
                   </Typography>
                 </Box>
 
-                {/* Payment Buttons */}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  fullWidth
-                  onClick={handleProceedToPayment}
-                  disabled={operationLoading || finalAmountINR === 0}
-                  startIcon={<PaymentIcon />}
-                  sx={{ py: 1.8, fontSize: '1.1rem', mb: 2 }}
-                >
-                  {operationLoading ? <CircularProgress size={28} color="inherit" /> : 'Pay with Card / Wallet (Stripe)'}
-                </Button>
-
-                {userCurrency === 'INR' && finalAmountINR > 0 && (
+                {/* Payment Buttons – Conditional based on currency */}
+                {userCurrency === 'INR' ? (
+                  // Razorpay for INR
                   <Button
                     variant="contained"
                     color="success"
                     size="large"
                     fullWidth
                     onClick={handleRazorpayPayment}
-                    disabled={razorpayLoading || operationLoading}
+                    disabled={razorpayLoading || operationLoading || finalTotal === 0}
                     startIcon={razorpayLoading ? <CircularProgress size={28} color="inherit" /> : <PaymentIcon />}
                     sx={{ py: 1.8, fontSize: '1.1rem' }}
                   >
-                    {razorpayLoading ? 'Opening UPI...' : 'Pay with UPI (Fast & Secure)'}
+                    {razorpayLoading ? 'Opening UPI...' : 'Pay with UPI / Cards (Razorpay)'}
+                  </Button>
+                ) : (
+                  // Stripe for USD, GBP, EUR
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    fullWidth
+                    onClick={handleProceedToPayment}
+                    disabled={operationLoading || finalTotal === 0}
+                    startIcon={<PaymentIcon />}
+                    sx={{ py: 1.8, fontSize: '1.1rem' }}
+                  >
+                    {operationLoading ? <CircularProgress size={28} color="inherit" /> : 'Pay with Card / Wallet (Stripe)'}
                   </Button>
                 )}
               </Box>
@@ -656,10 +680,8 @@ const Cart = () => {
             <Elements stripe={stripePromise} options={{ clientSecret }}>
               <Box sx={{ p: 4 }}>
                 <CheckoutForm
-                  displayTotal={displayTotal}
+                  displayTotal={finalTotal}
                   userCurrency={userCurrency}
-                  gbpTotal={gbpTotal}
-                  gbpRate={gbpRate}
                   onBack={() => {
                     setPaymentMode(false);
                     setClientSecret('');
@@ -673,8 +695,18 @@ const Cart = () => {
         </MotionPaper>
       )}
 
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} variant="filled" sx={{ width: '100%', fontSize: '1rem' }}>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: '100%', fontSize: '1rem' }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

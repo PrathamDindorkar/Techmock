@@ -257,12 +257,27 @@ const Hello = ({ darkMode }) => {
   };
 
   const getMockTestStats = () => {
-    const totalTests = mockTests.length;
-    const totalQuestions = mockTests.reduce((sum, test) => sum + test.questions.length, 0);
-    const categoryCounts = mockTests.reduce((counts, test) => {
-      counts[test.category] = (counts[test.category] || 0) + 1;
+    const totalTests = mockTests?.length || 0;
+
+    const totalQuestions = mockTests?.reduce((sum, test, index) => {
+      if (!test) {
+        console.warn(`Mock test at index ${index} is null/undefined`);
+        return sum + 0;
+      }
+
+      if (!Array.isArray(test.questions)) {
+        console.warn(`Mock test "${test.title || 'Untitled'}" has invalid questions (not array)`);
+        return sum + 0;
+      }
+
+      return sum + test.questions.length;
+    }, 0) || 0;
+
+    const categoryCounts = mockTests?.reduce((counts, test) => {
+      const category = test?.category || 'Uncategorized';
+      counts[category] = (counts[category] || 0) + 1;
       return counts;
-    }, {});
+    }, {}) || {};
 
     return { totalTests, totalQuestions, categoryCounts };
   };
@@ -665,7 +680,9 @@ const Hello = ({ darkMode }) => {
                               variant='filled'
                             />
                           </TableCell>
-                          <TableCell sx={{ color: textPrimary }}>₹{purchase.price}</TableCell>
+                          <TableCell sx={{ color: textPrimary }}>
+                            {purchase.priceDisplay || 'N/A'}
+                          </TableCell>
                           <TableCell sx={{ color: textPrimary }}>
                             {new Date(purchase.purchaseDate).toLocaleDateString()}
                           </TableCell>

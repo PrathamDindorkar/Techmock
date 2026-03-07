@@ -51,6 +51,12 @@ const PROGRAMMING_LANGUAGES = [
 
 const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
+// Eurozone country codes for EUR priority
+const EUROZONE_COUNTRIES = [
+  'AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR',
+  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'SI', 'SK'
+];
+
 const AllMocks = () => {
   const [mockTests, setMockTests] = useState({});
   const [loading, setLoading] = useState(true);
@@ -62,7 +68,7 @@ const AllMocks = () => {
   const [cartItems, setCartItems] = useState([]);
   const [purchasedTests, setPurchasedTests] = useState([]);
   const [userCurrency, setUserCurrency] = useState('INR');
-  const [exchangeRate, setExchangeRate] = useState(1);
+  const [userCountry, setUserCountry] = useState('IN');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -85,35 +91,50 @@ const AllMocks = () => {
 
   const categoryColors = getCategoryColors();
   const defaultCategoryColor = isDarkMode
-    ? 'linear-gradient(135deg, #003366 0%, #0055aa 100%)'   // darker variant for dark mode
+    ? 'linear-gradient(135deg, #003366 0%, #0055aa 100%)'
     : 'linear-gradient(135deg, #004080 0%, #009de0 100%)';
 
-  // Currency detection 
-  useEffect(() => {
-    const getUserCurrency = async () => {
-      try {
-        const geoRes = await axios.get('https://ipapi.co/json/');
-        const countryCode = geoRes.data.country_code || 'IN';
-        const currency = countryToCurrency[countryCode] || 'INR';
-        setUserCurrency(currency);
+  // Detect user location & currency
+ useEffect(() => {
+  const getUserLocationAndCurrency = async () => {
+    // 1. Check if we already have saved currency
+    const savedCurrency = localStorage.getItem('userCurrency');
+    const savedCountry = localStorage.getItem('userCountry');
 
-        if (currency === 'INR') {
-          setExchangeRate(1);
-          return;
-        }
+    if (savedCurrency && savedCountry) {
+      setUserCurrency(savedCurrency);
+      setUserCountry(savedCountry);
+      console.log('Loaded from localStorage:', savedCurrency);
+      return; // skip fetch
+    }
 
-        const rateRes = await axios.get(
-          `https://api.frankfurter.app/latest?from=INR&to=${currency}`
-        );
-        setExchangeRate(rateRes.data?.rates?.[currency] || 1);
-      } catch {
-        setUserCurrency('INR');
-        setExchangeRate(1);
-      }
-    };
-    getUserCurrency();
-  }, []);
+    // 2. No saved value → fetch
+    try {
+      const geoRes = await axios.get('https://ipapi.co/json/');
+      const countryCode = geoRes.data.country_code || 'IN';
+      const detectedCurrency = countryToCurrency[countryCode] || 'INR';
 
+      // Save to localStorage
+      localStorage.setItem('userCurrency', detectedCurrency);
+      localStorage.setItem('userCountry', countryCode);
+
+      setUserCountry(countryCode);
+      setUserCurrency(detectedCurrency);
+      console.log('Detected & saved:', detectedCurrency);
+    } catch (err) {
+      console.error('Location detection failed:', err);
+      // Fallback – save default too
+      localStorage.setItem('userCurrency', 'INR');
+      localStorage.setItem('userCountry', 'IN');
+      setUserCountry('IN');
+      setUserCurrency('INR');
+    }
+  };
+
+  getUserLocationAndCurrency();
+}, []); // still once on mount
+
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -198,7 +219,6 @@ const AllMocks = () => {
           });
           setPurchasedTests(allIds);
         }
-
       } catch (error) {
         console.error('Error fetching data:', error);
         setAlertMessage('Failed to load mock tests. Please try again.');
@@ -219,10 +239,9 @@ const AllMocks = () => {
     }
   }, [location.search]);
 
-  // ── Access logic (unchanged) ──
   const canAccessTest = (mock) => {
     if (isAdmin) return true;
-    if (mock?.pricingType === 'free') return true;
+    if ((mock?.pricingType || mock?.pricing_type) === 'free') return true;
     return purchasedTests.includes(mock?._id || mock?.id);
   };
 
@@ -266,48 +285,59 @@ const AllMocks = () => {
   };
 
   const handleAddToCart = async (mockId, event) => {
-    event.stopPropagation();
+  event.stopPropagation();
 
-    if (!isLoggedIn) {
-      setAlertMessage('Please log in to add items to cart!');
-      setAlertSeverity('warning');
-      setAlertOpen(true);
-      setTimeout(() => navigate('/login'), 1500);
-      return;
-    }
+  if (!isLoggedIn) {
+    setAlertMessage('Please log in to add items to cart!');
+    setAlertSeverity('warning');
+    setAlertOpen(true);
+    setTimeout(() => navigate('/login'), 1500);
+    return;
+  }
 
-    if (isInCart(mockId)) {
-      setAlertMessage('Already in cart!');
-      setAlertSeverity('info');
-      setAlertOpen(true);
-      return;
-    }
+  if (isInCart(mockId)) {
+    setAlertMessage('Already in cart!');
+    setAlertSeverity('info');
+    setAlertOpen(true);
+    return;
+  }
 
-    setCartLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${backendUrl}/api/user/cart/add`,
-        { mockTestId: mockId, currency: userCurrency },
-        { headers: { Authorization: token } }
-      );
+  setCartLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${backendUrl}/api/user/cart/add`,
+      { mockTestId: mockId, currency: userCurrency },
+      { headers: { Authorization: token } }
+    );
 
-      const mock = findMockById(mockId);
-      setCartItems([
-        ...cartItems,
-        { id: mockId, title: mock?.title || 'Untitled', price: mock?.price || 0 },
-      ]);
-      setAlertMessage('Added to cart!');
-      setAlertSeverity('success');
-      setAlertOpen(true);
-    } catch (err) {
-      setAlertMessage(err.response?.data?.message || 'Failed to add to cart');
-      setAlertSeverity('error');
-      setAlertOpen(true);
-    } finally {
-      setCartLoading(false);
-    }
-  };
+    const mock = findMockById(mockId);
+
+    // Use the exact price that backend stored (from response if available, else local calc)
+    const addedPrice = mock?.prices?.[userCurrency] ||
+                       mock?.prices?.USD ||
+                       0;
+
+    setCartItems([
+      ...cartItems,
+      {
+        id: mockId,
+        title: mock?.title || 'Untitled',
+        price: addedPrice,
+      },
+    ]);
+
+    setAlertMessage('Added to cart!');
+    setAlertSeverity('success');
+    setAlertOpen(true);
+  } catch (err) {
+    setAlertMessage(err.response?.data?.message || 'Failed to add to cart');
+    setAlertSeverity('error');
+    setAlertOpen(true);
+  } finally {
+    setCartLoading(false);
+  }
+};
 
   const handleAccordionChange = (category) => (_, isExpanded) => {
     setExpandedCategory(isExpanded ? category : '');
@@ -328,28 +358,82 @@ const AllMocks = () => {
     return null;
   };
 
-  const getPriceDisplay = (mock) => {
+  // Determine displayed price
+  const getDisplayedPriceInfo = (mock) => {
     if (isAdmin) {
-      return <Chip icon={<MonetizationOnIcon />} label="Free (Admin)" size="small" color="success" variant="outlined" />;
+      return { label: 'Free (Admin)', color: 'success', variant: 'outlined' };
     }
-    if (mock.pricingType === 'free') {
-      return <Chip icon={<MonetizationOnIcon />} label="Free" size="small" color="success" />;
+
+    const pricingType = mock.pricingType || mock.pricing_type || 'free';
+
+    if (pricingType === 'free') {
+      return { label: 'Free', color: 'success' };
     }
-    if (mock.pricingType === 'paid' && mock.price) {
-      const converted = (mock.price * exchangeRate).toFixed(2);
+
+    const prices = mock.prices || {};
+
+    // No prices at all → show warning
+    if (Object.keys(prices).length === 0) {
+      return { label: 'Price not set', color: 'warning' };
+    }
+
+    // 1. User's currency
+    if (prices[userCurrency] > 0) {
+      return formatPrice(prices[userCurrency], userCurrency);
+    }
+
+    // 2. Europe → EUR
+    if (EUROZONE_COUNTRIES.includes(userCountry) && prices.EUR > 0) {
+      return formatPrice(prices.EUR, 'EUR');
+    }
+
+    // 3. UK → GBP
+    if (userCountry === 'GB' && prices.GBP > 0) {
+      return formatPrice(prices.GBP, 'GBP');
+    }
+
+    // 4. Final fallback → USD
+    if (prices.USD > 0) {
+      return formatPrice(prices.USD, 'USD');
+    }
+
+    // Last resort
+    return { label: 'Price on request', color: 'warning' };
+  };
+
+  const formatPrice = (amount, currencyCode) => {
+    try {
       const formatter = new Intl.NumberFormat(undefined, {
         style: 'currency',
-        currency: userCurrency,
-        minimumFractionDigits: 0,
+        currency: currencyCode,
+        minimumFractionDigits: currencyCode === 'JPY' ? 0 : 2,
         maximumFractionDigits: 2,
       });
-      return <Chip icon={<MonetizationOnIcon />} label={formatter.format(converted)} size="small" color="secondary" />;
+      return {
+        label: formatter.format(amount),
+        color: 'secondary',
+      };
+    } catch (e) {
+      return { label: `${amount} ${currencyCode}`, color: 'secondary' };
     }
-    return null;
+  };
+
+  const getPriceDisplay = (mock) => {
+    const info = getDisplayedPriceInfo(mock);
+    return (
+      <Chip
+        icon={<MonetizationOnIcon />}
+        label={info.label}
+        size="small"
+        color={info.color}
+        variant={info.variant || 'filled'}
+      />
+    );
   };
 
   const getAccessIndicator = (mock) => {
-    if (mock.pricingType !== 'paid') return null;
+    const pricingType = mock.pricingType || mock.pricing_type;
+    if (pricingType !== 'paid') return null;
     if (isAdmin) return null;
     if (isPurchased(mock._id || mock.id)) return null;
 
@@ -420,7 +504,7 @@ const AllMocks = () => {
       </Box>
 
       <Container maxWidth="lg">
-        {/* Filters – Card style */}
+        {/* Filters */}
         <Card
           elevation={2}
           sx={{
@@ -494,14 +578,20 @@ const AllMocks = () => {
                 if (category === 'Languages') {
                   filteredTestsData = {};
                   Object.entries(testsData).forEach(([lang, mocks]) => {
-                    const filteredMocks = mocks.filter(mock => mock.pricingType === priceFilter);
+                    const filteredMocks = mocks.filter(mock => {
+                      const pt = mock.pricingType || mock.pricing_type;
+                      return pt === priceFilter;
+                    });
                     if (filteredMocks.length > 0) {
                       filteredTestsData[lang] = filteredMocks;
                     }
                     totalTests += filteredMocks.length;
                   });
                 } else {
-                  filteredTestsData = testsData.filter(mock => mock.pricingType === priceFilter);
+                  filteredTestsData = testsData.filter(mock => {
+                    const pt = mock.pricingType || mock.pricing_type;
+                    return pt === priceFilter;
+                  });
                   totalTests = filteredTestsData.length;
                 }
               } else {
@@ -628,7 +718,7 @@ const AllMocks = () => {
                   {mock.title}
                 </Typography>
 
-                {!isAdmin && mock.pricingType === 'paid' && !isPurchased(mockId) && (
+                {!isAdmin && (mock.pricingType || mock.pricing_type) === 'paid' && !isPurchased(mockId) && (
                   <IconButton
                     size="small"
                     color="primary"
@@ -655,13 +745,13 @@ const AllMocks = () => {
               <Stack direction="row" spacing={2} alignItems="center">
                 <Chip
                   icon={<AccessTimeIcon fontSize="small" />}
-                  label={`${mock.timeLimit} min`}
+                  label={`${mock.timeLimit || mock.time_limit || '?'} min`}
                   size="small"
                   variant="outlined"
                 />
                 <Chip
                   icon={<QuizIcon fontSize="small" />}
-                  label={`${mock.questions?.length || 0} questions`}
+                  label={`${mock.questions || 0} questions`}   // ← fixed: reads number directly
                   size="small"
                   variant="outlined"
                 />
