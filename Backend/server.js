@@ -241,7 +241,15 @@ app.post('/api/auth/login', async (req, res) => {
 // Admin: Add Mock Test
 app.post('/api/admin/add-mock-test', verifyAdmin, async (req, res) => {
   try {
-    const { title, description, category, timeLimit, questions, pricingType, price } = req.body;
+    const {
+      title,
+      description,
+      category,
+      timeLimit,
+      questions,
+      pricingType,
+      prices = {},   // ← NEW: object, not a single price number
+    } = req.body;
 
     console.log('Incoming Mock Test Data:', req.body);
 
@@ -253,8 +261,20 @@ app.post('/api/admin/add-mock-test', verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Invalid pricingType. Allowed values: free, paid.' });
     }
 
-    if (pricingType === 'paid' && (!price || isNaN(price) || Number(price) <= 0)) {
-      return res.status(400).json({ message: 'Please provide a valid price for paid mock tests.' });
+    if (pricingType === 'paid') {
+      if (!prices || typeof prices !== 'object' || Object.keys(prices).length === 0) {
+        return res.status(400).json({ message: 'Paid test requires at least one price in prices object.' });
+      }
+      // Validate each currency price
+      for (const [curr, amt] of Object.entries(prices)) {
+        if (typeof amt !== 'number' || amt <= 0) {
+          return res.status(400).json({ message: `Invalid price for ${curr}: must be a positive number.` });
+        }
+      }
+      // INR is required
+      if (!prices.INR || prices.INR <= 0) {
+        return res.status(400).json({ message: 'INR price is required for paid tests.' });
+      }
     }
 
     const { data, error } = await supabase
@@ -264,9 +284,9 @@ app.post('/api/admin/add-mock-test', verifyAdmin, async (req, res) => {
         description,
         category,
         time_limit: timeLimit,
-        questions: questions,
+        questions: questions,          // stored as JSONB
         pricing_type: pricingType,
-        price: pricingType === 'paid' ? Number(price) : 0,
+        prices: pricingType === 'paid' ? prices : {},  // ← stored as JSONB object
       }])
       .select()
       .single();
@@ -274,7 +294,6 @@ app.post('/api/admin/add-mock-test', verifyAdmin, async (req, res) => {
     if (error) throw error;
 
     console.log('Mock Test Saved Successfully:', data);
-
     res.status(201).json({ message: 'Mock test added successfully!', mockTest: data });
   } catch (error) {
     console.error('Error adding mock test:', error);
@@ -992,7 +1011,7 @@ app.get('/api/admin/mock-tests', verifyAdmin, async (req, res) => {
         pricing_type,
         prices,
         time_limit,
-        questions,           
+        questions,
         created_at,
         active,
         created_by
@@ -1002,13 +1021,11 @@ app.get('/api/admin/mock-tests', verifyAdmin, async (req, res) => {
 
     if (error) throw error;
 
-    // Compute question count in JS (safe & simple)
+    // Return questions as-is (JSONB array from Supabase is already parsed).
+    // Compute questionCount as a convenience field for any future use.
     const formatted = data.map(test => ({
       ...test,
-      questionCount: test.questions?.length || 0,
-      // Optional: clean up if you don't want full questions in response
-      questions: undefined, // remove if you don't need them in admin list
-      inrPrice: test.pricing_type === 'paid' ? (test.prices?.INR || 'N/A') : 'Free',
+      questionCount: Array.isArray(test.questions) ? test.questions.length : 0,
     }));
 
     res.status(200).json(formatted);
