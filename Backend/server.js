@@ -2460,6 +2460,257 @@ https://www.techmocks.com`,
   }
 });
 
+// AI Interview Routes->
+
+// ====================== INTERVIEW ROUTES ======================
+
+// GET /api/interviews - Available interviews for users
+app.get('/api/interviews', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('interviews')
+      .select(`
+        *,
+        interview_questions (*)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching interviews:', error);
+    res.status(500).json({ message: 'Failed to fetch interviews', error: error.message });
+  }
+});
+
+// POST /api/interviews - Admin creates new interview
+app.post('/api/interviews', verifyAdmin, async (req, res) => {
+  const { title, description, job_role, experience_level, duration_minutes = 30, questions } = req.body;
+
+  if (!title || !job_role || !questions || !Array.isArray(questions)) {
+    return res.status(400).json({ message: 'Title, job_role and questions array are required' });
+  }
+
+  try {
+    const { data: interview, error: interviewError } = await supabase
+      .from('interviews')
+      .insert({
+        title,
+        description,
+        job_role,
+        experience_level: experience_level || 'intermediate',
+        duration_minutes,
+        total_questions: questions.length,
+        created_by: req.user.id
+      })
+      .select()
+      .single();
+
+    if (interviewError) throw interviewError;
+
+    const questionsToInsert = questions.map((q, index) => ({
+      interview_id: interview.id,
+      question_text: q.question_text || q,
+      question_type: q.question_type || 'behavioral',
+      order_index: index
+    }));
+
+    const { error: qError } = await supabase
+      .from('interview_questions')
+      .insert(questionsToInsert);
+
+    if (qError) throw qError;
+
+    res.status(201).json({ 
+      message: 'Interview created successfully', 
+      interview 
+    });
+  } catch (error) {
+    console.error('Create interview error:', error);
+    res.status(500).json({ message: 'Failed to create interview', error: error.message });
+  }
+});
+
+// GET /api/interview-attempts - FIXED
+app.get('/api/interview-attempts', verifyUser, async (req, res) => {
+  try {
+    let query = supabase
+      .from('user_interview_attempts')
+      .select(`
+        *,
+        interviews (
+          title, 
+          job_role,
+          interview_questions (question_text)
+        )
+      `)
+      .order('started_at', { ascending: false });
+
+    // Non-admins can only see their own attempts
+    if (req.user.role !== 'admin') {
+      query = query.eq('user_id', req.user.id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching attempts:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch attempts', 
+      error: error.message 
+    });
+  }
+});
+
+// POST /api/interview-attempts/start
+app.post('/api/interview-attempts/start', verifyUser, async (req, res) => {
+  const { interview_id } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const { data, error } = await supabase
+      .from('user_interview_attempts')
+      .insert({
+        user_id: userId,
+        interview_id,
+        status: 'in_progress'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Start attempt error:', error);
+    res.status(500).json({ message: 'Failed to start interview', error: error.message });
+  }
+});
+
+// ====================== GEMINI LLM EVALUATION ======================
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// POST /api/interview-attempts/:id/complete
+app.post('/api/interview-attempts/:id/complete', verifyUser, async (req, res) => {
+  const { id } = req.params;
+  const { transcript, proctor_violations = 0 } = req.body;
+  const userId = req.user.id;
+
+  if (!transcript || !Array.isArray(transcript)) {
+    return res.status(400).json({ message: 'Transcript is required' });
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `You are a professional technical interviewer. Evaluate the candidate's performance fairly.
+
+${transcript.map((t, i) => `
+Question ${i+1}: ${t.question}
+Answer: ${t.answer || "No answer given"}
+`).join('\n---\n')}
+
+Return **only** valid JSON in this exact format:
+{
+  "overall_score": number (0-100),
+  "summary": "Short overall performance summary",
+  "strengths": "Key strengths observed",
+  "weaknesses": "Areas needing improvement",
+  "suggestions": "Actionable suggestions",
+  "per_question": [
+    {
+      "question": "question text",
+      "score": number,
+      "feedback": "detailed feedback"
+    }
+  ]
+}`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text().replace(/```json|```/g, '').trim();
+    const ai_feedback = JSON.parse(responseText);
+
+    const { data, error } = await supabase
+      .from('user_interview_attempts')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        transcript,
+        ai_feedback,
+        overall_score: ai_feedback.overall_score,
+        proctor_violations
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      message: 'Interview completed',
+      ai_feedback,
+      overall_score: ai_feedback.overall_score
+    });
+
+  } catch (err) {
+    console.error('Gemini Evaluation Error:', err);
+    res.status(500).json({ message: 'Failed to evaluate interview', error: err.message });
+  }
+});
+
+app.post('/api/ai/recommend-mocks', verifyUser, async (req, res) => {
+  const { mockSummary, purchasedIds } = req.body;
+ 
+  if (!mockSummary || !Array.isArray(mockSummary)) {
+    return res.status(400).json({ message: 'mockSummary array is required' });
+  }
+ 
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+ 
+    const prompt = `You are an expert learning advisor on a mock-test platform called TechMocks.
+ 
+Here is the full list of available mock tests (JSON):
+${JSON.stringify(mockSummary, null, 2)}
+ 
+The user has already purchased or completed these test IDs:
+${JSON.stringify(purchasedIds || [])}
+ 
+Task: Pick the 6 best mock tests for this user to attempt next. Consider:
+- Variety across categories
+- Progression from easier to harder
+- Prioritise tests not yet purchased (but include 1-2 purchased ones if they are foundational)
+- Give preference to free tests if possible
+ 
+Return ONLY valid JSON — no markdown, no explanation outside the array:
+[
+  {
+    "mockId": "string (must match an id from the list above)",
+    "reason": "string (1 short sentence, max 12 words, why this test is recommended)",
+    "priority": number (1-6, where 1 = most important)
+  }
+]`;
+ 
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text().replace(/```json|```/g, '').trim();
+    const recommendations = JSON.parse(responseText);
+ 
+    if (!Array.isArray(recommendations)) {
+      return res.status(500).json({ message: 'Unexpected AI response format' });
+    }
+ 
+    res.json({ recommendations });
+  } catch (err) {
+    console.error('AI recommendation error:', err);
+    res.status(500).json({ message: 'Failed to generate recommendations', error: err.message });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
