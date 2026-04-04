@@ -13,6 +13,7 @@ import Cart from './components/Cart';
 import ProfilePage from './components/Profile';
 import ChangePassword from './components/ChangePassword';
 import Community from './components/Community';
+import InterviewPage from './components/Interviewpage';
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
           <Route path="/profile" element={<ProfilePage/>}/>
           <Route path="/change-password" element={<ChangePassword darkMode={true} />} />
           <Route path="/community" element={<Community/>}/>
+          <Route path="/interview" element={<InterviewPage />} />
         </Route>
 
         {/* Redirect to Login by Default */}

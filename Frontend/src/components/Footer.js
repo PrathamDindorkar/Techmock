@@ -17,10 +17,10 @@ const Footer = () => {
         transition={{ duration: 0.6 }}
         viewport={{ once: true }}
         sx={{
-          backgroundColor: 'background.paper', // Flat, matches page background or use 'transparent' if needed
+          backgroundColor: theme.palette.background.default, 
           color: 'text.secondary',
           py: { xs: 4, md: 6 },
-          mt: 'auto', // Helps push footer to bottom if using flex on parent
+          mt: 'auto', 
         }}
       >
         <Container maxWidth="lg">

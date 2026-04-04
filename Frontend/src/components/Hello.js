@@ -141,18 +141,7 @@ const Hello = ({ darkMode }) => {
         setLoading(true);
         setError(null);
         try {
-          // ─── CRITICAL FIX ───────────────────────────────────────────────────
-          // /api/admin/mock-tests requires verifyAdmin → 403 for regular users.
-          // /api/admin/get-all-mocks is public but returns a GROUPED OBJECT:
-          //   { "SAP": [{id, title, ...}], "Procurement": [...] }
-          // NOT an array — so Array.isArray() returns false and mockTests stays
-          // empty, causing "Attempted Mocks" to always appear blank.
-          //
-          // Fix:
-          //  • Admins  → /api/admin/mock-tests      (flat array, needs auth)
-          //  • Users   → /api/admin/get-all-mocks   (grouped object, public)
-          //              then flatten it into a plain array
-          // ────────────────────────────────────────────────────────────────────
+          
           const mockTestsUrl = isAdminUser
             ? `${backendUrl}/api/admin/mock-tests`
             : `${backendUrl}/api/admin/get-all-mocks`;

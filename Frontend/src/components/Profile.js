@@ -212,7 +212,7 @@ const Profile = ({ darkMode }) => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 2, md: 4 }, px: { xs: 2, md: 3 } }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', py: { xs: 2, md: 4 }, px: { xs: 2, md: 3 } }}>
       <Box sx={{ maxWidth: 1300, mx: 'auto' }}>
 
         {/* Mobile: Horizontal Navigation Tabs */}
@@ -244,7 +244,7 @@ const Profile = ({ darkMode }) => {
           {/* Desktop Sidebar */}
           {!isMobile && (
             <Box sx={{ width: 280, flexShrink: 0 }}>
-              <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden' }}>
+              <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden', bgcolor: theme.palette.background.default}}>
                 <Box sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>
                     Profile Menu
@@ -287,7 +287,7 @@ const Profile = ({ darkMode }) => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden' }}>
+                <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden', bgcolor: theme.palette.background.default }}>
                   <CardContent sx={{ p: { xs: 3, md: 5 } }}>
 
                     {/* My Profile */}
