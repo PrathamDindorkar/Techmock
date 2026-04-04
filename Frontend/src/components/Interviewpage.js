@@ -38,12 +38,10 @@ const GlobalStyle = () => (
 
     body { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
-    /* Animated gradient orbs in bg */
     .bg-orb {
       position: fixed; border-radius: 50%; filter: blur(80px);
       pointer-events: none; z-index: 0; opacity: 0.35;
@@ -54,7 +52,6 @@ const GlobalStyle = () => (
       to   { transform: translate(40px, -30px) scale(1.1); }
     }
 
-    /* Cards */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -63,7 +60,6 @@ const GlobalStyle = () => (
     }
     .card:hover { border-color: var(--border2); }
 
-    /* Buttons */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       font-family: var(--font-sans); font-size: 14px; font-weight: 500;
@@ -100,7 +96,16 @@ const GlobalStyle = () => (
     }
     .btn-teal:hover { background: var(--teal-glow); }
 
-    /* Chip/badge */
+    /* NEW: Submit button - distinct green style */
+    .btn-submit {
+      background: rgba(74,222,128,0.15); color: var(--green);
+      border: 1px solid rgba(74,222,128,0.35);
+      padding: 10px 20px;
+      font-weight: 600;
+    }
+    .btn-submit:hover { background: rgba(74,222,128,0.25); box-shadow: 0 0 20px rgba(74,222,128,0.2); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
     .chip {
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 11px; font-weight: 500; padding: 3px 10px;
@@ -112,7 +117,6 @@ const GlobalStyle = () => (
     .chip-red    { background: rgba(248,113,113,0.12); color: var(--red);    border: 1px solid rgba(248,113,113,0.25); }
     .chip-green  { background: rgba(74,222,128,0.12);  color: var(--green);  border: 1px solid rgba(74,222,128,0.2); }
 
-    /* Form */
     .form-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; display: block; }
     .form-input {
       width: 100%; background: var(--surface2); border: 1px solid var(--border2);
@@ -125,7 +129,6 @@ const GlobalStyle = () => (
     select.form-input option { background: var(--surface2); }
     textarea.form-input { resize: vertical; min-height: 80px; }
 
-    /* Dialog overlay */
     .dialog-overlay {
       position: fixed; inset: 0; z-index: 1000;
       background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
@@ -138,16 +141,14 @@ const GlobalStyle = () => (
       max-height: 90vh; overflow-y: auto;
       animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    .dialog-box.wide { max-width: 840px; }
+    .dialog-box.wide { max-width: 900px; }
 
     @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-    /* Progress bar */
     .progress-track { height: 4px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
     .progress-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
 
-    /* Recording pulse */
     @keyframes pulse {
       0%   { box-shadow: 0 0 0 0 rgba(248,113,113,0.5); }
       70%  { box-shadow: 0 0 0 10px rgba(248,113,113,0); }
@@ -155,11 +156,16 @@ const GlobalStyle = () => (
     }
     .recording-ring { animation: pulse 1.4s ease-in-out infinite; }
 
-    /* Waveform bars */
+    /* NEW: Interim text pulse animation */
+    @keyframes interimPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .interim-text { animation: interimPulse 1.5s ease-in-out infinite; }
+
     .wave-bar { display: inline-block; width: 3px; border-radius: 99px; background: var(--teal); margin: 0 1.5px; animation: waveAnim 0.8s ease-in-out infinite alternate; }
     @keyframes waveAnim { from { height: 4px; } to { height: 22px; } }
 
-    /* Spinner */
     .spinner {
       width: 40px; height: 40px; border-radius: 50%;
       border: 3px solid var(--border2); border-top-color: var(--accent);
@@ -167,11 +173,9 @@ const GlobalStyle = () => (
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Score ring */
     .score-ring { transform: rotate(-90deg); }
     .score-ring circle { transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1); }
 
-    /* Toast */
     .toast {
       position: fixed; bottom: 24px; right: 24px; z-index: 9999;
       background: var(--surface2); border: 1px solid var(--border2);
@@ -183,39 +187,30 @@ const GlobalStyle = () => (
     }
     @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Transcript item enter */
     @keyframes itemIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
     .t-item-enter { animation: itemIn 0.3s ease; }
 
-    /* Section reveal */
     @keyframes revealUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     .reveal { animation: revealUp 0.4s ease both; }
     .reveal-1 { animation-delay: 0.05s; }
     .reveal-2 { animation-delay: 0.12s; }
     .reveal-3 { animation-delay: 0.2s; }
 
-    /* Divider */
     .divider { height: 1px; background: var(--border); margin: 20px 0; }
 
-    /* Alert */
     .alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: var(--r-sm); font-size: 13px; }
     .alert-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); color: var(--amber); }
     .alert-error   { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
     .alert-info    { background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.2); color: var(--accent2); }
 
-    /* Scrollable area */
     .scroll-area { overflow-y: auto; }
     .scroll-area::-webkit-scrollbar { width: 3px; }
 
-    /* Timer */
     .timer-critical { color: var(--red) !important; animation: timerPulse 1s ease-in-out infinite; }
     @keyframes timerPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
   `}</style>
 );
 
-/* ─────────────────────────────────────────────
-   Tiny utility components
-───────────────────────────────────────────── */
 const Waveform = ({ bars = 5, delay = 0 }) => (
   <span style={{ display: 'inline-flex', alignItems: 'center', height: 24 }}>
     {Array.from({ length: bars }).map((_, i) => (
@@ -256,9 +251,6 @@ const Toast = ({ message, type = 'info', onClose }) => {
   );
 };
 
-/* ─────────────────────────────────────────────
-   Main Component
-───────────────────────────────────────────── */
 const InterviewPage = () => {
   const [interviews, setInterviews] = useState([]);
   const [myAttempts, setMyAttempts] = useState([]);
@@ -267,7 +259,9 @@ const InterviewPage = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState([]);
-  const [currentSpokenText, setCurrentSpokenText] = useState('');
+  // FIX 1: Split interim (live typing) and final spoken text for clear display
+  const [interimText, setInterimText] = useState('');
+  const [finalBuffer, setFinalBuffer] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [report, setReport] = useState(null);
@@ -275,7 +269,7 @@ const InterviewPage = () => {
   const [toast, setToast] = useState(null);
   const [proctorViolations, setProctorViolations] = useState(0);
   const [interviewTimeLeft, setInterviewTimeLeft] = useState(0);
-  const [phase, setPhase] = useState('reading'); // 'reading' | 'listening' | 'done'
+  const [phase, setPhase] = useState('reading');
   const [textInputValue, setTextInputValue] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newInterview, setNewInterview] = useState({
@@ -285,7 +279,7 @@ const InterviewPage = () => {
   });
 
   const mediaRecorderRef = useRef(null);
-  const activeStreamRef = useRef(null);   // single persistent mic stream
+  const activeStreamRef = useRef(null);
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
   const timerRef = useRef(null);
@@ -296,7 +290,9 @@ const InterviewPage = () => {
   const currentAttemptRef = useRef(null);
   const transcriptRef = useRef([]);
   const proctorRef = useRef(0);
-  const handledNextRef = useRef(false);  // prevents double-firing handleAutoNext
+  const handledNextRef = useRef(false);
+  // FIX 1: ref to accumulate final speech across recognition cycles
+  const finalBufferRef = useRef('');
 
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
@@ -305,23 +301,19 @@ const InterviewPage = () => {
 
   const showToast = (message, type = 'info') => setToast({ message, type });
 
-  /* ── Sync refs with state ── */
   useEffect(() => { currentIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
   useEffect(() => { selectedInterviewRef.current = selectedInterview; }, [selectedInterview]);
   useEffect(() => { currentAttemptRef.current = currentAttempt; }, [currentAttempt]);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { proctorRef.current = proctorViolations; }, [proctorViolations]);
 
-  /* ── Scroll transcript to bottom ── */
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [transcript]);
 
-  /* ── Fetch data ── */
   useEffect(() => {
     fetchInterviews();
     if (token) { fetchMyAttempts(); }
   }, [token]);
 
-  /* ── Proctoring ── */
   useEffect(() => {
     const handleVis = () => {
       if (document.visibilityState === 'hidden' && selectedInterviewRef.current) {
@@ -358,7 +350,6 @@ const InterviewPage = () => {
     synthRef.current.speak(u);
   };
 
-  /* ──────────── Create Interview (Admin) ──────────── */
   const handleCreateInterview = async () => {
     if (!newInterview.title || !newInterview.job_role || newInterview.questions.length === 0) {
       showToast('Title, job role and at least one question are required', 'warning'); return;
@@ -378,7 +369,6 @@ const InterviewPage = () => {
   const updateQuestion = (i, f, v) => { const q = [...newInterview.questions]; q[i][f] = v; setNewInterview({ ...newInterview, questions: q }); };
   const removeQuestion = (i) => { if (newInterview.questions.length === 1) return; setNewInterview(p => ({ ...p, questions: p.questions.filter((_, j) => j !== i) })); };
 
-  /* ──────────── Interview Flow ──────────── */
   const startInterview = async (interview) => {
     if (!token) { showToast('Please login to start an interview', 'warning'); return; }
     try {
@@ -391,7 +381,9 @@ const InterviewPage = () => {
       currentIndexRef.current = 0;
       setTranscript([]);
       transcriptRef.current = [];
-      setCurrentSpokenText('');
+      setInterimText('');
+      setFinalBuffer('');
+      finalBufferRef.current = '';
       setReport(null);
       setIsEvaluating(false);
       setProctorViolations(0);
@@ -411,27 +403,27 @@ const InterviewPage = () => {
   };
 
   const startQuestion = (interview, idx) => {
-    const q = interview.interview_questions[idx];
     setPhase('reading');
-    setCurrentSpokenText('');
+    // FIX 1: Clear both interim and final buffer when new question starts
+    setInterimText('');
+    setFinalBuffer('');
+    finalBufferRef.current = '';
+    handledNextRef.current = false;
+    const q = interview.interview_questions[idx];
     speak(`Question ${idx + 1}: ${q.question_text}`);
     setTimeout(() => { setPhase('listening'); autoStartVoiceInput(interview, idx); }, 2200);
   };
 
   const autoStartVoiceInput = async (interview, idx) => {
     try {
-      // Acquire mic stream ONCE and reuse — requesting it every question causes
-      // "Permission denied" / conflict errors on many browsers even with permission granted
       if (!activeStreamRef.current) {
         activeStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
       setIsRecording(true);
-      handledNextRef.current = false;
 
       const SRA = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SRA) { setError('Speech recognition is not supported in this browser. Try Chrome or Edge.'); return; }
 
-      // Detach previous handler before stopping to avoid it re-firing
       if (recognitionRef.current) {
         try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch {}
       }
@@ -442,24 +434,27 @@ const InterviewPage = () => {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      // FIX 1: Proper real-time display — show both accumulated final text AND live interim text
       recognition.onresult = (event) => {
-        let final = '', interim = '';
+        let newFinal = '';
+        let currentInterim = '';
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
-          else interim += event.results[i][0].transcript + ' ';
+          if (event.results[i].isFinal) {
+            newFinal += event.results[i][0].transcript + ' ';
+          } else {
+            currentInterim += event.results[i][0].transcript;
+          }
         }
-        setCurrentSpokenText((interim + final).trim());
-        if (final && !handledNextRef.current) {
-          handledNextRef.current = true;  // prevent double-trigger from continuous mode
-          const entry = { question: interview.interview_questions[idx].question_text, answer: final.trim() };
-          setTranscript(prev => {
-            const updated = [...prev, entry];
-            transcriptRef.current = updated;
-            return updated;
-          });
-          setCurrentSpokenText('');
-          try { recognition.onresult = null; recognition.stop(); } catch {}
-          setTimeout(() => handleAutoNext(interview, idx), 1200);
+
+        if (newFinal) {
+          // Accumulate finals in ref so it persists across re-renders
+          finalBufferRef.current = (finalBufferRef.current + newFinal).trim();
+          setFinalBuffer(finalBufferRef.current);
+          setInterimText(''); // Clear interim once it becomes final
+        } else {
+          // Show live interim text while user is still speaking
+          setInterimText(currentInterim);
         }
       };
 
@@ -469,7 +464,6 @@ const InterviewPage = () => {
         if (e.error === 'aborted') return;
 
         if (e.error === 'no-speech') {
-          // Restart silently — user just hasn't spoken yet
           if (handledNextRef.current) return;
           try { recognition.stop(); } catch {}
           setTimeout(() => {
@@ -485,8 +479,6 @@ const InterviewPage = () => {
         }
 
         if (e.error === 'network') {
-          // Google speech servers unreachable (no internet, VPN, or HTTP context)
-          // Fall back to manual text input so the interview can still proceed
           console.warn('SpeechRecognition: network error — switching to text input mode');
           try { recognition.onresult = null; recognition.stop(); } catch {}
           setIsRecording(false);
@@ -507,6 +499,38 @@ const InterviewPage = () => {
     }
   };
 
+  // FIX 2: Explicit submit current answer — user clicks "Submit Answer" button
+  const submitCurrentAnswer = () => {
+    const iv = selectedInterviewRef.current;
+    const idx = currentIndexRef.current;
+    if (!iv || handledNextRef.current) return;
+
+    // Use whatever has been accumulated (final buffer + any remaining interim)
+    const answer = (finalBufferRef.current + ' ' + interimText).trim();
+    if (!answer) {
+      showToast('Please speak your answer before submitting', 'warning');
+      return;
+    }
+
+    handledNextRef.current = true;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch {}
+    }
+    setIsRecording(false);
+
+    const entry = { question: iv.interview_questions[idx].question_text, answer };
+    setTranscript(prev => {
+      const updated = [...prev, entry];
+      transcriptRef.current = updated;
+      return updated;
+    });
+    setInterimText('');
+    setFinalBuffer('');
+    finalBufferRef.current = '';
+
+    setTimeout(() => handleAutoNext(iv, idx), 800);
+  };
+
   const handleAutoNext = (interview, idx) => {
     if (recognitionRef.current) { try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch {} }
     setIsRecording(false);
@@ -525,13 +549,17 @@ const InterviewPage = () => {
     if (!selectedInterviewRef.current) return;
     const iv = selectedInterviewRef.current;
     const idx = currentIndexRef.current;
+    if (handledNextRef.current) return;
+    handledNextRef.current = true;
     if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
     setTranscript(prev => {
       const updated = [...prev, { question: iv.interview_questions[idx].question_text, answer: '[Skipped]' }];
       transcriptRef.current = updated;
       return updated;
     });
-    setCurrentSpokenText('');
+    setInterimText('');
+    setFinalBuffer('');
+    finalBufferRef.current = '';
     handleAutoNext(iv, idx);
   };
 
@@ -559,6 +587,28 @@ const InterviewPage = () => {
     }
   };
 
+  // FIX 3: End Early now properly submits what's answered instead of just cancelling
+  const handleEndEarly = () => {
+    const answeredCount = transcriptRef.current.length;
+    if (answeredCount === 0) {
+      if (window.confirm('You haven\'t answered any questions. Abandon interview without generating a report?')) {
+        cleanupAll();
+      }
+      return;
+    }
+    if (window.confirm(`Submit your ${answeredCount} answered question(s) now and get a partial performance report?`)) {
+      // If user is mid-answer, capture whatever they've said so far
+      const iv = selectedInterviewRef.current;
+      const idx = currentIndexRef.current;
+      const pendingAnswer = (finalBufferRef.current + ' ' + interimText).trim();
+      if (pendingAnswer && iv && !handledNextRef.current) {
+        const entry = { question: iv.interview_questions[idx].question_text, answer: pendingAnswer };
+        transcriptRef.current = [...transcriptRef.current, entry];
+      }
+      finishInterview();
+    }
+  };
+
   const autoSubmitDueToProctoring = async () => {
     speak('Multiple violations detected. Submitting automatically.');
     cleanupRecording();
@@ -581,7 +631,6 @@ const InterviewPage = () => {
   const cleanupRecording = () => {
     setIsRecording(false);
     if (recognitionRef.current) { try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch {} }
-    // Release mic stream tracks so the browser indicator light turns off
     if (activeStreamRef.current) {
       activeStreamRef.current.getTracks().forEach(t => t.stop());
       activeStreamRef.current = null;
@@ -595,29 +644,30 @@ const InterviewPage = () => {
     setCurrentAttempt(null);
     setCurrentQuestionIndex(0);
     setTranscript([]);
-    setCurrentSpokenText('');
+    setInterimText('');
+    setFinalBuffer('');
+    finalBufferRef.current = '';
     setProctorViolations(0);
     setPhase('reading');
     violationCountRef.current = 0;
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  /* ──────────── Format time ──────────── */
   const fmtTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
   const isCritical = interviewTimeLeft < 120;
 
-  /* ──────────── Render ──────────── */
+  // Combined spoken text for display: finalized text + live interim
+  const displaySpokenText = [finalBuffer, interimText].filter(Boolean).join(' ');
+
   return (
     <>
       <GlobalStyle />
 
-      {/* Background orbs */}
       <div className="bg-orb" style={{ width: 500, height: 500, background: 'radial-gradient(circle, #7c6af7 0%, transparent 70%)', top: -100, left: -100 }} />
       <div className="bg-orb" style={{ width: 400, height: 400, background: 'radial-gradient(circle, #2dd4bf 0%, transparent 70%)', bottom: 100, right: -80, animationDelay: '9s', animationDirection: 'alternate-reverse' }} />
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '40px 24px 80px' }}>
 
-        {/* Header */}
         <div className="reveal" style={{ marginBottom: 48 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, var(--accent), var(--teal))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🎙</div>
@@ -631,7 +681,6 @@ const InterviewPage = () => {
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="alert alert-error reveal" style={{ marginBottom: 20 }}>
             <span>⚠</span>
@@ -639,17 +688,13 @@ const InterviewPage = () => {
           </div>
         )}
 
-        {/* Admin create button */}
         {isAdmin && (
           <button className="btn btn-primary reveal" style={{ marginBottom: 32 }} onClick={() => setShowCreateForm(true)}>
             <span>+</span> Create Interview
           </button>
         )}
 
-        {/* Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 28, alignItems: 'start' }}>
-
-          {/* Left — available interviews */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Available</span>
@@ -685,7 +730,6 @@ const InterviewPage = () => {
             )}
           </div>
 
-          {/* Right — history */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>My History</span>
@@ -731,7 +775,6 @@ const InterviewPage = () => {
         <div className="dialog-overlay">
           <div className="dialog-box wide" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-            {/* Header bar */}
             <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div style={{ flex: 1 }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
@@ -742,7 +785,6 @@ const InterviewPage = () => {
                 </h2>
               </div>
 
-              {/* Timer */}
               <div style={{ textAlign: 'center' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', marginBottom: 2 }}>TIME LEFT</p>
                 <span className={`${isCritical ? 'timer-critical' : ''}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 500, color: isCritical ? 'var(--red)' : 'var(--text)' }}>
@@ -750,7 +792,6 @@ const InterviewPage = () => {
                 </span>
               </div>
 
-              {/* Q counter */}
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', marginBottom: 4 }}>QUESTION</p>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--accent2)' }}>
@@ -759,18 +800,15 @@ const InterviewPage = () => {
               </div>
             </div>
 
-            {/* Progress */}
             <div style={{ padding: '0 28px' }}>
               <div className="progress-track" style={{ marginTop: 16 }}>
                 <div className="progress-fill" style={{ width: `${((currentQuestionIndex + (phase === 'done' ? 1 : 0)) / selectedInterview.interview_questions.length) * 100}%` }} />
               </div>
             </div>
 
-            {/* Main content */}
             <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
-              {/* Left — current question + recording */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Question card */}
                 <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '20px', border: '1px solid var(--border)' }}>
@@ -782,30 +820,56 @@ const InterviewPage = () => {
                   </p>
                 </div>
 
-                {/* Recording status */}
-                <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '16px 20px', border: isRecording ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)', transition: 'border-color 0.3s', minHeight: 110 }}>
+                {/* FIX 1: Recording status with proper real-time text display */}
+                <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '16px 20px', border: phase === 'listening' ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)', transition: 'border-color 0.3s', minHeight: 130 }}>
                   {phase === 'reading' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text2)' }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.4s infinite' }} />
                       <span style={{ fontSize: 14 }}>AI is reading the question aloud...</span>
                     </div>
                   )}
+
                   {phase === 'listening' && (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                         <div className="recording-ring" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--red)', flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: 'var(--teal)' }}>Listening — speak your answer clearly</span>
+                        <span style={{ fontSize: 13, color: 'var(--teal)' }}>Listening — speak your answer</span>
                         <Waveform bars={6} />
                       </div>
-                      {currentSpokenText ? (
-                        <p style={{ fontSize: 13, color: 'var(--text)', fontStyle: 'italic', lineHeight: 1.6, background: 'rgba(124,106,247,0.06)', padding: '10px 14px', borderRadius: 8, borderLeft: '2px solid var(--accent)' }}>
-                          "{currentSpokenText}"
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: 12, color: 'var(--text3)' }}>Start speaking — your voice is being transcribed in real time</p>
-                      )}
+
+                      {/* FIX 1: Live transcript display box */}
+                      <div style={{
+                        minHeight: 56,
+                        background: 'rgba(124,106,247,0.06)',
+                        borderRadius: 8,
+                        padding: '10px 14px',
+                        borderLeft: '2px solid var(--accent)',
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        color: 'var(--text)',
+                      }}>
+                        {displaySpokenText ? (
+                          <>
+                            {/* Finalized text in solid color */}
+                            {finalBuffer && (
+                              <span style={{ color: 'var(--text)' }}>{finalBuffer} </span>
+                            )}
+                            {/* Interim (still-being-spoken) text dimmed and pulsing */}
+                            {interimText && (
+                              <span className="interim-text" style={{ color: 'var(--text2)', fontStyle: 'italic' }}>
+                                {interimText}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>
+                            Start speaking — your words will appear here in real time...
+                          </span>
+                        )}
+                      </div>
                     </>
                   )}
+
                   {phase === 'text-fallback' && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -845,30 +909,49 @@ const InterviewPage = () => {
                       </button>
                     </>
                   )}
+
                   {phase === 'done' && (
                     <p style={{ fontSize: 14, color: 'var(--green)' }}>✓ All questions answered</p>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {(phase === 'listening' || phase === 'text-fallback') && (
-                    <button className="btn btn-ghost" style={{ flex: 1, fontSize: 13 }} onClick={skipQuestion}>Skip →</button>
+                {/* FIX 2 & 3: Action buttons — Submit Answer + Skip + End Early */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                  {/* FIX 2: Prominent Submit Answer button when listening */}
+                  {phase === 'listening' && (
+                    <button
+                      className="btn btn-submit"
+                      style={{ width: '100%', fontSize: 14, padding: '12px 20px' }}
+                      onClick={submitCurrentAnswer}
+                      disabled={!displaySpokenText}
+                    >
+                      ✓ Submit Answer
+                      {currentQuestionIndex < selectedInterview.interview_questions.length - 1
+                        ? ' → Next Question'
+                        : ' → Finish Interview'}
+                    </button>
                   )}
-                  <button className="btn btn-ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => {
-                    if (transcriptRef.current.length > 0) {
-                      if (window.confirm('Submit what you\'ve answered so far and get a partial report?')) {
-                        finishInterview();
-                      }
-                    } else {
-                      if (window.confirm('End interview without submitting? No report will be generated.')) {
-                        cleanupAll();
-                      }
-                    }
-                  }}>End Early</button>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {/* Skip only shows during listening/text-fallback */}
+                    {(phase === 'listening' || phase === 'text-fallback') && (
+                      <button className="btn btn-ghost" style={{ flex: 1, fontSize: 13 }} onClick={skipQuestion}>
+                        Skip Question →
+                      </button>
+                    )}
+
+                    {/* FIX 3: End Early now properly submits via handleEndEarly */}
+                    <button
+                      className="btn btn-danger"
+                      style={{ flex: 1, fontSize: 13 }}
+                      onClick={handleEndEarly}
+                    >
+                      {transcript.length > 0 ? '⬆ Submit & End Early' : '✕ Abandon Interview'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Proctor warning */}
                 {proctorViolations > 0 && (
                   <div className="alert alert-warning">
                     <span>⚠</span>
@@ -884,14 +967,14 @@ const InterviewPage = () => {
                   <span className="chip chip-teal">{transcript.length} answered</span>
                 </div>
 
-                <div className="scroll-area" style={{ flex: 1, maxHeight: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="scroll-area" style={{ flex: 1, maxHeight: 360, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {transcript.length === 0 ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 20 }}>
-                      Your answered questions will appear here as you speak.
+                      Your answered questions will appear here as you submit each one.
                     </div>
                   ) : (
                     transcript.map((entry, i) => (
-                      <div key={i} className="t-item-enter" style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)', animation: 'itemIn 0.3s ease' }}>
+                      <div key={i} className="t-item-enter" style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
                         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', marginBottom: 6 }}>Q{i + 1}: {entry.question}</p>
                         <p style={{ fontSize: 13, color: entry.answer === '[Skipped]' ? 'var(--text3)' : 'var(--text)', lineHeight: 1.5 }}>
                           {entry.answer === '[Skipped]' ? <em>Skipped</em> : entry.answer}
@@ -924,7 +1007,6 @@ const InterviewPage = () => {
               </div>
             </div>
 
-            {/* ETA bar */}
             <div className="alert alert-info" style={{ marginBottom: 20 }}>
               <span>⏱</span>
               <div>
@@ -935,7 +1017,6 @@ const InterviewPage = () => {
               </div>
             </div>
 
-            {/* Transcript review */}
             {transcriptRef.current.length > 0 && (
               <div>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
@@ -962,7 +1043,6 @@ const InterviewPage = () => {
         <div className="dialog-overlay">
           <div className="dialog-box wide" style={{ padding: '28px 32px' }}>
 
-            {/* Score header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
               <ScoreRing score={report.overall_score || 0} size={110} />
               <div>
@@ -972,7 +1052,6 @@ const InterviewPage = () => {
               </div>
             </div>
 
-            {/* Strengths / Weaknesses / Suggestions */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
                 { label: 'Strengths', content: report.strengths, color: 'var(--green)', bg: 'rgba(74,222,128,0.06)', border: 'rgba(74,222,128,0.2)', icon: '✦' },
@@ -988,7 +1067,6 @@ const InterviewPage = () => {
               ))}
             </div>
 
-            {/* Per-question breakdown */}
             {report.per_question && report.per_question.length > 0 && (
               <>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Question Breakdown</p>
@@ -1091,7 +1169,6 @@ const InterviewPage = () => {
         </div>
       )}
 
-      {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );

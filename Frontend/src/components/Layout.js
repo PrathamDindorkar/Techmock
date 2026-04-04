@@ -225,12 +225,6 @@ const Layout = () => {
   if (token)         navItems.push({ label: 'Cart',  icon: <ShoppingCartIcon />,        path: '/cart',  action: () => goTo('/cart')  });
   if (role === 'admin') navItems.push({ label: 'Admin', icon: <AdminPanelSettingsIcon />, path: '/admin', action: () => goTo('/admin') });
 
-  /* ─────────────────────────────────────────
-     THEME  — the key change:
-     background.default and background.paper
-     are now semi-transparent so every page
-     that uses them shows the animated layer.
-  ───────────────────────────────────────── */
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
@@ -297,8 +291,6 @@ const Layout = () => {
       backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
       position: 'relative', overflow: 'hidden',
     }}>
-      <Box sx={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
         <Typography variant="h6" fontWeight={800} sx={{ background: 'linear-gradient(90deg,#6366f1,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           TechMocks
@@ -408,12 +400,7 @@ const Layout = () => {
               )}
               <Box component={motion.div} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={() => goTo('/home')} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{
-                  width: 28, height: 28, borderRadius: 1.5,
-                  background: 'linear-gradient(135deg, #6366f1, #14b8a6)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                </Box>
+                
                 <Typography variant="h6" fontWeight={800} sx={{
                   fontSize: '1.05rem',
                   background: 'linear-gradient(90deg, #6366f1 0%, #14b8a6 100%)',
