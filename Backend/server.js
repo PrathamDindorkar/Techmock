@@ -19,6 +19,9 @@ console.log('STRIPE_SECRET_KEY starts with:', process.env.STRIPE_SECRET_KEY ? pr
 console.log('Full key (hidden):', process.env.STRIPE_SECRET_KEY ? 'sk_test_...' : 'MISSING');
 console.log('=========================');*/
 
+// Allowed currencies
+const ALLOWED_CURRENCIES = ['EUR', 'GBP', 'INR', 'USD'];
+
 if (!process.env.STRIPE_SECRET_KEY) {
   console.error('ERROR: STRIPE_SECRET_KEY is missing in .env file!');
   process.exit(1);
@@ -646,52 +649,42 @@ https://www.techmocks.com`,
 app.post('/api/payment/razorpay/create-order', verifyUser, async (req, res) => {
   const userId = req.user.id;
   const { amount, coupon_code } = req.body;
-
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ message: 'Invalid amount' });
-  }
-
+ 
+  if (!amount || amount <= 0) return res.status(400).json({ message: 'Invalid amount' });
+ 
   try {
     const { data: cartItems, error } = await supabase
       .from('cart')
-      .select('price')
+      .select('price, item_type')
       .eq('user_id', userId);
-
+ 
     if (error) throw error;
-
+ 
     let originalTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
-
-    // If coupon is provided, validate and apply discount
     let finalAmount = originalTotal;
+ 
     if (coupon_code) {
       const { data: coupon, error: couponError } = await supabase
         .from('coupons')
         .select('discount')
         .eq('code', coupon_code.toUpperCase())
         .single();
-
-      if (couponError || !coupon) {
-        return res.status(400).json({ message: 'Invalid coupon' });
-      }
-
+ 
+      if (couponError || !coupon) return res.status(400).json({ message: 'Invalid coupon' });
       finalAmount = Math.round(originalTotal * (1 - coupon.discount / 100));
     }
-
-    // Now compare with the amount sent from frontend
-    if (finalAmount !== amount) {
-      return res.status(400).json({ message: 'Amount mismatch' });
-    }
-
-    // Generate receipt
+ 
+    if (finalAmount !== amount) return res.status(400).json({ message: 'Amount mismatch' });
+ 
     const shortId = Math.random().toString(36).substring(2, 10);
     const receipt = `rec_${shortId}_${Date.now().toString().slice(-8)}`;
-
+ 
     const order = await razorpay.orders.create({
-      amount: amount * 100, // in paise
+      amount: amount * 100,
       currency: 'INR',
-      receipt: receipt,
+      receipt,
     });
-
+ 
     res.json({ order });
   } catch (error) {
     console.error('Razorpay order creation error:', error);
@@ -700,114 +693,108 @@ app.post('/api/payment/razorpay/create-order', verifyUser, async (req, res) => {
 });
 
 // Razorpay: Verify Payment & Fulfill
-// Razorpay: Verify Payment & Fulfill (fixed)
 app.post('/api/payment/razorpay/verify', verifyUser, async (req, res) => {
   const userId = req.user.id;
   const { razorpay_payment_id, razorpay_order_id, razorpay_signature, coupon_code } = req.body;
-
-  console.log('[Razorpay Verify] Started for user:', userId);
-
+ 
   const crypto = require('crypto');
   const generated_signature = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
     .update(razorpay_order_id + '|' + razorpay_payment_id)
     .digest('hex');
-
+ 
   if (generated_signature !== razorpay_signature) {
-    console.error('[Razorpay Verify] Invalid signature');
     return res.status(400).json({ message: 'Invalid signature' });
   }
-
-  console.log('[Razorpay Verify] Signature valid');
-
+ 
   try {
-    // Fetch user
     const { data: user } = await supabase
       .from('users')
       .select('name, email')
       .eq('id', userId)
       .single();
-
-    // Fetch cart items — ONLY select what we need (title for email, no price needed here)
+ 
+    // Fetch full cart with both item types
     const { data: cartItems, error: cartError } = await supabase
       .from('cart')
       .select(`
         mock_test_id,
-        mock_tests!inner (
-          title
-        )
+        interview_id,
+        item_type,
+        mock_tests!left ( title ),
+        interviews!left ( title )
       `)
       .eq('user_id', userId);
-
-    if (cartError) {
-      console.error('[Razorpay Verify] Cart fetch error:', cartError);
-      throw cartError;
-    }
-
-    console.log('[Razorpay Verify] Cart items count:', cartItems?.length || 0);
-
-    if (cartItems?.length > 0) {
-      const purchasedTests = cartItems.map(item => ({
-        user_id: userId,
-        mock_test_id: item.mock_test_id,
+ 
+    if (cartError) throw cartError;
+ 
+    const mockTestItems  = cartItems.filter(i => i.item_type === 'mock_test'  && i.mock_test_id);
+    const interviewItems = cartItems.filter(i => i.item_type === 'interview'  && i.interview_id);
+ 
+    // Fulfill mock tests — insert into purchased_tests with mock_test_id set
+    if (mockTestItems.length > 0) {
+      const purchases = mockTestItems.map(i => ({
+        user_id:      userId,
+        mock_test_id: i.mock_test_id,
+        interview_id: null,
       }));
-
-      // Safe upsert – ignore if already purchased
-      const { error: upsertError } = await supabase
+      const { error: uErr } = await supabase
         .from('purchased_tests')
-        .upsert(purchasedTests, {
-          onConflict: 'user_id, mock_test_id',
-          ignoreDuplicates: true,
-        });
-
-      if (upsertError) {
-        console.error('[Razorpay Verify] Upsert error:', upsertError);
-        throw upsertError;
-      }
-
-      console.log('[Razorpay Verify] Purchases upserted');
-
-      // Clear cart
-      const { error: deleteError } = await supabase
-        .from('cart')
-        .delete()
-        .eq('user_id', userId);
-
-      if (deleteError) {
-        console.error('[Razorpay Verify] Cart delete error:', deleteError);
-        throw deleteError;
-      }
-
-      console.log('[Razorpay Verify] Cart cleared');
-    } else {
-      console.warn('[Razorpay Verify] No items in cart to fulfill');
+        .upsert(purchases, { onConflict: 'user_id, mock_test_id', ignoreDuplicates: true });
+      if (uErr) throw uErr;
     }
-
-    // Email
+ 
+    // Fulfill interviews — insert into purchased_tests with interview_id set
+    if (interviewItems.length > 0) {
+      const purchases = interviewItems.map(i => ({
+        user_id:      userId,
+        mock_test_id: null,
+        interview_id: i.interview_id,
+      }));
+      // Use ignoreDuplicates via the partial unique index
+      const { error: iErr } = await supabase
+        .from('purchased_tests')
+        .insert(purchases);
+      // Ignore duplicate violations gracefully
+      if (iErr && !iErr.message?.includes('duplicate')) throw iErr;
+    }
+ 
+    // Clear entire cart
+    await supabase.from('cart').delete().eq('user_id', userId);
+ 
+    // Send confirmation email
     if (user?.email) {
-      const testTitles = cartItems?.map(item => item.mock_tests?.title || 'Untitled Test') || [];
-      const mailOptions = {
+      const allTitles = [
+        ...mockTestItems.map(i => i.mock_tests?.title  || 'Mock Test'),
+        ...interviewItems.map(i => i.interviews?.title || 'Interview'),
+      ];
+ 
+      await transporter.sendMail({
         from: `"TechMocks" <${process.env.EMAIL_USER}>`,
         to: user.email,
-        subject: 'Payment Successful – Your Mock Tests are Unlocked! 🎉',
-        text: `Hello ${user.name || 'User'},
-Thank you for your purchase on TechMocks!
-Your payment via UPI has been successfully processed.
-The following mock tests are now unlocked:
-${testTitles.map(t => `• ${t}`).join('\n')}
-Keep practicing!
-Best regards,
-The TechMocks Team`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log('[Razorpay Verify] Success email sent');
+        subject: 'Payment Successful – Your purchases are now unlocked! 🎉',
+        text: `Hello ${user.name || 'User'},\n\nYour payment was successful!\n\nUnlocked:\n${allTitles.map(t => `• ${t}`).join('\n')}\n\nBest regards,\nThe TechMocks Team`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #7c6af7;">Payment Successful! 🎉</h2>
+            <p>Hello ${user.name || 'User'},</p>
+            <p>The following items are now unlocked for you:</p>
+            <ul>${allTitles.map(t => `<li style="margin: 8px 0; font-weight: 500;">${t}</li>`).join('')}</ul>
+            <p style="margin-top: 24px;">
+              <a href="https://www.techmocks.com/hello"
+                 style="background:#7c6af7;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+                Go to Dashboard →
+              </a>
+            </p>
+          </div>
+        `,
+      });
     }
-
+ 
     res.json({ message: 'Payment verified and order fulfilled' });
   } catch (error) {
-    console.error('[Razorpay Verify] Full error:', error.message, error.stack);
-    res.status(500).json({ message: 'Payment verification failed - check server logs' });
+    console.error('[Razorpay Verify] Error:', error.message);
+    res.status(500).json({ message: 'Payment verification failed' });
   }
 });
 
@@ -836,8 +823,8 @@ app.post('/api/user/cart/add', verifyUser, async (req, res) => {
 
     if (!finalPrice || finalPrice <= 0) {
       // Strict fallback: only within allowed currencies
-      const allowed = ['INR', 'GBP', 'EUR', 'USD'];
-      if (!allowed.includes(selectedCurrency)) {
+      
+      if (!ALLOWED_CURRENCIES.includes(selectedCurrency)) {
         return res.status(400).json({ message: `Currency ${selectedCurrency} not supported` });
       }
       finalPrice = prices.INR || prices.USD || 0;
@@ -907,19 +894,97 @@ app.get('/api/user/cart', verifyUser, async (req, res) => {
       .select(`
         id,
         mock_test_id,
+        interview_id,
+        item_type,
         price,
-        currency,                    
-        mock_tests!inner (               
+        currency,
+        mock_tests!left (
           title,
           description,
           pricing_type
+        ),
+        interviews!left (
+          title,
+          description,
+          pricing_type,
+          job_role,
+          duration_minutes
         )
       `)
       .eq('user_id', userId);
+ 
     if (error) throw error;
     res.status(200).json({ cart: data });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch cart' });
+  }
+});
+
+// add a paid interview to the cart
+app.post('/api/user/cart/add-interview', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  const { interviewId, currency = 'INR' } = req.body;
+  const selectedCurrency = currency.toUpperCase().trim();
+ 
+  try {
+    const { data: interview, error: ivErr } = await supabase
+      .from('interviews')
+      .select('id, pricing_type, prices')
+      .eq('id', interviewId)
+      .single();
+ 
+    if (ivErr || !interview) return res.status(404).json({ message: 'Interview not found' });
+    if (interview.pricing_type !== 'paid') {
+      return res.status(400).json({ message: 'This interview is free — no purchase needed' });
+    }
+ 
+    const prices = interview.prices || {};
+    let finalPrice = prices[selectedCurrency];
+    if (!finalPrice || finalPrice <= 0) {
+      finalPrice = prices.INR || prices.USD || 0;
+      if (finalPrice <= 0) return res.status(400).json({ message: 'No valid price found' });
+    }
+ 
+    // Already in cart?
+    const { data: existing } = await supabase
+      .from('cart')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('interview_id', interviewId)
+      .eq('item_type', 'interview')
+      .maybeSingle();
+ 
+    if (existing) return res.status(409).json({ message: 'Interview already in cart' });
+ 
+    // Already purchased?
+    const { data: purchased } = await supabase
+      .from('purchased_tests')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('interview_id', interviewId)
+      .maybeSingle();
+ 
+    if (purchased) return res.status(409).json({ message: 'Interview already purchased' });
+ 
+    const { data: newItem, error: insertError } = await supabase
+      .from('cart')
+      .insert([{
+        user_id:      userId,
+        interview_id: interviewId,
+        mock_test_id: null,
+        item_type:    'interview',
+        price:        finalPrice,
+        currency:     selectedCurrency,
+        created_at:   new Date().toISOString(),
+      }])
+      .select()
+      .single();
+ 
+    if (insertError) throw insertError;
+    res.status(200).json({ message: 'Interview added to cart', cartItem: newItem });
+  } catch (err) {
+    console.error('Cart add interview error:', err);
+    res.status(500).json({ message: 'Failed to add interview to cart', error: err.message });
   }
 });
 
@@ -2469,13 +2534,10 @@ app.get('/api/interviews', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('interviews')
-      .select(`
-        *,
-        interview_questions (*)
-      `)
+      .select(`*, interview_questions (*)`)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
-
+ 
     if (error) throw error;
     res.json(data || []);
   } catch (error) {
@@ -2484,12 +2546,45 @@ app.get('/api/interviews', async (req, res) => {
   }
 });
 
-// POST /api/interviews - Admin creates new interview
+// POST /api/interviews - Admin creates interview (Updated)
 app.post('/api/interviews', verifyAdmin, async (req, res) => {
-  const { title, description, job_role, experience_level, duration_minutes = 30, questions } = req.body;
+  const {
+    title, description, job_role, experience_level,
+    duration_minutes = 30, questions,
+    pricing_type = 'free', prices = {},
+  } = req.body;
 
   if (!title || !job_role || !questions || !Array.isArray(questions)) {
     return res.status(400).json({ message: 'Title, job_role and questions array are required' });
+  }
+
+  // Pricing validation
+  if (!['free', 'paid'].includes(pricing_type)) {
+    return res.status(400).json({ message: 'pricing_type must be free or paid' });
+  }
+
+  let finalPrices = {};
+
+  if (pricing_type === 'paid') {
+    if (!prices || typeof prices !== 'object' || Object.keys(prices).length === 0) {
+      return res.status(400).json({ message: 'Paid interview requires prices object' });
+    }
+
+    for (const [curr, amt] of Object.entries(prices)) {
+      if (!ALLOWED_CURRENCIES.includes(curr)) {
+        return res.status(400).json({ message: `Currency ${curr} not allowed. Allowed: ${ALLOWED_CURRENCIES.join(', ')}` });
+      }
+      if (typeof amt !== 'number' || amt <= 0) {
+        return res.status(400).json({ message: `Invalid price for ${curr}` });
+      }
+    }
+
+    // INR is mandatory for paid interviews (as per your existing pattern)
+    if (!prices.INR || prices.INR <= 0) {
+      return res.status(400).json({ message: 'INR price is required for paid interviews' });
+    }
+
+    finalPrices = prices;
   }
 
   try {
@@ -2502,18 +2597,21 @@ app.post('/api/interviews', verifyAdmin, async (req, res) => {
         experience_level: experience_level || 'intermediate',
         duration_minutes,
         total_questions: questions.length,
-        created_by: req.user.id
+        created_by: req.user.id,
+        pricing_type,
+        prices: finalPrices,
       })
       .select()
       .single();
 
     if (interviewError) throw interviewError;
 
+    // Insert questions
     const questionsToInsert = questions.map((q, index) => ({
       interview_id: interview.id,
       question_text: q.question_text || q,
       question_type: q.question_type || 'behavioral',
-      order_index: index
+      order_index: index,
     }));
 
     const { error: qError } = await supabase
@@ -2522,10 +2620,7 @@ app.post('/api/interviews', verifyAdmin, async (req, res) => {
 
     if (qError) throw qError;
 
-    res.status(201).json({ 
-      message: 'Interview created successfully', 
-      interview 
-    });
+    res.status(201).json({ message: 'Interview created successfully', interview });
   } catch (error) {
     console.error('Create interview error:', error);
     res.status(500).json({ message: 'Failed to create interview', error: error.message });
@@ -2708,6 +2803,279 @@ Return ONLY valid JSON — no markdown, no explanation outside the array:
   } catch (err) {
     console.error('AI recommendation error:', err);
     res.status(500).json({ message: 'Failed to generate recommendations', error: err.message });
+  }
+});
+
+// Purchased Interviews
+app.get('/api/admin/purchased-interviews', verifyAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('purchased_tests')
+      .select(`
+        id,
+        user_id,
+        interview_id,
+        purchased_at,
+        users ( name, email ),
+        interviews!purchased_tests_interview_id_fkey (
+          title, job_role, pricing_type, prices
+        )
+      `)
+      .not('interview_id', 'is', null)
+      .order('purchased_at', { ascending: false });
+ 
+    if (error) throw error;
+ 
+    const formatted = (data || []).map(row => ({
+      id:             row.id,
+      userName:       row.users?.name         || 'Unknown',
+      userEmail:      row.users?.email        || 'N/A',
+      interviewTitle: row.interviews?.title   || 'Untitled',
+      jobRole:        row.interviews?.job_role || 'N/A',
+      pricingType:    row.interviews?.pricing_type || 'paid',
+      priceDisplay:   row.interviews?.prices?.INR
+        ? `₹${row.interviews.prices.INR}`
+        : 'N/A',
+      purchaseDate: row.purchased_at,
+    }));
+ 
+    res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching purchased interviews:', err);
+    res.status(500).json({ message: 'Failed to fetch purchased interviews', error: err.message });
+  }
+});
+
+// Assign Interviews to users
+app.post('/api/admin/assign-interview', verifyAdmin, async (req, res) => {
+  const { userId, interviewId } = req.body;
+ 
+  if (!userId || !interviewId) {
+    return res.status(400).json({ message: 'userId and interviewId are required' });
+  }
+ 
+  try {
+    // Check already assigned
+    const { data: existing } = await supabase
+      .from('user_mock_assignments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('interview_id', interviewId)
+      .maybeSingle();
+ 
+    if (existing) {
+      return res.status(400).json({ message: 'This interview is already assigned to the user' });
+    }
+ 
+    // Insert using interview_id column; mock_test_id stays null
+    const { error: assignError } = await supabase
+      .from('user_mock_assignments')
+      .insert({
+        user_id:      userId,
+        interview_id: interviewId,
+        mock_test_id: null,
+        assigned_by:  req.user.id,
+      });
+ 
+    if (assignError) throw assignError;
+ 
+    // Fetch details for email
+    const { data: user } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', userId)
+      .single();
+ 
+    const { data: interview } = await supabase
+      .from('interviews')
+      .select('title, description, job_role, duration_minutes, interview_questions(id)')
+      .eq('id', interviewId)
+      .single();
+ 
+    if (!user?.email || !interview) {
+      return res.status(201).json({ message: 'Assignment created (email skipped)' });
+    }
+ 
+    const questionCount = interview.interview_questions?.length || 0;
+    const directLink    = `https://www.techmocks.com/interview`;
+ 
+    await transporter.sendMail({
+      from:    `"TechMocks Admin" <${process.env.EMAIL_USER}>`,
+      to:       user.email,
+      subject: `New Interview Assigned: ${interview.title}`,
+      text: `Hello ${user.name || 'there'},\n\nAn administrator has assigned you a new AI Mock Interview:\n\n→ ${interview.title}\n→ Role: ${interview.job_role}\n→ ${questionCount} questions · ${interview.duration_minutes} minutes\n\nStart here: ${directLink}\n\nGood luck! 🚀\n\nTechMocks Team`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #7c6af7;">New Mock Interview Assigned!</h2>
+          <p>Hello ${user.name || 'there'},</p>
+          <p>An administrator has just assigned you the following AI mock interview:</p>
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0 0 12px 0; color: #7c6af7;">${interview.title}</h3>
+            <p style="margin: 8px 0;"><strong>Role:</strong> ${interview.job_role}</p>
+            <p style="margin: 8px 0;"><strong>Questions:</strong> ${questionCount}</p>
+            <p style="margin: 8px 0;"><strong>Duration:</strong> ${interview.duration_minutes} minutes</p>
+          </div>
+          <p>
+            <a href="${directLink}"
+               style="background:#7c6af7;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+              Start Mock Interview →
+            </a>
+          </p>
+          <hr style="border:0;border-top:1px solid #e5e7eb;margin:32px 0;" />
+          <p style="color:#6b7280;font-size:13px;text-align:center;">
+            TechMocks — <a href="https://www.techmocks.com">www.techmocks.com</a>
+          </p>
+        </div>
+      `,
+    });
+ 
+    res.status(201).json({ message: 'Interview assigned successfully and email sent' });
+  } catch (err) {
+    console.error('Assign interview error:', err);
+    res.status(500).json({ message: 'Failed to assign interview', error: err.message });
+  }
+});
+
+// List all Interviews
+app.get('/api/admin/interview-assignments', verifyAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_mock_assignments')
+      .select(`
+        id, assigned_at,
+        users!user_mock_assignments_user_id_fkey ( name, email ),
+        interviews!user_mock_assignments_interview_id_fkey ( title, job_role )
+      `)
+      .not('interview_id', 'is', null)
+      .order('assigned_at', { ascending: false });
+ 
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('Error fetching interview assignments:', err);
+    res.status(500).json({ message: 'Failed to fetch interview assignments', error: err.message });
+  }
+});
+
+// Purchased Interviews
+app.get('/api/user/purchased-interviews', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    // Rows in purchased_tests where interview_id is set
+    const { data: purchased, error: pErr } = await supabase
+      .from('purchased_tests')
+      .select(`
+        interview_id,
+        purchased_at,
+        interviews!purchased_tests_interview_id_fkey (
+          id, title, description, job_role,
+          experience_level, duration_minutes,
+          pricing_type, is_active,
+          interview_questions (*)
+        )
+      `)
+      .eq('user_id', userId)
+      .not('interview_id', 'is', null);
+ 
+    if (pErr) throw pErr;
+ 
+    // Rows in user_mock_assignments where interview_id is set
+    const { data: assigned, error: aErr } = await supabase
+      .from('user_mock_assignments')
+      .select(`
+        interview_id,
+        assigned_at,
+        interviews!user_mock_assignments_interview_id_fkey (
+          id, title, description, job_role,
+          experience_level, duration_minutes,
+          pricing_type, is_active,
+          interview_questions (*)
+        )
+      `)
+      .eq('user_id', userId)
+      .not('interview_id', 'is', null);
+ 
+    if (aErr) throw aErr;
+ 
+    // Merge, deduplicate by interview_id
+    const seen = new Set();
+    const merged = [];
+ 
+    for (const row of [...(purchased || []), ...(assigned || [])]) {
+      if (!row.interviews) continue;
+      const ivId = row.interview_id;
+      if (!seen.has(ivId)) {
+        seen.add(ivId);
+        merged.push({
+          ...row.interviews,
+          acquired_at: row.purchased_at || row.assigned_at,
+          source: row.purchased_at ? 'purchased' : 'assigned',
+        });
+      }
+    }
+ 
+    res.json(merged);
+  } catch (err) {
+    console.error('Error fetching purchased interviews:', err);
+    res.status(500).json({ message: 'Failed to fetch purchased interviews', error: err.message });
+  }
+});
+
+// Delete Interviews from the cart
+app.delete('/api/user/cart/remove-interview/:interviewId', verifyUser, async (req, res) => {
+  const userId = req.user.id;
+  const { interviewId } = req.params;
+  try {
+    const { error } = await supabase
+      .from('cart')
+      .delete()
+      .eq('user_id', userId)
+      .eq('interview_id', interviewId)
+      .eq('item_type', 'interview');
+ 
+    if (error) throw error;
+    res.status(200).json({ message: 'Interview removed from cart' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to remove interview from cart', error: error.message });
+  }
+});
+
+app.get('/api/interviews/:id/access', verifyUser, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+ 
+  try {
+    const { data: interview, error: ivErr } = await supabase
+      .from('interviews')
+      .select('id, pricing_type')
+      .eq('id', id)
+      .single();
+ 
+    if (ivErr || !interview) return res.status(404).json({ message: 'Interview not found' });
+    if (interview.pricing_type === 'free') return res.json({ hasAccess: true });
+ 
+    // Check purchased_tests table (interview_id column)
+    const { data: purchased } = await supabase
+      .from('purchased_tests')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('interview_id', id)
+      .maybeSingle();
+ 
+    if (purchased) return res.json({ hasAccess: true });
+ 
+    // Check user_mock_assignments table (interview_id column)
+    const { data: assigned } = await supabase
+      .from('user_mock_assignments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('interview_id', id)
+      .maybeSingle();
+ 
+    res.json({ hasAccess: !!assigned });
+  } catch (err) {
+    console.error('Access check error:', err);
+    res.status(500).json({ message: 'Failed to check access', error: err.message });
   }
 });
 
