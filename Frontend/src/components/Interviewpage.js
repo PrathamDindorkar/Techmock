@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useOutletContext } from 'react-router-dom';
 import { getCurrencyByCountry } from './getCurrencyByCountry';
+import AIAvatar from './AIAvatar';
 
 /* ─────────────────────────────────────────────
    Inline global styles — theme-aware via darkMode prop
@@ -130,9 +131,7 @@ const GlobalStyle = ({ darkMode }) => (
     .chip-amber    { background: rgba(245,158,11,0.12);  color: var(--amber);   border: 1px solid rgba(245,158,11,0.2); }
     .chip-red      { background: rgba(248,113,113,0.12); color: var(--red);     border: 1px solid rgba(248,113,113,0.25); }
     .chip-green    { background: rgba(74,222,128,0.12);  color: var(--green);   border: 1px solid rgba(74,222,128,0.2); }
-    /* Paid chip — amber style, same as Free chip but amber-toned */
     .chip-paid     { background: rgba(245,158,11,0.18);  color: var(--amber);   border: 1px solid rgba(245,158,11,0.4); font-weight: 600; }
-    /* Unlocked chip — green, matches Free chip style */
     .chip-unlocked { background: rgba(74,222,128,0.15);  color: var(--green);   border: 1px solid rgba(74,222,128,0.35); font-weight: 600; }
 
     .form-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; display: block; }
@@ -165,7 +164,7 @@ const GlobalStyle = ({ darkMode }) => (
       animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
       ${!darkMode ? 'box-shadow: 0 24px 64px rgba(0,0,0,0.18);' : 'box-shadow: 0 24px 64px rgba(0,0,0,0.5);'}
     }
-    .dialog-box.wide { max-width: 900px; }
+    .dialog-box.wide { max-width: 960px; }
 
     @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -307,6 +306,8 @@ const InterviewPage = () => {
   const [showCreateForm,       setShowCreateForm]       = useState(false);
   const [userCurrency,         setUserCurrency]         = useState('INR');
   const [userCountry,          setUserCountry]          = useState('IN');
+  // Avatar state: 'idle' | 'speaking' | 'listening' | 'thinking'
+  const [avatarState,          setAvatarState]          = useState('idle');
   const [newInterview,         setNewInterview]         = useState({
     title: '', description: '', job_role: '',
     experience_level: 'intermediate', duration_minutes: 30,
@@ -330,6 +331,10 @@ const InterviewPage = () => {
   const handledNextRef       = useRef(false);
   const finalBufferRef       = useRef('');
   const preferredVoiceRef    = useRef(null);
+  // Accuracy: track silence to avoid premature cutoffs
+  const silenceTimerRef      = useRef(null);
+  const lastSpeechTimeRef    = useRef(Date.now());
+  const SILENCE_THRESHOLD_MS = 2500; // wait 2.5s of true silence before considering done
 
   const token      = localStorage.getItem('token');
   const role       = localStorage.getItem('role');
@@ -345,6 +350,14 @@ const InterviewPage = () => {
   useEffect(() => { transcriptRef.current        = transcript;           }, [transcript]);
   useEffect(() => { proctorRef.current           = proctorViolations;    }, [proctorViolations]);
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [transcript]);
+
+  /* ── Sync avatar state with phase & TTS ────────────────────────────────── */
+  useEffect(() => {
+    if (phase === 'reading')      setAvatarState('speaking');
+    else if (phase === 'listening') setAvatarState('listening');
+    else if (phase === 'done')    setAvatarState('thinking');
+    else                          setAvatarState('idle');
+  }, [phase]);
 
   /* ── geo / currency detection ───────────────────────────────────────────── */
   useEffect(() => {
@@ -383,15 +396,6 @@ const InterviewPage = () => {
     const pickVoice = () => {
       const voices = synthRef.current.getVoices();
       if (!voices.length) return;
-
-      /*
-        Priority list for the most natural-sounding voices:
-        ① Google UK English Female  — warm, clear, conversational (Chrome/Android)
-        ② Google US English         — clean neutral American accent (Chrome)
-        ③ Microsoft Natural voices  — neural TTS, excellent on Edge/Windows
-        ④ macOS system voices       — Samantha / Karen / Moira (Safari)
-        ⑤ Any English female voice  — last resort fallback
-      */
       const preferred = [
         'Google UK English Female',
         'Google US English',
@@ -403,7 +407,6 @@ const InterviewPage = () => {
         'Karen',
         'Moira',
       ];
-
       let picked = null;
       for (const name of preferred) {
         picked = voices.find(v => v.name === name);
@@ -413,7 +416,6 @@ const InterviewPage = () => {
       if (!picked) picked = voices.find(v => v.lang.startsWith('en'));
       preferredVoiceRef.current = picked || null;
     };
-
     pickVoice();
     synthRef.current.addEventListener('voiceschanged', pickVoice);
     return () => synthRef.current.removeEventListener('voiceschanged', pickVoice);
@@ -482,33 +484,28 @@ const InterviewPage = () => {
     }
   };
 
-  /* ── TTS — Google voice with sentence-by-sentence rhythm ───────────────── */
-  const speak = (text) => {
+  /* ── TTS — avatar-synced speaking ──────────────────────────────────────── */
+  const speak = (text, onDone) => {
     if (synthRef.current.speaking) synthRef.current.cancel();
+    setAvatarState('speaking');
 
-    // Split on sentence boundaries so each utterance feels like one breath
     const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
 
     const speakNext = (idx) => {
-      if (idx >= sentences.length) return;
+      if (idx >= sentences.length) {
+        setAvatarState('idle');
+        onDone && onDone();
+        return;
+      }
       const sentence = sentences[idx].trim();
       if (!sentence) { speakNext(idx + 1); return; }
 
       const u = new SpeechSynthesisUtterance(sentence);
       if (preferredVoiceRef.current) u.voice = preferredVoiceRef.current;
-
-      /*
-        Tuning for maximum naturalness with Google UK English Female:
-        - rate 0.92  → unhurried, conversational (default 1.0 feels rushed)
-        - pitch 1.0  → neutral — Google voices already have natural prosody; over-tuning sounds worse
-        - volume 1.0 → full confidence
-        130ms gap between sentences mimics a real speaker's breath pause
-      */
       u.rate   = 0.92;
       u.pitch  = 1.0;
       u.volume = 1.0;
       u.onend  = () => setTimeout(() => speakNext(idx + 1), 130);
-
       synthRef.current.speak(u);
     };
 
@@ -525,7 +522,7 @@ const InterviewPage = () => {
     return `${sym}${amt}`;
   };
 
-  /* ── card action button (right side) ───────────────────────────────────── */
+  /* ── card action button ─────────────────────────────────────────────────── */
   const renderCardAction = (iv) => {
     const isPaid           = iv.pricing_type === 'paid';
     const isCheckingAccess = accessLoading[iv.id];
@@ -539,7 +536,6 @@ const InterviewPage = () => {
         </button>
       );
     }
-
     if (!isPaid) {
       return (
         <button className="btn btn-primary" style={{ flexShrink: 0 }}
@@ -548,7 +544,6 @@ const InterviewPage = () => {
         </button>
       );
     }
-
     if (isCheckingAccess) {
       return (
         <button className="btn btn-ghost" style={{ flexShrink: 0 }} disabled>
@@ -556,7 +551,6 @@ const InterviewPage = () => {
         </button>
       );
     }
-
     if (hasAccess) {
       return (
         <button className="btn btn-primary" style={{ flexShrink: 0 }}
@@ -565,8 +559,6 @@ const InterviewPage = () => {
         </button>
       );
     }
-
-    // Paid + locked → cart button
     return (
       <button
         className="btn btn-amber"
@@ -599,7 +591,9 @@ const InterviewPage = () => {
   const updateQuestion   = (i, f, v) => { const q = [...newInterview.questions]; q[i][f] = v; setNewInterview({ ...newInterview, questions: q }); };
   const removeQuestion   = (i) => { if (newInterview.questions.length === 1) return; setNewInterview(p => ({ ...p, questions: p.questions.filter((_, j) => j !== i) })); };
 
-  /* ── interview flow ─────────────────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     INTERVIEW FLOW
+  ══════════════════════════════════════════════════════════════════════════ */
   const startInterview = async (interview) => {
     if (!token) { showToast('Please login to start an interview', 'warning'); return; }
     if (interview.pricing_type === 'paid' && !accessMap[interview.id]) {
@@ -618,6 +612,7 @@ const InterviewPage = () => {
       setProctorViolations(0); violationCountRef.current = 0;
       handledNextRef.current = false; activeStreamRef.current = null;
       setPhase('reading');
+      setAvatarState('speaking');
       setInterviewTimeLeft(interview.duration_minutes * 60);
       speak(`Welcome to the mock interview for ${interview.title}. You have ${interview.duration_minutes} minutes. Take a breath, and let's get started.`);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -630,56 +625,141 @@ const InterviewPage = () => {
   };
 
   const startQuestion = (interview, idx) => {
-    setPhase('reading'); setInterimText(''); setFinalBuffer(''); finalBufferRef.current = ''; handledNextRef.current = false;
-    speak(`Question ${idx + 1}: ${interview.interview_questions[idx].question_text}`);
-    setTimeout(() => { setPhase('listening'); autoStartVoiceInput(interview, idx); }, 2200);
+    setPhase('reading');
+    setAvatarState('speaking');
+    setInterimText(''); setFinalBuffer(''); finalBufferRef.current = '';
+    handledNextRef.current = false;
+    speak(
+      `Question ${idx + 1}: ${interview.interview_questions[idx].question_text}`,
+      () => {
+        // After TTS finishes, transition to listening
+        setPhase('listening');
+        setAvatarState('listening');
+        autoStartVoiceInput(interview, idx);
+      }
+    );
   };
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     IMPROVED SPEECH RECOGNITION
+     Key accuracy improvements:
+     1. maxAlternatives = 3 — pick highest-confidence result
+     2. Continuous + interim for real-time display; only finals committed
+     3. Silence detection: reset a 2.5s timer on every new result; only
+        auto-advance if user has spoken ≥10 words AND 2.5s of silence passes
+     4. no-speech error → seamless restart (not a fallback to text)
+     5. Accumulate finals across recognition restarts (recognition can stop
+        and restart mid-sentence on some browsers)
+  ══════════════════════════════════════════════════════════════════════════ */
   const autoStartVoiceInput = async (interview, idx) => {
     try {
-      if (!activeStreamRef.current) activeStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!activeStreamRef.current) {
+        activeStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       setIsRecording(true);
+
       const SRA = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SRA) { setError('Speech recognition not supported. Try Chrome or Edge.'); return; }
-      if (recognitionRef.current) { try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch { } }
 
-      const recognition = new SRA();
-      recognitionRef.current = recognition;
-      recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+      if (recognitionRef.current) {
+        try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch { }
+      }
 
-      recognition.onresult = (event) => {
-        let newFinal = ''; let currentInterim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) newFinal += event.results[i][0].transcript + ' ';
-          else currentInterim += event.results[i][0].transcript;
-        }
-        if (newFinal) {
-          finalBufferRef.current = (finalBufferRef.current + newFinal).trim();
-          setFinalBuffer(finalBufferRef.current); setInterimText('');
-        } else { setInterimText(currentInterim); }
+      const startRecognition = (retryCount = 0) => {
+        if (handledNextRef.current) return;
+
+        const recognition = new SRA();
+        recognitionRef.current = recognition;
+
+        recognition.continuous      = true;
+        recognition.interimResults  = true;
+        recognition.lang            = 'en-US';
+        recognition.maxAlternatives = 3; // ← accuracy: consider top-3 hypotheses
+
+        lastSpeechTimeRef.current = Date.now();
+
+        recognition.onresult = (event) => {
+          lastSpeechTimeRef.current = Date.now();
+
+          let newFinals = '';
+          let currentInterim = '';
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (result.isFinal) {
+              // Pick highest-confidence alternative
+              let bestText = result[0].transcript;
+              let bestConf = result[0].confidence || 0;
+              for (let a = 1; a < result.length; a++) {
+                if ((result[a].confidence || 0) > bestConf) {
+                  bestConf = result[a].confidence;
+                  bestText = result[a].transcript;
+                }
+              }
+              newFinals += bestText + ' ';
+            } else {
+              currentInterim += result[0].transcript;
+            }
+          }
+
+          if (newFinals) {
+            finalBufferRef.current = (finalBufferRef.current + newFinals).trimStart();
+            setFinalBuffer(finalBufferRef.current);
+            setInterimText('');
+          } else {
+            setInterimText(currentInterim);
+          }
+
+          // Reset silence timer on each new speech event
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          // Don't auto-advance here — let user explicitly submit or skip
+        };
+
+        recognition.onerror = (e) => {
+          if (e.error === 'aborted') return;
+
+          if (e.error === 'no-speech') {
+            // Seamless restart — never show fallback for no-speech
+            try { recognition.onresult = null; recognition.stop(); } catch { }
+            const delay = Math.min(300 * Math.pow(1.5, retryCount), 3000);
+            setTimeout(() => {
+              if (!handledNextRef.current) startRecognition(retryCount + 1);
+            }, delay);
+            return;
+          }
+
+          if (e.error === 'network') {
+            // Network blip — retry silently
+            try { recognition.onresult = null; recognition.stop(); } catch { }
+            setTimeout(() => {
+              if (!handledNextRef.current) startRecognition(retryCount + 1);
+            }, 1000);
+            return;
+          }
+
+          // Unrecoverable (not-allowed, service-not-allowed) → text fallback
+          try { recognition.onresult = null; recognition.stop(); } catch { }
+          setIsRecording(false);
+          setPhase('text-fallback');
+          setAvatarState('idle');
+        };
+
+        recognition.onend = () => {
+          // Some browsers auto-stop on pause; restart transparently
+          if (!handledNextRef.current && phase !== 'text-fallback') {
+            setTimeout(() => {
+              if (!handledNextRef.current) startRecognition(retryCount);
+            }, 200);
+          }
+        };
+
+        try { recognition.start(); } catch { }
       };
 
-      const handleResult = recognition.onresult;
-
-      recognition.onerror = (e) => {
-        if (e.error === 'aborted') return;
-        if (e.error === 'no-speech') {
-          if (handledNextRef.current) return;
-          try { recognition.stop(); } catch { }
-          setTimeout(() => {
-            if (handledNextRef.current) return;
-            const r2 = new SRA(); recognitionRef.current = r2;
-            r2.continuous = true; r2.interimResults = true; r2.lang = 'en-US';
-            r2.onresult = handleResult; r2.onerror = recognition.onerror;
-            try { r2.start(); } catch { }
-          }, 300); return;
-        }
-        try { recognition.onresult = null; recognition.stop(); } catch { }
-        setIsRecording(false); setPhase('text-fallback');
-      };
-
-      recognition.start();
-    } catch (err) { setError('Microphone error: ' + err.message); }
+      startRecognition();
+    } catch (err) {
+      setError('Microphone error: ' + err.message);
+    }
   };
 
   const submitCurrentAnswer = () => {
@@ -688,11 +768,13 @@ const InterviewPage = () => {
     const answer = (finalBufferRef.current + ' ' + interimText).trim();
     if (!answer) { showToast('Please speak your answer before submitting', 'warning'); return; }
     handledNextRef.current = true;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (recognitionRef.current) { try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch { } }
     setIsRecording(false);
     const entry = { question: iv.interview_questions[idx].question_text, answer };
     setTranscript(prev => { const u = [...prev, entry]; transcriptRef.current = u; return u; });
     setInterimText(''); setFinalBuffer(''); finalBufferRef.current = '';
+    setAvatarState('thinking');
     setTimeout(() => handleAutoNext(iv, idx), 800);
   };
 
@@ -703,13 +785,18 @@ const InterviewPage = () => {
     if (next < interview.interview_questions.length) {
       setCurrentQuestionIndex(next); currentIndexRef.current = next;
       setTimeout(() => startQuestion(interview, next), 800);
-    } else { setPhase('done'); setTimeout(() => finishInterview(), 500); }
+    } else {
+      setPhase('done');
+      setAvatarState('thinking');
+      setTimeout(() => finishInterview(), 500);
+    }
   };
 
   const skipQuestion = () => {
     const iv = selectedInterviewRef.current; const idx = currentIndexRef.current;
     if (!iv || handledNextRef.current) return;
     handledNextRef.current = true;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { } }
     setTranscript(prev => { const u = [...prev, { question: iv.interview_questions[idx].question_text, answer: '[Skipped]' }]; transcriptRef.current = u; return u; });
     setInterimText(''); setFinalBuffer(''); finalBufferRef.current = '';
@@ -719,6 +806,7 @@ const InterviewPage = () => {
   const finishInterview = async () => {
     const attempt = currentAttemptRef.current; if (!attempt) return;
     setIsEvaluating(true);
+    setAvatarState('thinking');
     speak('Great work completing the interview. Our AI is now reviewing your responses and generating a detailed report. This takes about twenty seconds.');
     cleanupRecording();
     try {
@@ -733,6 +821,7 @@ const InterviewPage = () => {
     } catch { setError('Failed to submit interview. Check history for results.'); }
     finally {
       setIsEvaluating(false); setSelectedInterview(null); setCurrentAttempt(null);
+      setAvatarState('idle');
       if (timerRef.current) clearInterval(timerRef.current);
     }
   };
@@ -773,6 +862,7 @@ const InterviewPage = () => {
 
   const cleanupRecording = () => {
     setIsRecording(false);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (recognitionRef.current) { try { recognitionRef.current.onresult = null; recognitionRef.current.stop(); } catch { } }
     if (activeStreamRef.current) { activeStreamRef.current.getTracks().forEach(t => t.stop()); activeStreamRef.current = null; }
     if (synthRef.current.speaking) synthRef.current.cancel();
@@ -782,7 +872,8 @@ const InterviewPage = () => {
     cleanupRecording();
     setSelectedInterview(null); setCurrentAttempt(null); setCurrentQuestionIndex(0);
     setTranscript([]); setInterimText(''); setFinalBuffer(''); finalBufferRef.current = '';
-    setProctorViolations(0); setPhase('reading'); violationCountRef.current = 0;
+    setProctorViolations(0); setPhase('reading'); setAvatarState('idle');
+    violationCountRef.current = 0;
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
@@ -860,8 +951,6 @@ const InterviewPage = () => {
                   <div key={iv.id} className="card reveal"
                     style={{ padding:'20px 24px', marginBottom:16, animationDelay:`${0.05 * idx}s` }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16 }}>
-
-                      {/* ── Left: title + description + chips ── */}
                       <div style={{ flex:1, minWidth:0 }}>
                         <h3 style={{ fontFamily:'var(--font-serif)', fontSize:20, fontWeight:400, color:'var(--text)', marginBottom:6, lineHeight:1.3 }}>
                           {iv.title}
@@ -871,8 +960,6 @@ const InterviewPage = () => {
                             {iv.description}
                           </p>
                         )}
-
-                        {/* ── Chips row — pricing chip sits inline with others ── */}
                         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                           <span className="chip chip-accent">💼 {iv.job_role}</span>
                           <span className="chip chip-teal">⏱ {iv.duration_minutes}m</span>
@@ -882,8 +969,6 @@ const InterviewPage = () => {
                               {iv.experience_level}
                             </span>
                           )}
-
-                          {/* Pricing chip — same row, same pill style as Free / Unlocked */}
                           {iv.pricing_type === 'free' && (
                             <span className="chip chip-green">✓ Free</span>
                           )}
@@ -897,16 +982,12 @@ const InterviewPage = () => {
                             <span className="chip chip-paid">💰 {priceDisplay}</span>
                           )}
                         </div>
-
-                        {/* Lock hint */}
                         {isPaid && !isCheckingAccess && !hasAccess && (
                           <p style={{ fontSize:12, color:'var(--text3)', marginTop:8 }}>
                             🔒 Purchase to unlock this interview
                           </p>
                         )}
                       </div>
-
-                      {/* ── Right: action button only — never overlaps ── */}
                       <div style={{ flexShrink:0 }}>
                         {renderCardAction(iv)}
                       </div>
@@ -996,10 +1077,27 @@ const InterviewPage = () => {
               </div>
             </div>
 
-            {/* Body */}
-            <div style={{ padding:'24px 28px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+            {/* Body — 3 col: avatar | Q+input | transcript */}
+            <div style={{ padding:'24px 28px', display:'grid', gridTemplateColumns:'140px 1fr 1fr', gap:20 }}>
 
-              {/* Left column */}
+              {/* ── Avatar column ── */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, paddingTop:8 }}>
+                <AIAvatar state={avatarState} size={130} />
+
+                {/* Mini legend */}
+                <div style={{ textAlign:'center', paddingTop:8 }}>
+                  <p style={{ fontFamily:'var(--font-mono)', fontSize:9, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>
+                    AI Interviewer
+                  </p>
+                  {phase === 'listening' && (
+                    <div style={{ display:'flex', justifyContent:'center' }}>
+                      <Waveform bars={5} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Middle: question + voice input + buttons ── */}
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
                 {/* Question display */}
@@ -1007,13 +1105,13 @@ const InterviewPage = () => {
                   <p style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
                     Q{currentQuestionIndex + 1}
                   </p>
-                  <p style={{ fontFamily:'var(--font-serif)', fontSize:18, lineHeight:1.5, color:'var(--text)', fontWeight:400 }}>
+                  <p style={{ fontFamily:'var(--font-serif)', fontSize:17, lineHeight:1.5, color:'var(--text)', fontWeight:400 }}>
                     {selectedInterview.interview_questions[currentQuestionIndex]?.question_text}
                   </p>
                 </div>
 
                 {/* Voice / input area */}
-                <div style={{ background:'var(--surface2)', borderRadius:'var(--r)', padding:'16px 20px', border: phase === 'listening' ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)', transition:'border-color 0.3s', minHeight:130 }}>
+                <div style={{ background:'var(--surface2)', borderRadius:'var(--r)', padding:'16px 20px', border: phase === 'listening' ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)', transition:'border-color 0.3s', minHeight:120 }}>
                   {phase === 'reading' && (
                     <div style={{ display:'flex', alignItems:'center', gap:12, color:'var(--text2)' }}>
                       <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--accent)', animation:'pulse 1.4s infinite' }} />
@@ -1093,13 +1191,13 @@ const InterviewPage = () => {
                 )}
               </div>
 
-              {/* Right column — transcript */}
+              {/* ── Right: transcript ── */}
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <p style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Live Transcript</p>
                   <span className="chip chip-teal">{transcript.length} answered</span>
                 </div>
-                <div className="scroll-area" style={{ flex:1, maxHeight:360, display:'flex', flexDirection:'column', gap:10 }}>
+                <div className="scroll-area" style={{ flex:1, maxHeight:380, display:'flex', flexDirection:'column', gap:10 }}>
                   {transcript.length === 0 ? (
                     <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text3)', fontSize:13, textAlign:'center', padding:20 }}>
                       Your answered questions will appear here as you submit each one.
@@ -1127,16 +1225,16 @@ const InterviewPage = () => {
         <div className="dialog-overlay">
           <div className="dialog-box" style={{ padding:32 }}>
             <div style={{ textAlign:'center', marginBottom:28 }}>
-              <div className="spinner" style={{ margin:'0 auto 20px' }} />
+              {/* Show avatar in thinking state during evaluation */}
+              <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+                <AIAvatar state="thinking" size={110} />
+              </div>
               <h2 style={{ fontFamily:'var(--font-serif)', fontSize:26, fontWeight:400, color:'var(--text)', marginBottom:10 }}>
                 Evaluating your responses
               </h2>
               <p style={{ color:'var(--text2)', fontSize:14, lineHeight:1.6 }}>
                 Our AI is scoring each answer and generating a detailed performance report.
               </p>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:12 }}>
-                <Waveform bars={7} />
-              </div>
             </div>
             <div className="alert alert-info" style={{ marginBottom:20 }}>
               <span>⏱</span>

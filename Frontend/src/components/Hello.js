@@ -21,37 +21,40 @@ const Hello = ({ darkMode }) => {
   const navigate = useNavigate();
 
   /* ─── States ─────────────────────────────────────────────────── */
-  const [mockTests, setMockTests]               = useState([]);
-  const [purchasedTests, setPurchasedTests]     = useState([]);
+  const [mockTests, setMockTests] = useState([]);
+  const [purchasedTests, setPurchasedTests] = useState([]);
   const [allPurchasedTests, setAllPurchasedTests] = useState([]);
-  const [submissions, setSubmissions]           = useState([]);
-  const [allSubmissions, setAllSubmissions]     = useState([]);
-  const [tabIndex, setTabIndex]                 = useState(0);
-  const [userData, setUserData]                 = useState(null);
-  const [loading, setLoading]                   = useState(true);
-  const [userStats, setUserStats]               = useState([]);
-  const [isAdmin, setIsAdmin]                   = useState(false);
-  const [error, setError]                       = useState(null);
-  const [badges, setBadges]                     = useState([]);
-  const [userRank, setUserRank]                 = useState({ rank: 'Beginner', points: 0 });
-  const [allUsers, setAllUsers]                 = useState([]);
-  const [allInterviews, setAllInterviews]       = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [allSubmissions, setAllSubmissions] = useState([]);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userStats, setUserStats] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState(null);
+  const [badges, setBadges] = useState([]);
+  const [userRank, setUserRank] = useState({ rank: 'Beginner', points: 0 });
+  const [allUsers, setAllUsers] = useState([]);
+  const [allInterviews, setAllInterviews] = useState([]);
 
   // Mock-test assignment
-  const [assignUserId, setAssignUserId]         = useState('');
-  const [assignMockId, setAssignMockId]         = useState('');
-  const [assignLoading, setAssignLoading]       = useState(false);
-  const [assignSuccess, setAssignSuccess]       = useState('');
-  const [assignError, setAssignError]           = useState('');
-  const [userSearch, setUserSearch]             = useState('');
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignMockId, setAssignMockId] = useState('');
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignSuccess, setAssignSuccess] = useState('');
+  const [assignError, setAssignError] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   // Interview assignment
-  const [assignIvUserId, setAssignIvUserId]     = useState('');
-  const [assignIvId, setAssignIvId]             = useState('');
-  const [assignIvLoading, setAssignIvLoading]   = useState(false);
-  const [assignIvSuccess, setAssignIvSuccess]   = useState('');
-  const [assignIvError, setAssignIvError]       = useState('');
-  const [ivUserSearch, setIvUserSearch]         = useState('');
+  const [assignIvUserId, setAssignIvUserId] = useState('');
+  const [assignIvId, setAssignIvId] = useState('');
+  const [assignIvLoading, setAssignIvLoading] = useState(false);
+  const [assignIvSuccess, setAssignIvSuccess] = useState('');
+  const [assignIvError, setAssignIvError] = useState('');
+  const [ivUserSearch, setIvUserSearch] = useState('');
+
+  // My Interview Attempts
+  const [myInterviewAttempts, setMyInterviewAttempts] = useState([]);
 
   // User purchased interviews
   const [purchasedInterviews, setPurchasedInterviews] = useState([]);
@@ -61,11 +64,11 @@ const Hello = ({ darkMode }) => {
   const token = localStorage.getItem('token');
   const theme = useTheme();
 
-  const bgColor      = darkMode ? '#121212'                     : '#f8f9fa';
-  const textPrimary  = darkMode ? '#ffffff'                     : 'text.primary';
-  const textSecondary = darkMode ? '#aaaaaa'                    : 'text.secondary';
-  const borderColor  = darkMode ? 'rgba(255,255,255,0.1)'       : 'rgba(0,0,0,0.05)';
-  const backendUrl   = process.env.REACT_APP_BACKEND_URL;
+  const bgColor = darkMode ? '#121212' : '#f8f9fa';
+  const textPrimary = darkMode ? '#ffffff' : 'text.primary';
+  const textSecondary = darkMode ? '#aaaaaa' : 'text.secondary';
+  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   /* ─── Styled components ─────────────────────────────────────── */
   const BadgeCard = styled(Card)(({ theme, rankColor }) => ({
@@ -84,7 +87,7 @@ const Hello = ({ darkMode }) => {
 
     try {
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
-      const isAdminUser  = decodedToken.role === 'admin';
+      const isAdminUser = decodedToken.role === 'admin';
       setIsAdmin(isAdminUser);
 
       const fetchData = async () => {
@@ -96,12 +99,12 @@ const Hello = ({ darkMode }) => {
 
           const [userResponse, mockResponse, badgesResponse, rankResponse, interviewsResponse] =
             await Promise.all([
-              axios.get(`${backendUrl}/api/user/profile`,   { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/user/profile`, { headers: { Authorization: token } }),
               isAdminUser
-                ? axios.get(mockTestsUrl,                    { headers: { Authorization: token } })
+                ? axios.get(mockTestsUrl, { headers: { Authorization: token } })
                 : axios.get(mockTestsUrl),
-              axios.get(`${backendUrl}/api/user/badges`,    { headers: { Authorization: token } }),
-              axios.get(`${backendUrl}/api/user/rank`,      { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/user/badges`, { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/user/rank`, { headers: { Authorization: token } }),
               axios.get(`${backendUrl}/api/interviews`),
             ]);
 
@@ -113,8 +116,8 @@ const Hello = ({ darkMode }) => {
             ...test,
             id: test.id || test._id,
             pricing_type: test.pricing_type || test.pricingType || 'free',
-            time_limit:   test.time_limit   || test.timeLimit   || 10,
-            questions:    Array.isArray(test.questions) ? test.questions : [],
+            time_limit: test.time_limit || test.timeLimit || 10,
+            questions: Array.isArray(test.questions) ? test.questions : [],
           })));
 
           if (isAdminUser) {
@@ -123,10 +126,10 @@ const Hello = ({ darkMode }) => {
             const grouped = mockResponse.data;
             const flatTests = grouped && typeof grouped === 'object' && !Array.isArray(grouped)
               ? Object.values(grouped).flat().map(test => ({
-                  ...test,
-                  pricing_type: test.pricing_type || test.pricingType || 'free',
-                  questions:    Array.isArray(test.questions) ? test.questions : [],
-                }))
+                ...test,
+                pricing_type: test.pricing_type || test.pricingType || 'free',
+                questions: Array.isArray(test.questions) ? test.questions : [],
+              }))
               : [];
             setMockTests(flatTests);
           }
@@ -137,22 +140,24 @@ const Hello = ({ darkMode }) => {
 
           if (isAdminUser) {
             const [purchasedTestsRes, submissionsRes, usersRes, purchasedIvRes] = await Promise.all([
-              axios.get(`${backendUrl}/api/admin/purchased-tests`,       { headers: { Authorization: token } }),
-              axios.get(`${backendUrl}/api/admin/submissions`,           { headers: { Authorization: token } }),
-              axios.get(`${backendUrl}/api/admin/users`,                 { headers: { Authorization: token } }),
-              axios.get(`${backendUrl}/api/admin/purchased-interviews`,  { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/admin/purchased-tests`, { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/admin/submissions`, { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/admin/users`, { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/admin/purchased-interviews`, { headers: { Authorization: token } }),
             ]);
             setAllPurchasedTests(Array.isArray(purchasedTestsRes.data) ? purchasedTestsRes.data : []);
-            setAllSubmissions(Array.isArray(submissionsRes.data)        ? submissionsRes.data        : []);
-            setAllUsers(Array.isArray(usersRes.data)                    ? usersRes.data               : []);
-            setAllPurchasedInterviews(Array.isArray(purchasedIvRes.data) ? purchasedIvRes.data        : []);
+            setAllSubmissions(Array.isArray(submissionsRes.data) ? submissionsRes.data : []);
+            setAllUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+            setAllPurchasedInterviews(Array.isArray(purchasedIvRes.data) ? purchasedIvRes.data : []);
           } else {
-            const [submissionRes, purchasedIvRes] = await Promise.all([
-              axios.get(`${backendUrl}/api/submissions`,           { headers: { Authorization: token } }),
+            const [submissionRes, purchasedIvRes, interviewAttemptsRes] = await Promise.all([
+              axios.get(`${backendUrl}/api/submissions`, { headers: { Authorization: token } }),
               axios.get(`${backendUrl}/api/user/purchased-interviews`, { headers: { Authorization: token } }),
+              axios.get(`${backendUrl}/api/interview-attempts`, { headers: { Authorization: token } }),
             ]);
             setSubmissions(Array.isArray(submissionRes.data) ? submissionRes.data : []);
             setPurchasedInterviews(Array.isArray(purchasedIvRes.data) ? purchasedIvRes.data : []);
+            setMyInterviewAttempts(Array.isArray(interviewAttemptsRes.data) ? interviewAttemptsRes.data : []);
           }
         } catch (err) {
           console.error('Error fetching data:', err);
@@ -188,7 +193,7 @@ const Hello = ({ darkMode }) => {
         try {
           const res = await axios.get(`${backendUrl}/api/mock-test/${id}`);
           if (res.data && Array.isArray(res.data.questions)) results[id] = res.data.questions;
-        } catch {}
+        } catch { }
       }));
       if (Object.keys(results).length > 0) {
         setMockTests(prev => prev.map(test => {
@@ -198,12 +203,12 @@ const Hello = ({ darkMode }) => {
       }
     };
     fetchFull();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submissions.length, mockTests.length, isAdmin]);
 
   /* ─── Helpers ────────────────────────────────────────────────── */
   const handleTabChange = (_, newIndex) => setTabIndex(newIndex);
-  const handleReviewMock  = (mockId) => navigate(`/mock-test/${mockId}/review`);
+  const handleReviewMock = (mockId) => navigate(`/mock-test/${mockId}/review`);
   const handleReAttemptMock = async (mockId) => {
     try {
       await axios.post(`${backendUrl}/api/mock-test/${mockId}/submit`, { answers: {} }, { headers: { Authorization: token } });
@@ -325,7 +330,7 @@ const Hello = ({ darkMode }) => {
   };
 
   const getMockTestStats = () => {
-    const totalTests     = mockTests?.length || 0;
+    const totalTests = mockTests?.length || 0;
     const totalQuestions = mockTests?.reduce((s, t) => s + (Array.isArray(t.questions) ? t.questions.length : 0), 0) || 0;
     const categoryCounts = mockTests?.reduce((acc, t) => {
       const cat = t?.category || 'Uncategorized';
@@ -335,10 +340,10 @@ const Hello = ({ darkMode }) => {
     return { totalTests, totalQuestions, categoryCounts };
   };
 
-  const categoryStats   = !isAdmin ? getCategoryStats() : [];
-  const mockTestStats   = isAdmin  ? getMockTestStats() : null;
-  const totalAnswered   = categoryStats.reduce((s, st) => s + st.totalQuestionsAnswered, 0);
-  const totalQuestions  = categoryStats.reduce((s, st) => s + st.totalQuestions, 0);
+  const categoryStats = !isAdmin ? getCategoryStats() : [];
+  const mockTestStats = isAdmin ? getMockTestStats() : null;
+  const totalAnswered = categoryStats.reduce((s, st) => s + st.totalQuestionsAnswered, 0);
+  const totalQuestions = categoryStats.reduce((s, st) => s + st.totalQuestions, 0);
   const overallProgress = totalQuestions > 0 ? (totalAnswered / totalQuestions) * 100 : 0;
   const overallAccuracy = totalAnswered > 0
     ? categoryStats.reduce((s, st) => s + st.accuracy * st.totalQuestionsAnswered, 0) / totalAnswered : 0;
@@ -397,17 +402,17 @@ const Hello = ({ darkMode }) => {
 
   /* ─── TABS config ─────────────────────────────────────────────── */
   const adminTabs = [
-    { icon: <Home />,             label: 'DASHBOARD'          },
-    { icon: <AssignmentTurnedIn />, label: 'SUBMISSIONS'       },
-    { icon: <AssignmentInd />,    label: 'ASSIGN TEST'         },
-    { icon: <RecordVoiceOver />,  label: 'ASSIGN INTERVIEW'    },
+    { icon: <Home />, label: 'DASHBOARD' },
+    { icon: <AssignmentTurnedIn />, label: 'SUBMISSIONS' },
+    { icon: <AssignmentInd />, label: 'ASSIGN TEST' },
+    { icon: <RecordVoiceOver />, label: 'ASSIGN INTERVIEW' },
   ];
 
   const userTabs = [
-    { icon: <Home />,            label: 'DASHBOARD'       },
-    { icon: <School />,          label: 'MOCK EXAMS'       },
-    { icon: <Psychology />,      label: 'FREE TECHMOCKS'   },
-    { icon: <RecordVoiceOver />, label: 'MY INTERVIEWS'    },
+    { icon: <Home />, label: 'DASHBOARD' },
+    { icon: <School />, label: 'MOCK EXAMS' },
+    { icon: <Psychology />, label: 'FREE TECHMOCKS' },
+    { icon: <RecordVoiceOver />, label: 'MY INTERVIEWS' },
   ];
 
   const tabs = isAdmin ? adminTabs : userTabs;
@@ -474,7 +479,7 @@ const Hello = ({ darkMode }) => {
       <Box sx={{ bgcolor: theme.palette.background.default, borderRadius: 2, mb: 3, boxShadow: `0 2px 4px ${borderColor}` }}>
         <Tabs
           value={tabIndex} onChange={handleTabChange}
-          variant="scrollable" scrollButtons="auto"
+          variant="fullWidth" scrollButtons="auto"
           textColor="primary" indicatorColor="primary"
           sx={{ borderBottom: 1, borderColor: 'divider' }}
         >
@@ -860,7 +865,7 @@ const Hello = ({ darkMode }) => {
                 })()}
 
                 {assignSuccess && <Alert severity="success" onClose={() => setAssignSuccess('')}>{assignSuccess}</Alert>}
-                {assignError   && <Alert severity="error"   onClose={() => setAssignError('')}>{assignError}</Alert>}
+                {assignError && <Alert severity="error" onClose={() => setAssignError('')}>{assignError}</Alert>}
 
                 <Button variant="contained" color="primary" size="large"
                   disabled={!assignUserId || !assignMockId || assignLoading}
@@ -965,7 +970,7 @@ const Hello = ({ darkMode }) => {
                 </FormControl>
 
                 {assignIvUserId && assignIvId && (() => {
-                  const u  = allUsers.find(u => (u.id || u._id || '').toString() === assignIvUserId);
+                  const u = allUsers.find(u => (u.id || u._id || '').toString() === assignIvUserId);
                   const iv = allInterviews.find(i => String(i.id) === assignIvId);
                   if (!u || !iv) return null;
                   return (
@@ -984,7 +989,7 @@ const Hello = ({ darkMode }) => {
                 })()}
 
                 {assignIvSuccess && <Alert severity="success" onClose={() => setAssignIvSuccess('')}>{assignIvSuccess}</Alert>}
-                {assignIvError   && <Alert severity="error"   onClose={() => setAssignIvError('')}>{assignIvError}</Alert>}
+                {assignIvError && <Alert severity="error" onClose={() => setAssignIvError('')}>{assignIvError}</Alert>}
 
                 <Button variant="contained" size="large"
                   disabled={!assignIvUserId || !assignIvId || assignIvLoading}
@@ -998,17 +1003,161 @@ const Hello = ({ darkMode }) => {
           ) : (
             /* ── User: My Interviews ────────────────────────────── */
             <>
-              <Typography variant="h5" sx={{ mt: 3, mb: 2, color: textPrimary }}>My Interviews</Typography>
+              <Typography variant="h5" sx={{ mt: 3, mb: 1, color: textPrimary }}>My Interviews</Typography>
               <Typography variant="body2" color={textSecondary} sx={{ mb: 3 }}>
-                Interviews you've purchased or been assigned by an admin.
+                Interviews you've purchased, been assigned, or attempted.
               </Typography>
 
-              {purchasedInterviews.length === 0 && (
+              {/* ── Attempted interviews with scores ── */}
+              {myInterviewAttempts.length > 0 && (
+                <>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: textPrimary }}>
+                    Attempted
+                  </Typography>
+                  <Stack spacing={2} sx={{ mb: 4 }}>
+                    {myInterviewAttempts.map((attempt, i) => {
+                      const score = attempt.overall_score;
+                      const scoreColor = score >= 75 ? '#4ade80' : score >= 50 ? '#f59e0b' : '#f87171';
+                      return (
+                        <motion.div key={i} whileHover={{ scale: 1.01 }} transition={{ type: 'spring', stiffness: 400 }}>
+                          <Card sx={{
+                            p: 3, borderRadius: 2,
+                            bgcolor: theme.palette.background.default,
+                            border: '1px solid',
+                            borderColor: darkMode ? 'rgba(124,106,247,0.25)' : 'rgba(124,106,247,0.15)',
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <RecordVoiceOver sx={{ color: '#7c6af7', fontSize: 20 }} />
+                                  <Typography variant="h6" fontWeight="bold" color={textPrimary}>
+                                    {attempt.interviews?.title || 'Interview'}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color={textSecondary} sx={{ mb: 1.5 }}>
+                                  {attempt.interviews?.job_role}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                                  <Chip
+                                    label={attempt.status === 'completed' ? '✓ Completed' : '⏳ In Progress'}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: attempt.status === 'completed' ? 'rgba(74,222,128,0.12)' : 'rgba(245,158,11,0.12)',
+                                      color: attempt.status === 'completed' ? '#4ade80' : '#f59e0b',
+                                    }}
+                                  />
+                                  {attempt.proctor_violations > 0 && (
+                                    <Chip label={`⚠ ${attempt.proctor_violations} violation(s)`} size="small"
+                                      sx={{ bgcolor: 'rgba(248,113,113,0.12)', color: '#f87171' }} />
+                                  )}
+                                  {attempt.completed_at && (
+                                    <Chip label={new Date(attempt.completed_at).toLocaleDateString()} size="small" variant="outlined" />
+                                  )}
+                                </Box>
+
+                                {/* AI feedback summary */}
+                                {attempt.ai_feedback?.summary && (
+                                  <Typography variant="body2" color={textSecondary} sx={{ mt: 1.5, fontStyle: 'italic' }}>
+                                    "{attempt.ai_feedback.summary}"
+                                  </Typography>
+                                )}
+                              </Box>
+
+                              {/* Score ring */}
+                              {score != null && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                                    <CircularProgress
+                                      variant="determinate"
+                                      value={score}
+                                      size={64}
+                                      thickness={5}
+                                      sx={{ color: scoreColor }}
+                                    />
+                                    <Box sx={{ top: 0, left: 0, bottom: 0, right: 0, position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Typography variant="body2" fontWeight="bold" sx={{ color: scoreColor }}>{score}</Typography>
+                                    </Box>
+                                  </Box>
+                                  <Typography variant="caption" color={textSecondary}>Score</Typography>
+                                </Box>
+                              )}
+                            </Box>
+
+                            {/* Per-question breakdown toggle */}
+                            {attempt.ai_feedback?.per_question?.length > 0 && (
+                              <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${borderColor}` }}>
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                  {attempt.ai_feedback.strengths && (
+                                    <Box sx={{ flex: 1, minWidth: 160, p: 1.5, borderRadius: 1, bgcolor: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                                      <Typography variant="caption" sx={{ color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strengths</Typography>
+                                      <Typography variant="body2" color={textSecondary} sx={{ mt: 0.5 }}>{attempt.ai_feedback.strengths}</Typography>
+                                    </Box>
+                                  )}
+                                  {attempt.ai_feedback.suggestions && (
+                                    <Box sx={{ flex: 1, minWidth: 160, p: 1.5, borderRadius: 1, bgcolor: 'rgba(124,106,247,0.06)', border: '1px solid rgba(124,106,247,0.15)' }}>
+                                      <Typography variant="caption" sx={{ color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Suggestions</Typography>
+                                      <Typography variant="body2" color={textSecondary} sx={{ mt: 0.5 }}>{attempt.ai_feedback.suggestions}</Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+                            )}
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </Stack>
+                </>
+              )}
+
+              {/* ── Unlocked interviews (not yet attempted) ── */}
+              {(() => {
+                const attemptedIds = new Set(myInterviewAttempts.map(a => String(a.interview_id)));
+                const unattempted = purchasedInterviews.filter(iv => !attemptedIds.has(String(iv.id)));
+                if (unattempted.length === 0) return null;
+                return (
+                  <>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: textPrimary }}>
+                      Unlocked — Not Yet Attempted
+                    </Typography>
+                    <Stack spacing={2}>
+                      {unattempted.map((iv, i) => (
+                        <motion.div key={i} whileHover={{ scale: 1.01 }} transition={{ type: 'spring', stiffness: 400 }}>
+                          <Card sx={{ p: 3, borderRadius: 2, bgcolor: theme.palette.background.default, border: '1px solid', borderColor: darkMode ? 'rgba(124,106,247,0.2)' : 'rgba(124,106,247,0.15)' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                              <Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <RecordVoiceOver sx={{ color: '#7c6af7', fontSize: 20 }} />
+                                  <Typography variant="h6" fontWeight="bold" color={textPrimary}>{iv.title}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                                  <Chip label={`💼 ${iv.job_role}`} size="small" sx={{ bgcolor: 'rgba(124,106,247,0.12)', color: '#7c6af7' }} />
+                                  <Chip label={`⏱ ${iv.duration_minutes}m`} size="small" sx={{ bgcolor: 'rgba(45,212,191,0.12)', color: '#2dd4bf' }} />
+                                  <Chip label={iv.source === 'assigned' ? '🎁 Assigned' : '🛒 Purchased'} size="small"
+                                    sx={{ bgcolor: iv.source === 'assigned' ? 'rgba(245,158,11,0.12)' : 'rgba(74,222,128,0.12)', color: iv.source === 'assigned' ? '#f59e0b' : '#4ade80' }} />
+                                </Box>
+                              </Box>
+                              <Button variant="contained"
+                                sx={{ borderRadius: 4, bgcolor: '#7c6af7', '&:hover': { bgcolor: '#a78bfa' }, flexShrink: 0 }}
+                                onClick={() => navigate('/interview')}>
+                                Start Interview
+                              </Button>
+                            </Box>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </Stack>
+                  </>
+                );
+              })()}
+
+              {/* ── Empty state ── */}
+              {myInterviewAttempts.length === 0 && purchasedInterviews.length === 0 && (
                 <Box sx={{ textAlign: 'center', py: 5, bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(124,106,247,0.05)', borderRadius: 2 }}>
                   <RecordVoiceOver sx={{ fontSize: 56, color: '#7c6af7', mb: 2 }} />
                   <Typography variant="h6" color={textSecondary}>No interviews yet</Typography>
                   <Typography variant="body2" color={textSecondary} sx={{ mt: 1, mb: 3 }}>
-                    Browse paid interviews or ask your admin to assign one.
+                    Browse interviews or ask your admin to assign one.
                   </Typography>
                   <Button variant="contained" sx={{ borderRadius: 4, bgcolor: '#7c6af7', '&:hover': { bgcolor: '#a78bfa' } }}
                     onClick={() => navigate('/interview')}>
@@ -1016,54 +1165,6 @@ const Hello = ({ darkMode }) => {
                   </Button>
                 </Box>
               )}
-
-              <Stack spacing={2}>
-                {purchasedInterviews.map((iv, i) => (
-                  <motion.div key={i} whileHover={{ scale: 1.01 }} transition={{ type: 'spring', stiffness: 400 }}>
-                    <Card sx={{ p: 3, borderRadius: 2, bgcolor: theme.palette.background.default, border: '1px solid', borderColor: darkMode ? 'rgba(124,106,247,0.2)' : 'rgba(124,106,247,0.15)' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            <RecordVoiceOver sx={{ color: '#7c6af7', fontSize: 20 }} />
-                            <Typography variant="h6" fontWeight="bold" color={textPrimary}>{iv.title}</Typography>
-                          </Box>
-                          {iv.description && (
-                            <Typography variant="body2" color={textSecondary} sx={{ mb: 2 }}>{iv.description}</Typography>
-                          )}
-                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                            <Chip label={`💼 ${iv.job_role}`} size="small" sx={{ bgcolor: 'rgba(124,106,247,0.12)', color: '#7c6af7' }} />
-                            <Chip label={`⏱ ${iv.duration_minutes}m`} size="small" sx={{ bgcolor: 'rgba(45,212,191,0.12)', color: '#2dd4bf' }} />
-                            <Chip label={`❓ ${iv.interview_questions?.length || 0} Qs`} size="small" variant="outlined" />
-                            {iv.experience_level && (
-                              <Chip label={iv.experience_level} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
-                            )}
-                            <Chip
-                              label={iv.source === 'assigned' ? '🎁 Assigned' : '🛒 Purchased'}
-                              size="small"
-                              sx={{
-                                bgcolor: iv.source === 'assigned' ? 'rgba(245,158,11,0.12)' : 'rgba(74,222,128,0.12)',
-                                color:   iv.source === 'assigned' ? '#f59e0b' : '#4ade80',
-                              }}
-                            />
-                          </Box>
-                          {iv.acquired_at && (
-                            <Typography variant="caption" color={textSecondary} sx={{ display: 'block', mt: 1 }}>
-                              {iv.source === 'assigned' ? 'Assigned' : 'Purchased'} on {new Date(iv.acquired_at).toLocaleDateString()}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Button
-                          variant="contained"
-                          sx={{ borderRadius: 4, bgcolor: '#7c6af7', '&:hover': { bgcolor: '#a78bfa' }, flexShrink: 0 }}
-                          onClick={() => navigate('/interview')}
-                        >
-                          Start Interview
-                        </Button>
-                      </Box>
-                    </Card>
-                  </motion.div>
-                ))}
-              </Stack>
             </>
           )}
         </Box>
