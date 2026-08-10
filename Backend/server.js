@@ -2627,7 +2627,144 @@ app.post('/api/interviews', verifyAdmin, async (req, res) => {
   }
 });
 
-// GET /api/interview-attempts - FIXED
+// Admin: Delete Interview
+app.delete('/api/interviews/:id', verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data: interview, error: interviewError } = await supabase
+      .from('interviews')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (interviewError || !interview) {
+      return res.status(404).json({ message: 'Interview not found' });
+    }
+
+    await supabase.from('interview_questions').delete().eq('interview_id', id);
+
+    await supabase.from('cart').delete().eq('interview_id', id);
+
+    await supabase.from('purchased_tests').delete().eq('interview_id', id);
+
+    await supabase.from('user_mock_assignments').delete().eq('interview_id', id);
+
+    await supabase.from('user_interview_attempts').delete().eq('interview_id', id);
+
+    // Delete the interview 
+    const { error } = await supabase.from('interviews').delete().eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Interview deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting interview:', error);
+    res.status(500).json({ message: 'Error deleting interview', error: error.message });
+  }
+});
+
+// PUT /api/interviews/:id - Admin edits interview
+app.put('/api/interviews/:id', verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const {
+    title, description, job_role, experience_level,
+    duration_minutes = 30, questions,
+    pricing_type = 'free', prices = {},
+  } = req.body;
+
+  if (!title || !job_role || !questions || !Array.isArray(questions) || questions.length === 0) {
+    return res.status(400).json({ message: 'Title, job_role and questions array are required' });
+  }
+
+  // Pricing validation
+  if (!['free', 'paid'].includes(pricing_type)) {
+    return res.status(400).json({ message: 'pricing_type must be free or paid' });
+  }
+
+  let finalPrices = {};
+
+  if (pricing_type === 'paid') {
+    if (!prices || typeof prices !== 'object' || Object.keys(prices).length === 0) {
+      return res.status(400).json({ message: 'Paid interview requires prices object' });
+    }
+
+    for (const [curr, amt] of Object.entries(prices)) {
+      if (!ALLOWED_CURRENCIES.includes(curr)) {
+        return res.status(400).json({ message: `Currency ${curr} not allowed. Allowed: ${ALLOWED_CURRENCIES.join(', ')}` });
+      }
+      if (typeof amt !== 'number' || amt <= 0) {
+        return res.status(400).json({ message: `Invalid price for ${curr}` });
+      }
+    }
+
+    if (!prices.INR || prices.INR <= 0) {
+      return res.status(400).json({ message: 'INR price is required for paid interviews' });
+    }
+
+    finalPrices = prices;
+  }
+
+  try {
+    // Confirm interview exists
+    const { data: existing, error: existingError } = await supabase
+      .from('interviews')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ message: 'Interview not found' });
+    }
+
+    // Update interview core fields
+    const { data: interview, error: updateError } = await supabase
+      .from('interviews')
+      .update({
+        title,
+        description,
+        job_role,
+        experience_level: experience_level || 'intermediate',
+        duration_minutes,
+        total_questions: questions.length,
+        pricing_type,
+        prices: pricing_type === 'paid' ? finalPrices : {},
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Replace questions: delete old ones, insert the new set
+    const { error: deleteQError } = await supabase
+      .from('interview_questions')
+      .delete()
+      .eq('interview_id', id);
+
+    if (deleteQError) throw deleteQError;
+
+    const questionsToInsert = questions.map((q, index) => ({
+      interview_id: id,
+      question_text: q.question_text || q,
+      question_type: q.question_type || 'behavioral',
+      order_index: index,
+    }));
+
+    const { error: insertQError } = await supabase
+      .from('interview_questions')
+      .insert(questionsToInsert);
+
+    if (insertQError) throw insertQError;
+
+    res.status(200).json({ message: 'Interview updated successfully', interview });
+  } catch (error) {
+    console.error('Update interview error:', error);
+    res.status(500).json({ message: 'Failed to update interview', error: error.message });
+  }
+});
+
+// GET /api/interview-attempts 
 app.get('/api/interview-attempts', verifyUser, async (req, res) => {
   try {
     let query = supabase
